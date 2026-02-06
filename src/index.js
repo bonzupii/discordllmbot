@@ -6,8 +6,11 @@ import { getRelationship } from './personality/relationships.js'
 import { addMessage, getContext } from './memory/context.js'
 import { buildPrompt } from './utils/prompt.js'
 import { validateEnvironment } from './config/validation.js'
-import { logger } from './utils/logger.js'
+import { logger, initializeLogger } from './utils/logger.js'
 import { saveRelationships } from './storage/persistence.js'
+
+// Initialize logging to file (truncates log file on startup)
+initializeLogger()
 
 const client = new Client({
     intents: [

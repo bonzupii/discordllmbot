@@ -1,8 +1,25 @@
 # Claude Development Rules for DiscordLLMBot
 
+## Session Context & Logging
+
+**AT THE START OF EACH SESSION:**
+- Check `discordllmbot.log` file (recreated fresh on each bot startup)
+- Read the latest log entries to understand:
+  - Bot startup status and any initialization warnings
+  - Recent errors or failures from previous runs
+  - Discord connection issues or API problems
+  - Performance metrics (response times, retries)
+- Use logs to contextualize user requests and diagnose issues
+
+**The log file is automatically:**
+- Written to at project root (`discordllmbot.log`)
+- Truncated on every bot launch (fresh start each session)
+- Includes all console output with timestamps
+
 ## Session Tracking (AUTOMATED)
 
 **START OF SESSION:**
+- Read `discordllmbot.log` for recent issues/status
 - Check if `docs/sessions/YYYY-MM-DD.md` exists for today
 - If not, create it with current date using format in `docs/sessions/2026-02-06.md`
 - Add current objectives based on user's request
@@ -13,6 +30,7 @@
 - Note important decisions under "Decisions Made"
 - Document any technical discoveries under "Technical Notes"
 - Keep file up-to-date as work progresses
+- Reference relevant log entries when documenting issues
 
 **END OF SESSION / WHEN CONTEXT SWITCHES:**
 - Update `WORKLOG.md`:
@@ -23,7 +41,7 @@
   ```
   <type>(<scope>): <subject>
   
-  See docs/sessions/2026-02-06.md for session notes
+  See docs/sessions/YYYY-MM-DD.md for session notes
   ```
   - Types: `feat`, `fix`, `docs`, `refactor`, `chore`
   - Scope: affected module (memory, llm, personality, utils, etc.)
@@ -31,7 +49,7 @@
   
 - Commit the session file itself:
   ```
-  chore: session notes 2026-02-06
+  chore: session notes YYYY-MM-DD
   ```
 
 ## Architecture Decisions
@@ -53,23 +71,30 @@
 2. **Prompt engineering** as primary behavior control
 3. **Message filtering** order: bot check → guild check → mention check
 4. **Context slice**: Remove triggering message with `.slice(0, -1)` to prevent echo
+5. **File persistence**: Relationships auto-save, contexts auto-save on message add
 
 ## When Adding Features
 1. Ask: Where does this fit? (memory/llm/personality/utils)
 2. Check: Does this affect the prompt? (Modify `prompt.js`)
 3. Check: Is this user-specific? (Use `relationships.js`)
-4. Document: Add to `WORKLOG.md` and this session file
+4. Log to file: All major operations logged via `logger`
+5. Document: Add to `WORKLOG.md` and this session file
 
 ## File Organization
 ```
 src/
-  index.js           ← Discord event loop
-  llm/gemini.js      ← External API calls
-  memory/context.js  ← Channel-specific history
+  index.js           ← Discord event loop + startup
+  llm/gemini.js      ← External API calls + retry logic
+  memory/context.js  ← Channel-specific history + persistence
+  storage/           ← Data I/O layer
   personality/       ← Bot identity & user config
   utils/prompt.js    ← Behavior orchestration
+  utils/logger.js    ← Logging to console + file
 
 docs/
   sessions/          ← Session notes (auto-tracked)
   adr/               ← Architecture decisions
+
+discordllmbot.log    ← Live log file (recreated on startup)
 ```
+

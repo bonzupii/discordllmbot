@@ -13,6 +13,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 *.log
+discordllmbot.log
 
 # OS
 .DS_Store
