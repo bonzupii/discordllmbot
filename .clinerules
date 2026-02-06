@@ -117,42 +117,28 @@ discordllmbot.log                   ← Live log file (recreated on startup)
 
 ## Configuration (src/config/bot.json)
 
-**Bot Profile:**
+**Reply Behavior:**
 ```json
 {
-  "bot": {
-    "name": "Orbit",
-    "username": "llm_bot",
-    "description": "...",
-    "avatarUrl": null,
-    "speakingStyle": [...],
-    "globalRules": [...]
-  },
-  "memory": {
-    "maxMessages": 12
-  },
-  "api": {
-    "geminiModel": "gemini-pro",
-    "retryAttempts": 3,
-    "retryBackoffMs": 1000
+  "replyBehavior": {
+    "mode": "mention-only",
+    "replyProbability": 1.0,
+    "minDelayMs": 500,
+    "maxDelayMs": 3000,
+    "ignoreUsers": [],
+    "ignoreChannels": [],
+    "ignoreKeywords": [],
+    "requireMention": true,
+    "engagementMode": "passive"
   }
 }
 ```
 
-**When modifying config.json:**
-- `name`: Persona name for LLM (used in prompt: "You are a human Discord user named Orbit")
-- `username`: Discord username (what appears as @username in Discord, auto-synced on startup)
-- `avatarUrl`: Discord avatar URL (auto-synced on startup, or null to skip)
-- `description`: Used in LLM prompt (not sent to Discord)
-- `speakingStyle`: Array of personality traits for LLM
-- `globalRules`: LLM behavior constraints
-- `maxMessages`: Context window size per channel (affects memory/context.js)
-- `retryAttempts`: Number of retries for Gemini API failures
-- `retryBackoffMs`: Base milliseconds for exponential backoff
-
-**Config update mechanism:**
-- Config is loaded once at startup via `configLoader.js`
-- Cached for performance (restarting bot reloads config)
-- Discord profile updates happen in `clientReady` event via `profileUpdater.js`
-- Rate limit handling: Graceful warnings if Discord API rate limits occur
+**When modifying replyBehavior:**
+- `mode`: (`"mention-only"`, `"active"`, `"passive"`, `"disabled"`) — The primary switch for reply logic.
+- `replyProbability`: (`0.0` - `1.0`) — Chance to reply when triggered.
+- `minDelayMs`, `maxDelayMs`: (`number`) — Human-like response delay range.
+- `ignoreUsers`, `ignoreChannels`, `ignoreKeywords`: (`array<string>`) — Lists for blacklisting replies.
+- `requireMention`: (`boolean`) — Forces mention requirement.
+- `engagementMode`: (`"passive"`, `"natural"`, `"aggressive"`) — Descriptive, primarily for future expanded strategies.
 
