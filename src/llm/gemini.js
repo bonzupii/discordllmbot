@@ -69,8 +69,16 @@ async function retry(fn, maxRetries = 3) {
 export async function generateReply(prompt) {
     return retry(async () => {
         const url = getGeminiUrl()
+        const apiKey = process.env.GEMINI_API_KEY
+        
+        if (!apiKey) {
+            throw new Error('GEMINI_API_KEY not set in environment')
+        }
+
+        logger.info(`Calling Gemini API (${url.split('/').pop()})`)
+        
         const res = await fetch(
-            `${url}?key=${process.env.GEMINI_API_KEY}`,
+            `${url}?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -86,13 +94,15 @@ export async function generateReply(prompt) {
         )
 
         if (!res.ok) {
+            const errorText = await res.text()
+            logger.error(`Gemini API error ${res.status}: ${errorText.substring(0, 200)}`)
+            
             const isRetryable = res.status >= 500 || res.status === 429
             const error = new GeminiAPIError(
                 `Gemini API error: ${res.status}`,
                 res.status,
                 isRetryable
             )
-            logger.error(`Gemini API returned ${res.status}`, { retryable: isRetryable })
             throw error
         }
 
