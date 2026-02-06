@@ -11,7 +11,6 @@ import { getAllRelationships } from '../personality/relationships.js'
 export async function handleMessageCreate(message, client) {
     if (message.author.bot) return
     if (!message.guild) return
-    if (!message.mentions.has(client.user)) return
 
     const cleanMessage = message.content.replace(/<@!?\d+>/g, '').trim()
     const botConfig = getBotConfig()
