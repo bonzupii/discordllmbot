@@ -69,14 +69,21 @@ async function retry(fn, maxRetries = 3) {
 export async function generateReply(prompt) {
     return retry(async () => {
         const url = getGeminiUrl()
+        const { geminiModel } = getApiConfig()
         const apiKey = process.env.GEMINI_API_KEY
         
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY not set in environment')
         }
 
-        const promptPreview = prompt.substring(0, 100).replace(/\n/g, ' ')
-        logger.api(`→ Gemini API request: ${promptPreview}...`)
+        const promptPreview = prompt.substring(0, 150).replace(/\n/g, ' ')
+        const promptLength = prompt.length
+        
+        logger.api(`→ Gemini API Request`)
+        logger.api(`  Model: ${geminiModel}`)
+        logger.api(`  Function: generateReply()`)
+        logger.api(`  Prompt length: ${promptLength} chars`)
+        logger.api(`  Preview: "${promptPreview}${promptLength > 150 ? '...' : ''}"`)
         
         const res = await fetch(
             `${url}?key=${apiKey}`,
@@ -111,8 +118,13 @@ export async function generateReply(prompt) {
         const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? null
         
         if (reply) {
-            const replyPreview = reply.substring(0, 100).replace(/\n/g, ' ')
-            logger.api(`← Gemini API response: ${replyPreview}...`)
+            const replyPreview = reply.substring(0, 150).replace(/\n/g, ' ')
+            const replyLength = reply.length
+            
+            logger.api(`← Gemini API Response`)
+            logger.api(`  Status: 200`)
+            logger.api(`  Reply length: ${replyLength} chars`)
+            logger.api(`  Preview: "${replyPreview}${replyLength > 150 ? '...' : ''}"`)
         }
 
         return reply
