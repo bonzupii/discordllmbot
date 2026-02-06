@@ -75,7 +75,8 @@ export async function generateReply(prompt) {
             throw new Error('GEMINI_API_KEY not set in environment')
         }
 
-        logger.info(`Calling Gemini API (${url.split('/').pop()})`)
+        const promptPreview = prompt.substring(0, 100).replace(/\n/g, ' ')
+        logger.api(`→ Gemini API request: ${promptPreview}...`)
         
         const res = await fetch(
             `${url}?key=${apiKey}`,
@@ -107,8 +108,14 @@ export async function generateReply(prompt) {
         }
 
         const data = await res.json()
+        const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+        
+        if (reply) {
+            const replyPreview = reply.substring(0, 100).replace(/\n/g, ' ')
+            logger.api(`← Gemini API response: ${replyPreview}...`)
+        }
 
-        return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+        return reply
     })
 }
 

@@ -103,8 +103,12 @@ client.on('messageCreate', async (message) => {
                 const truncated = reply.substring(0, 1997) + '...'
                 logger.warn(`Reply truncated from ${reply.length} to 2000 chars`)
                 await message.reply(truncated)
+                const truncatedPreview = truncated.substring(0, 80).replace(/\n/g, ' ')
+                logger.api(`→ Discord API: message.reply() (truncated) "${truncatedPreview}"`)
             } else {
                 await message.reply(reply)
+                const replyPreview = reply.substring(0, 80).replace(/\n/g, ' ')
+                logger.api(`→ Discord API: message.reply() "${replyPreview}"`)
             }
             
             // Log successful reply
