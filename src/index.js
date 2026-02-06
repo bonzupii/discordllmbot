@@ -28,6 +28,14 @@ try {
 
 client.once('clientReady', () => {
     logger.info(`✓ Logged in as ${client.user.tag}`)
+    
+    const guildCount = client.guilds.cache.size
+    if (guildCount === 0) {
+        logger.warn(`⚠️  Bot is not in any servers. Generate an invite link to add it.`)
+        logger.info(`Invite URL: https://discord.com/oauth2/authorize?client_id=${client.user.id}&scope=bot&permissions=0`)
+    } else {
+        logger.info(`✓ Connected to ${guildCount} server${guildCount > 1 ? 's' : ''}`)
+    }
 })
 
 client.on('messageCreate', async (message) => {
