@@ -110,8 +110,9 @@ discordllmbot.log    ← Live log file (recreated on startup)
 {
   "bot": {
     "name": "Orbit",
-    "avatarUrl": null,
+    "username": "llm_bot",
     "description": "...",
+    "avatarUrl": null,
     "speakingStyle": [...],
     "globalRules": [...]
   },
@@ -127,7 +128,8 @@ discordllmbot.log    ← Live log file (recreated on startup)
 ```
 
 **When modifying config.json:**
-- `name`: Discord username (auto-synced on bot startup, respects Discord rate limits)
+- `name`: Persona name for LLM (used in prompt: "You are a human Discord user named Orbit")
+- `username`: Discord username (what appears as @username in Discord, auto-synced on startup)
 - `avatarUrl`: Discord avatar URL (auto-synced on startup, or null to skip)
 - `description`: Used in LLM prompt (not sent to Discord)
 - `speakingStyle`: Array of personality traits for LLM

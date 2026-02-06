@@ -8,11 +8,11 @@ import { logger } from '../utils/logger.js'
 export async function updateDiscordProfile(client, botConfig) {
     const updates = []
 
-    // Update username if different
-    if (botConfig.name !== client.user.username) {
+    // Update Discord username if different
+    if (botConfig.username && botConfig.username !== client.user.username) {
         try {
-            await client.user.setUsername(botConfig.name)
-            logger.info(`✓ Updated Discord username to "${botConfig.name}"`)
+            await client.user.setUsername(botConfig.username)
+            logger.info(`✓ Updated Discord username to "${botConfig.username}"`)
             updates.push('username')
         } catch (err) {
             if (err.message?.includes('rate limited') || err.code === 429) {
