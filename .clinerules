@@ -74,8 +74,8 @@
 5. **File persistence**: Relationships auto-save, contexts auto-save on message add
 
 ## When Adding Features
-1. Ask: Where does this fit? (memory/llm/personality/utils)
-2. Check: Does this affect the prompt? (Modify `prompt.js`)
+1. Ask: Where does this fit? (memory/llm/personality/utils/core/events)
+2. Check: Does this affect the prompt? (Modify `core/prompt.js`)
 3. Check: Is this user-specific? (Use `relationships.js`)
 4. Log to file: All major operations logged via `logger`
 5. Document: Add to `docs/WORKLOG.md` and this session file
@@ -83,24 +83,37 @@
 ## File Organization
 ```
 src/
-  index.js           ← Discord event loop + startup
-  llm/gemini.js      ← External API calls + retry logic
-  memory/context.js  ← Channel-specific history + persistence
-  storage/           ← Data I/O layer
-  personality/       ← Bot identity & user config
-  utils/prompt.js    ← Behavior orchestration
-  utils/logger.js    ← Logging to console + file
-  utils/profileUpdater.js ← Discord profile sync
+  index.js                           ← Main entry point (thin: setup + event registration)
+  client.js                          ← Discord client factory (optional)
+  llm/gemini.js                      ← External API calls + retry logic
+  memory/context.js                  ← Channel-specific history + persistence
+  storage/                           ← Data I/O layer
+  personality/                       ← Bot identity & user config
+  core/                              ← Business logic (moved from utils/)
+    prompt.js                       ← Builds prompts for Gemini from persona, relationship, and context
+    replyDecider.js                 ← Decision logic (Phase A/B) for when to reply
+    responseDelay.js                ← Human-like delay calculation
+  events/                            ← Event handlers (extracted from index.js)
+    clientReady.js                  ← Bot ready event handler
+    messageCreate.js                ← Message handling and reply logic
+    guildCreate.js                  ← Guild join event handler
+    guildMemberAdd.js               ← Member join event handler
+    index.js                        ← Event loader
+  utils/                             ← Helper utilities (logger, profileUpdater, sanitizeName only)
+    logger.js                       ← Structured logger (file + console)
+    profileUpdater.js               ← Sync Discord profile (username/avatar) with config
+    sanitizeName.js                 ← Sanitize names for Windows-safe filenames
   config/
-    bot.json         ← Bot configuration (name, avatar, personality, API settings)
-    configLoader.js  ← Config file parser and cache
-    validation.js    ← Environment var validation
+    bot.json                        ← Bot configuration (name, avatar, personality, API settings)
+    configLoader.js                 ← Config file parser and cache
+    validation.js                   ← Environment var validation
 
 docs/
-  sessions/          ← Session notes (auto-tracked)
-  adr/               ← Architecture decisions
+  sessions/                         ← Session notes (auto-tracked)
+  plans/                            ← Project plan documents
+  adr/                              ← Architecture decisions
 
-discordllmbot.log    ← Live log file (recreated on startup)
+discordllmbot.log                   ← Live log file (recreated on startup)
 ```
 
 ## Configuration (src/config/bot.json)
