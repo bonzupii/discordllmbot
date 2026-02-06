@@ -62,7 +62,7 @@ async function retry(fn, maxRetries = 3, baseBackoffMs = 1000) {
                     backoffMs = Math.pow(2, i) * baseBackoffMs + Math.random() * Math.min(1000, baseBackoffMs)
                 }
 
-                logger.warn(`Retrying Gemini API (attempt ${i + 2}/${maxRetries}) after ${backoffMs}ms: ${err.message}`)
+                logger.warn(`Retrying Gemini API (attempt ${i + 2}/${maxRetries}) after ${backoffMs}ms: ${err.message}${err.cause ? ` (Cause: ${err.cause.message})` : ''}`)
                 await new Promise(r => setTimeout(r, backoffMs))
             }
         }
@@ -115,7 +115,7 @@ export async function generateReply(prompt) {
             
             const isRetryable = res.status >= 500 || res.status === 429
             const error = new GeminiAPIError(
-                `Gemini API error: ${res.status}`,
+                `Gemini API error: ${res.status}${errorText ? `: ${errorText}` : ''}`,
                 res.status,
                 isRetryable
             )
