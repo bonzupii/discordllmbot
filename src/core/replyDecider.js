@@ -12,9 +12,8 @@ export function shouldReply({ message, isMentioned, replyBehavior = {}, relation
     const ignoreChannels = replyBehavior.ignoreChannels ?? []
     const ignoreKeywords = replyBehavior.ignoreKeywords ?? []
 
-    // Basic ignores and preconditions
+    // Basic ignores (always apply)
     if (mode === 'disabled') return false
-    if (requireMention && !isMentioned) return false
     if (ignoreUsers.includes(message.author.id)) return false
     if (ignoreChannels.includes(message.channel.id)) return false
 
@@ -41,6 +40,12 @@ export function shouldReply({ message, isMentioned, replyBehavior = {}, relation
         default:
             decision = MentionOnlyStrategy(params)
             break
+    }
+
+    // If requireMention is true, and the strategy didn't already decide to reply based on a mention,
+    // and we're not in an 'active' mode that bypasses explicit mentions, then we don't reply.
+    if (requireMention && !isMentioned && mode !== 'active') {
+        return false
     }
 
     if (!decision) return false
