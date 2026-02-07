@@ -7,6 +7,13 @@ let pool;
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Establishes a connection to the PostgreSQL database.
+ * Retries connection up to 5 times with exponential backoff.
+ *
+ * @returns {Promise<Pool>} The PostgreSQL connection pool.
+ * @throws {Error} If connection fails after all retries.
+ */
 export async function connect() {
     if (pool) return pool;
 
@@ -29,6 +36,12 @@ export async function connect() {
     throw new Error('Cannot start without a valid database connection.');
 }
 
+/**
+ * Sets up the database schema if it doesn't exist.
+ * Uses a lock to prevent race conditions during initialization.
+ *
+ * @returns {Promise<void>}
+ */
 export async function setupSchema() {
     if (!acquireLock()) {
         logger.info('Schema setup already in progress, waiting for it to complete.');

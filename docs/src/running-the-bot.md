@@ -1,4 +1,4 @@
-## Running the bot
+# Running the bot
 
 Install dependencies and run:
 

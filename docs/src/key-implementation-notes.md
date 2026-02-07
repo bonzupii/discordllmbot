@@ -1,4 +1,4 @@
-## Key Implementation Notes
+# Key Implementation Notes
 
 - Relationship persistence: `src/personality/relationships.js` maintains in-memory caches per guild (`guildRelationships[guildId]`) and saves to `data/<Guild Name>/relationships.json` using the persistence layer. Relationships include per-user `username`, `displayName`, `attitude`, `behavior`, and `boundaries`.
 

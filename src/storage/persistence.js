@@ -10,6 +10,12 @@ async function getDb() {
     return db;
 }
 
+/**
+ * Loads all user relationships for a specific guild.
+ *
+ * @param {string} guildId - The ID of the guild.
+ * @returns {Promise<Object>} A map of user IDs to relationship objects.
+ */
 export async function loadRelationships(guildId) {
     const db = await getDb();
     const rels = {};
@@ -29,6 +35,14 @@ export async function loadRelationships(guildId) {
     return rels;
 }
 
+/**
+ * Saves all user relationships for a specific guild.
+ * Uses a transaction to ensure data integrity.
+ *
+ * @param {string} guildId - The ID of the guild.
+ * @param {Object} relationships - A map of user IDs to relationship objects.
+ * @returns {Promise<void>}
+ */
 export async function saveRelationships(guildId, relationships) {
     const db = await getDb();
     const client = await db.connect();
@@ -58,6 +72,14 @@ export async function saveRelationships(guildId, relationships) {
     }
 }
 
+/**
+ * Loads the recent message history for a specific channel.
+ *
+ * @param {string} guildId - The ID of the guild.
+ * @param {string} channelId - The ID of the channel.
+ * @param {number} maxMessages - The maximum number of messages to retrieve.
+ * @returns {Promise<Array<Object>>} An array of message objects.
+ */
 export async function loadContexts(guildId, channelId, maxMessages) {
     const db = await getDb();
     const res = await db.query(
@@ -67,6 +89,16 @@ export async function loadContexts(guildId, channelId, maxMessages) {
     return res.rows.reverse().map(row => ({ authorId: row.authorid, author: row.authorname, content: row.content }));
 }
 
+/**
+ * Saves a new message to the database.
+ *
+ * @param {string} guildId - The ID of the guild.
+ * @param {string} channelId - The ID of the channel.
+ * @param {string} authorId - The ID of the message author.
+ * @param {string} authorName - The username of the message author.
+ * @param {string} content - The content of the message.
+ * @returns {Promise<void>}
+ */
 export async function saveMessage(guildId, channelId, authorId, authorName, content) {
     const db = await getDb();
     await db.query(
@@ -75,6 +107,12 @@ export async function saveMessage(guildId, channelId, authorId, authorName, cont
     );
 }
 
+/**
+ * Prunes messages older than a specified number of days.
+ *
+ * @param {number} maxAgeDays - The maximum age of messages in days.
+ * @returns {Promise<void>}
+ */
 export async function pruneOldMessages(maxAgeDays) {
     const db = await getDb();
     const res = await db.query("DELETE FROM messages WHERE timestamp < NOW() - ($1 * INTERVAL '1 day')", [maxAgeDays]);

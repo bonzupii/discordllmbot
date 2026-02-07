@@ -1,5 +1,17 @@
 import { botPersona } from '../personality/botPersona.js'
 
+/**
+ * Builds the prompt string to send to the Gemini API.
+ *
+ * @param {Object} params - The parameters for building the prompt.
+ * @param {Object} params.relationship - The relationship object for the user triggering the reply.
+ * @param {Array<Object>} params.context - The recent message history for the channel.
+ * @param {Object} [params.guildRelationships={}] - A map of all user relationships in the guild.
+ * @param {string} [params.guildName=''] - The name of the guild.
+ * @param {string} params.userMessage - The content of the user's message.
+ * @param {string} params.username - The username of the user triggering the reply.
+ * @returns {string} The constructed prompt string.
+ */
 export function buildPrompt({
   relationship,
   context,

@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lnorton89/discordllmbot.git"
+  },
   "scripts": {
     "start": "node src/index.js",
+    "docs": "npm --prefix ./docs run dev",
     "dev": "docker-compose up -d app db",
     "build": "docker-compose build",
     "dev:down": "docker-compose down"

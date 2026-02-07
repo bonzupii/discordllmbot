@@ -1,4 +1,4 @@
-## Environment Variables
+# Environment Variables
 
 The bot requires the following environment variables (use a `.env` file in development):
 

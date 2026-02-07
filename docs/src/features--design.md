@@ -1,4 +1,4 @@
-## Features & Design
+# Features & Design
 
 - Persona-driven prompts: the bot persona is defined in `src/config/bot.json` and injected into every prompt. Customize `name`, `description`, `speakingStyle`, and `globalRules` to control how the bot behaves.
 

@@ -4,10 +4,24 @@ import { getBotConfig } from '../config/configLoader.js'
 // In-memory cache of relationships per guild: { guildId: { userId: { ... } } }
 const guildRelationships = {}
 
+/**
+ * Retrieves the relationship configuration for a specific user in a guild.
+ *
+ * @param {string} guildId - The ID of the guild.
+ * @param {string} userId - The ID of the user.
+ * @returns {Object} The relationship configuration object.
+ */
 export function getRelationship(guildId, userId) {
     return guildRelationships[guildId]?.[userId] ?? getDefaultRelationship()
 }
 
+/**
+ * Sets the relationship configuration for a specific user in a guild.
+ *
+ * @param {string} guildId - The ID of the guild.
+ * @param {string} userId - The ID of the user.
+ * @param {Object} config - The new relationship configuration.
+ */
 export function setRelationship(guildId, userId, config) {
     guildRelationships[guildId] ??= {};
     guildRelationships[guildId][userId] = config;

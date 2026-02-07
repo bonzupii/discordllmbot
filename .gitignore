@@ -1,5 +1,5 @@
 # Dependencies
-/node_modules
+**/node_modules
 package-lock.json
 
 # Environment & Secrets
@@ -40,3 +40,10 @@ Thumbs.db
 # Misc
 .cache/
 .turbo/
+
+# Docs : VitePress
+**/.vitepress/cache
+**/.vitepress/dist
+
+# Documentation
+docs/sessions/

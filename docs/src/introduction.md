@@ -1,4 +1,4 @@
-## # DiscordLLMBot
+# DiscordLLMBot
 
 DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative AI) REST API to generate contextual, persona-driven replies inside Discord servers. It is designed as a configurable MVP with a PostgreSQL database for persistence, and developer-friendly tooling (Docker-based development environment).
 

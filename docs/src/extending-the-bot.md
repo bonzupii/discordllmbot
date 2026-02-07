@@ -1,4 +1,4 @@
-## Extending the bot
+# Extending the bot
 
 Suggested next steps you can implement:
 

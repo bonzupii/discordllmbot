@@ -40,7 +40,17 @@ function writeToFile(message) {
     }
 }
 
+/**
+ * Structured logger utility.
+ * Logs messages to the console and to a file (`discordllmbot.log`).
+ * Supports different log levels: API, MESSAGE, INFO, WARN, ERROR.
+ */
 export const logger = {
+    /**
+     * Logs an API-related event.
+     * @param {string} message - The log message.
+     * @param {Object} [data=null] - Optional data to log.
+     */
     api(message, data = null) {
         const formatted = format(LOG_LEVELS.api, message)
         if (data) {
@@ -52,6 +62,11 @@ export const logger = {
         }
     },
 
+    /**
+     * Logs a message-related event (e.g., received message, reply sent).
+     * @param {string} message - The log message.
+     * @param {Object} [data=null] - Optional data to log.
+     */
     message(message, data = null) {
         const formatted = format(LOG_LEVELS.message, message)
         if (data) {
@@ -63,6 +78,11 @@ export const logger = {
         }
     },
 
+    /**
+     * Logs a general informational message.
+     * @param {string} message - The log message.
+     * @param {Object} [data=null] - Optional data to log.
+     */
     info(message, data = null) {
         const formatted = format(LOG_LEVELS.info, message)
         if (data) {
@@ -74,6 +94,11 @@ export const logger = {
         }
     },
 
+    /**
+     * Logs a warning message.
+     * @param {string} message - The log message.
+     * @param {Object} [data=null] - Optional data to log.
+     */
     warn(message, data = null) {
         const formatted = format(LOG_LEVELS.warn, message)
         if (data) {
@@ -85,6 +110,11 @@ export const logger = {
         }
     },
 
+    /**
+     * Logs an error message.
+     * @param {string} message - The log message.
+     * @param {Error|Object} [error=null] - The error object or data to log.
+     */
     error(message, error = null) {
         const formatted = format(LOG_LEVELS.error, message)
         if (error) {
