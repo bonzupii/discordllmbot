@@ -1,60 +1,123 @@
-import { MentionOnlyStrategy, PassiveStrategy, ActiveStrategy, DisabledStrategy } from '../strategies/replyStrategies.js'
+import { MentionOnlyStrategy, PassiveStrategy, ActiveStrategy, DisabledStrategy } from '../strategies/replyStrategies.js';
+import { logger } from '../utils/logger.js';
 
 /**
- * Decide whether the bot should reply to a message based on config and relationship
- * Strategy pattern: choose behavior by `replyBehavior.mode`
+ * Decide whether the bot should reply to a message based on config and relationship.
+ * Returns an object with the decision and a log of the checks performed.
  */
+import { getBotConfig, getReplyBehavior, loadConfig } from '../config/configLoader.js';
+
 export function shouldReply({ message, isMentioned, replyBehavior = {}, relationship = {}, context = [], botName = '' }) {
-    const mode = replyBehavior.mode ?? 'mention-only'
-    const requireMention = replyBehavior.requireMention ?? true
-    const prob = typeof replyBehavior.replyProbability === 'number' ? replyBehavior.replyProbability : 1.0
-    const ignoreUsers = replyBehavior.ignoreUsers ?? []
-    const ignoreChannels = replyBehavior.ignoreChannels ?? []
-    const ignoreKeywords = replyBehavior.ignoreKeywords ?? []
+    const config = loadConfig();
+    const logDecisions = config.logger?.logReplyDecisions ?? false;
+    const checks = [];
+    const finalDecision = (result, reason) => {
+        if (logDecisions) {
+            checks.push({ check: 'Final Decision', result, reason });
+            const logObject = {
+                decision: result,
+                reason: reason,
+                user: message.author.username,
+                channel: message.channel.name,
+                factors: checks
+            };
+            logger.info(`Reply Decision: ${result}`, logObject);
+        }
+        return { result, reason, checks };
+    };
 
-    // Basic ignores (always apply)
-    if (mode === 'disabled') return false
-    if (ignoreUsers.includes(message.author.id)) return false
-    if (ignoreChannels.includes(message.channel.id)) return false
+    const mode = replyBehavior.mode ?? 'mention-only';
+    checks.push({ check: 'Mode', value: mode });
 
-    const contentLower = (message.content || '').toLowerCase()
-    for (const kw of ignoreKeywords) {
-        if (!kw) continue
-        if (contentLower.includes(kw.toLowerCase())) return false
+    const requireMention = replyBehavior.requireMention ?? true;
+    checks.push({ check: 'Require Mention', value: requireMention });
+
+    const prob = typeof replyBehavior.replyProbability === 'number' ? replyBehavior.replyProbability : 1.0;
+    checks.push({ check: 'Probability', value: prob });
+
+    const ignoreUsers = replyBehavior.ignoreUsers ?? [];
+    if (ignoreUsers.length > 0) checks.push({ check: 'Ignore Users List', value: ignoreUsers });
+
+    const ignoreChannels = replyBehavior.ignoreChannels ?? [];
+    if (ignoreChannels.length > 0) checks.push({ check: 'Ignore Channels List', value: ignoreChannels });
+
+    const ignoreKeywords = replyBehavior.ignoreKeywords ?? [];
+    if (ignoreKeywords.length > 0) checks.push({ check: 'Ignore Keywords List', value: ignoreKeywords });
+
+    // --- Start Decision Logic ---
+
+    if (mode === 'disabled') {
+        return finalDecision(false, 'Bot reply mode is disabled globally.');
     }
+    checks.push({ check: 'Global Mode', result: true, reason: `Mode is '${mode}', not 'disabled'.` });
+
+    if (ignoreUsers.includes(message.author.id)) {
+        return finalDecision(false, `User ${message.author.username} (${message.author.id}) is on the ignore list.`);
+    }
+    checks.push({ check: 'User Ignored', result: true, reason: 'Author is not on ignore list.' });
+
+    if (ignoreChannels.includes(message.channel.id)) {
+        return finalDecision(false, `Channel #${message.channel.name} (${message.channel.id}) is on the ignore list.`);
+    }
+    checks.push({ check: 'Channel Ignored', result: true, reason: 'Channel is not on ignore list.' });
+
+    const contentLower = (message.content || '').toLowerCase();
+    for (const kw of ignoreKeywords) {
+        if (!kw) continue;
+        if (contentLower.includes(kw.toLowerCase())) {
+            return finalDecision(false, `Message contains ignored keyword: "${kw}".`);
+        }
+    }
+    checks.push({ check: 'Keyword Ignored', result: true, reason: 'Message does not contain ignored keywords.' });
 
     // Strategy selection
-    let decision = false
-    const params = { message, isMentioned, replyBehavior, relationship, context, botName }
+    let strategyDecision = false;
+    const params = { message, isMentioned, replyBehavior, relationship, context, botName };
     switch (mode) {
         case 'active':
-            decision = ActiveStrategy(params)
-            break
+            strategyDecision = ActiveStrategy(params);
+            break;
         case 'passive':
-            decision = PassiveStrategy(params)
-            break
+            strategyDecision = PassiveStrategy(params);
+            break;
         case 'disabled':
-            decision = DisabledStrategy(params)
-            break
+            strategyDecision = DisabledStrategy(params); // Should be redundant, but for safety
+            break;
         case 'mention-only':
         default:
-            decision = MentionOnlyStrategy(params)
-            break
+            strategyDecision = MentionOnlyStrategy(params);
+            break;
     }
+    checks.push({ check: 'Strategy Result', strategy: mode, result: strategyDecision });
 
-    // If requireMention is true, and the strategy didn't already decide to reply based on a mention,
-    // and we're not in an 'active' mode that bypasses explicit mentions, then we don't reply.
     if (requireMention && !isMentioned && mode !== 'active') {
-        return false
+        return finalDecision(false, `Replies require a mention, and the bot was not mentioned (mode: ${mode}).`);
     }
+    checks.push({
+        check: 'Mention Requirement',
+        result: true,
+        reason: `Mention requirement passed (isMentioned: ${isMentioned}, requireMention: ${requireMention}, mode: ${mode})`,
+    });
 
-    if (!decision) return false
+    if (!strategyDecision) {
+        return finalDecision(false, `The '${mode}' strategy decided not to reply.`);
+    }
+    checks.push({ check: 'Strategy Passed', result: true, reason: `The '${mode}' strategy returned true.` });
 
     // Apply probability roll
-    if (prob <= 0) return false
+    if (prob <= 0) {
+        return finalDecision(false, `Reply probability is ${prob}, which is <= 0.`);
+    }
     if (prob < 1) {
-        if (Math.random() > prob) return false
+        const roll = Math.random();
+        checks.push({ check: 'Probability Roll', roll, threshold: prob });
+        if (roll > prob) {
+            return finalDecision(false, `Random roll ${roll.toFixed(2)} exceeded reply probability ${prob}.`);
+        }
+        checks.push({ check: 'Probability Passed', result: true, reason: `Roll was under threshold.` });
+    } else {
+        checks.push({ check: 'Probability', result: true, reason: 'Probability is 1.0, no roll needed.' });
     }
 
-    return true
+    return finalDecision(true, 'All checks passed.');
 }

@@ -5,7 +5,7 @@ import { addMessage, getContext } from '../memory/context.js'
 import { buildPrompt } from '../core/prompt.js'
 import { shouldReply } from '../core/replyDecider.js'
 import { calculateDelay } from '../core/responseDelay.js'
-import { getBotConfig, getApiConfig } from '../config/configLoader.js'
+import { getBotConfig, getApiConfig, getReplyBehavior } from '../config/configLoader.js'
 import { getAllRelationships } from '../personality/relationships.js'
 
 export async function handleMessageCreate(message, client) {
@@ -50,10 +50,12 @@ export async function handleMessageCreate(message, client) {
         })
 
         // Check if we should reply
-        const replyBehavior = getBotConfig().replyBehavior ?? {}
+        const replyBehavior = getReplyBehavior() ?? {}
         const isMentioned = message.mentions.has(client.user)
-        if (!shouldReply({ message, isMentioned, replyBehavior, relationship, context, botName: botConfig.name })) {
-            logger.info(`Decision: not replying to ${message.author.username} (replyBehavior)`)
+        const replyDecision = shouldReply({ message, isMentioned, replyBehavior, relationship, context, botName: botConfig.name });
+
+        if (!replyDecision.result) {
+
             return
         }
 
