@@ -20,7 +20,6 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
 - `data/` — runtime persisted data (mounted Docker volumes)
   - `postgres/` — PostgreSQL database files
   - `pgadmin/` — pgAdmin 4 data
-- `scripts/` — helper scripts
 - `discordllmbot.log` — runtime log file
 - `package.json` — npm scripts and metadata
 
@@ -39,8 +38,6 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
   - Strategy pattern (`bot/strategies/replyStrategies.js`) provides `MentionOnly`, `Passive`, `Active`, and `Disabled` strategies.
 
 - Gemini client: `bot/llm/gemini.js` sends prompts to Gemini REST API with configurable `api.geminiModel`, `api.retryAttempts`, and `api.retryBackoffMs`.
-
-- Structured logging: `shared/utils/logger.js` writes multi-level logs to both console and `discordllmbot.log`. Specialized log levels: `API`, `MESSAGE`, `INFO`, `WARN`, `ERROR`.
 
 ---
 

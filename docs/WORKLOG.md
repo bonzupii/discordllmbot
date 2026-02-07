@@ -185,7 +185,7 @@ See **IMPROVEMENT_PLAN.md** for full architecture.
 - [commit hash] — refactor: move api and shared to top level and use mounted volumes
 - [commit hash] — refactor: rename src to bot and server service to bot
 - [commit hash] — refactor: move bot source code to bot/src
-- [commit hash] — refactor: organize Dockerfiles into service directories
+- [commit hash] — chore: remove obsolete watch-restart.js script
 
 ---
 
