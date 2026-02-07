@@ -1,0 +1,16 @@
+{
+  "name": "discordllmbot-docs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Documentation for DiscordLLMBot",
+  "scripts": {
+    "dev": "vitepress dev src",
+    "build": "vitepress build src",
+    "preview": "vitepress preview src",
+    "generate": "node scripts/generate-docs.js"
+  },
+  "devDependencies": {
+    "documentation": "^14.0.3",
+    "vitepress": "^1.6.4"
+  }
+}

@@ -32,6 +32,9 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
     - `sanitizeName.js` — sanitize names for Windows-safe filenames
   - `config/` — configuration
     - `bot.json` — main config (persona, memory, api, replyBehavior, logger)
+- `docs/` — Documentation
+  - `src/` — VitePress source files
+  - `package.json` — Documentation dependencies and scripts
 - `data/` — runtime persisted data (mounted Docker volumes)
   - `postgres/` — PostgreSQL database files
   - `pgadmin/` — pgAdmin 4 data
@@ -110,6 +113,7 @@ The bot requires the following environment variables (use a `.env` file in devel
 - `POSTGRES_USER` - The username for the database.
 - `POSTGRES_PASSWORD` - The password for the database.
 - `DATABASE_URL` - The connection string for the database.
+- `POSTGRES_PORT` - The port for the database.
 - `PGADMIN_DEFAULT_EMAIL` - The email for the pgAdmin user.
 - `PGADMIN_DEFAULT_PASSWORD` - The password for the pgAdmin user.
 

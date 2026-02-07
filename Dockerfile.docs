@@ -1,0 +1,11 @@
+FROM node:20-alpine
+
+WORKDIR /usr/src/docs
+
+COPY docs/package*.json ./
+
+RUN npm install
+
+
+
+CMD ["npm", "run", "dev"]

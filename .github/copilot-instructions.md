@@ -2,31 +2,30 @@
 
 ## Architecture Overview
 
-This is a Discord bot that generates contextual replies using Google's Gemini API. The bot maintains a human personality and can customize behavior per user.
+This is a Discord bot that generates contextual replies using Google's Gemini API. The bot maintains a human personality and can customize behavior per user. The entire environment is containerized using Docker Compose.
 
 **Data Flow:**
-1. User mentions bot → Message stored in **channel-specific memory** (max 12 messages)
-2. Prompt builder combines: bot persona + user relationship + conversation context
-3. Gemini API generates reply → Bot responds in Discord
+1. User mentions bot → Message stored in **PostgreSQL database**.
+2. Prompt builder combines: bot persona + user relationship (from DB) + conversation context (from DB).
+3. Gemini API generates reply → Bot responds in Discord.
 
 ## Module Responsibilities
 
 - **`index.js`** (entry point): Listens to Discord events, orchestrates the pipeline
 - **`llm/gemini.js`**: Single function `generateReply(prompt)` - HTTP calls to Gemini API
-- **`memory/context.js`**: In-memory channel-specific message history (uses `memory[channelId]` object)
+- **`storage/database.js`**: Manages PostgreSQL connection and schema setup.
+- **`storage/persistence.js`**: Provides a data access layer for all database interactions (CRUD operations).
+- **`storage/lock.js`**: A locking mechanism to prevent race conditions during schema setup.
 - **`personality/botPersona.js`**: Centralized bot identity exported as `botPersona` object
 - **`personality/relationships.js`**: Per-guild, per-user behavior customization (exported as keyed object `relationships[guildId][userId]`)
 - **`utils/prompt.js`**: Builds the final prompt string from all components
 
 ## Critical Patterns
 
-### 1. In-Memory Data Structure
-All state uses object maps keyed by Discord IDs. No database.
-```javascript
-// context.js: memory[channelId] = [{author, content}, ...]
-// relationships.js: relationships[guildId][userId] = {attitude, behavior, boundaries}
-```
-**Implication:** Data is volatile - bot restart loses all history and relationships.
+### 1. Database-Driven State
+All state is persisted in a PostgreSQL database. The schema is defined in `src/storage/database.js` and includes tables for `relationships`, `relationship_behaviors`, `relationship_boundaries`, and `messages`.
+
+**Implication:** Data is persistent across bot restarts.
 
 ### 2. Prompt Engineering as Core Logic
 The entire bot behavior is driven by the **prompt template** in `prompt.js`. Changing bot behavior means modifying:
@@ -52,14 +51,18 @@ if (!message.mentions.has(client.user)) return  // Requires mention
 Required environment variables (via `.env` or deployment):
 - `DISCORD_TOKEN`: From Discord Developer Portal
 - `GEMINI_API_KEY`: From Google Cloud (free tier available)
+- `POSTGRES_DB`: The name of the database to use.
+- `POSTGRES_USER`: The username for the database.
+- `POSTGRES_PASSWORD`: The password for the database.
+- `DATABASE_URL`: The connection string for the database.
+- `POSTGRES_PORT`: The port for the database.
+- `PGADMIN_DEFAULT_EMAIL`: The email for the pgAdmin user.
+- `PGADMIN_DEFAULT_PASSWORD`: The password for the pgAdmin user.
 
 ## Development Workflow
 
 ```bash
-npm start           # Run bot locally
-# Set DISCORD_TOKEN and GEMINI_API_KEY in .env
-docker build -t discordllm .   # Build container
-docker run --env-file .env discordllm  # Run in container
+docker-compose up --build
 ```
 
 **Testing:** No test suite. Add messages to any Discord server where bot is a member and has MessageContent intent. Monitor `console.error()` logs for API failures.

@@ -6,7 +6,7 @@ services:
       - ./.env
 
     ports:
-      - '5432:5432'
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
@@ -32,7 +32,7 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-      PGADMIN_CONFIG_SERVERS_JSON: '{"Servers": {"1": {"Name": "discordllmbot", "Group": "Servers", "Host": "db", "Port": 5432, "MaintenanceDB": "postgres", "Username": "admin", "SSLMode": "prefer"}}}'
+      PGADMIN_CONFIG_SERVERS_JSON: '{"Servers": {"1": {"Name": "discordllmbot", "Group": "Servers", "Host": "db", "Port": 5432, "MaintenanceDB": "postgres", "Username": "${POSTGRES_USER}", "SSLMode": "prefer"}}}'
     ports:
       - "5050:80"
     depends_on:
@@ -40,5 +40,14 @@ services:
         condition: service_healthy
     volumes:
       - ./data/pgadmin:/var/lib/pgadmin
+
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    volumes:
+      - ./docs/src:/usr/src/docs/src
+    ports:
+      - "5173:5173"
 
 
