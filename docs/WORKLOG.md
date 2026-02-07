@@ -186,6 +186,7 @@ See **IMPROVEMENT_PLAN.md** for full architecture.
 - [commit hash] — refactor: rename src to bot and server service to bot
 - [commit hash] — refactor: move bot source code to bot/src
 - [commit hash] — refactor: rename app folder to dashboard
+- [commit hash] — refactor: remove redundant COPY instructions from Dockerfiles
 
 ---
 
