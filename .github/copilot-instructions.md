@@ -18,9 +18,10 @@ This is a Discord bot that generates contextual replies using Google's Gemini AP
 - **`shared/storage/database.js`**: Manages PostgreSQL connection and schema setup.
 - **`shared/storage/persistence.js`**: Provides a data access layer for all database interactions (CRUD operations).
 - **`shared/storage/lock.js`**: A locking mechanism to prevent race conditions during schema setup.
-- **`bot/src/personality/botPersona.js`**: Centralized bot identity exported as `botPersona` object
-- **`bot/src/personality/relationships.js`**: Per-guild, per-user behavior customization (exported as keyed object `relationships[guildId][userId]`)
-- **`bot/src/core/prompt.js`**: Builds the final prompt string from all components
+- **`bot/Dockerfile.bot`**: Docker configuration for the bot.
+- **`api/Dockerfile.api`**: Docker configuration for the API.
+- **`app/Dockerfile.dashboard`**: Docker configuration for the dashboard.
+- **`docs/Dockerfile.docs`**: Docker configuration for the documentation server.
 
 ## Critical Patterns
 

@@ -17,7 +17,9 @@ services:
 
   bot:
     container_name: discordllmbot-bot
-    build: .
+    build:
+      context: .
+      dockerfile: bot/Dockerfile.bot
     volumes:
       - ./bot:/usr/src/app/bot
       - ./shared:/usr/src/app/shared
@@ -49,7 +51,7 @@ services:
     container_name: discordllmbot-docs
     build:
       context: .
-      dockerfile: Dockerfile.docs
+      dockerfile: docs/Dockerfile.docs
     volumes:
       - ./docs/src:/usr/src/docs/src
     ports:
@@ -59,7 +61,7 @@ services:
     container_name: discordllmbot-api
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: api/Dockerfile.api
     volumes:
       - ./api:/usr/src/app/api
       - ./shared:/usr/src/app/shared
@@ -76,7 +78,7 @@ services:
     container_name: discordllmbot-dashboard
     build:
       context: .
-      dockerfile: Dockerfile.dashboard
+      dockerfile: app/Dockerfile.dashboard
     volumes:
       - ./app:/usr/src/app
     ports:

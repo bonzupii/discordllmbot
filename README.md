@@ -8,21 +8,15 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
 
 - `bot/` — Discord bot application
   - `src/` — application source
-    - `index.js` — main entry point and event loop
-    - `llm/` — Gemini API integration
-    - `memory/` — conversation context management
-    - `personality/` — persona and relationships handling
-    - `core/` — business logic (prompt building, reply decision)
-    - `events/` — Discord event handlers
-    - `utils/` — helper utilities
+  - `Dockerfile.bot` — Docker configuration for the bot
 - `api/` — Express.js API for the dashboard
+  - `Dockerfile.api` — Docker configuration for the API
 - `app/` — Vite + React frontend dashboard
+  - `Dockerfile.dashboard` — Docker configuration for the dashboard
 - `shared/` — common logic used by bot and api
-  - `storage/` — database interaction
-  - `config/` — configuration loading and validation
-  - `utils/` — shared utilities (logger)
 - `docs/` — Documentation
   - `src/` — VitePress source files
+  - `Dockerfile.docs` — Docker configuration for the documentation server
 - `data/` — runtime persisted data (mounted Docker volumes)
   - `postgres/` — PostgreSQL database files
   - `pgadmin/` — pgAdmin 4 data
