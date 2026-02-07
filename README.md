@@ -129,7 +129,7 @@ Install dependencies and run:
 docker-compose up --build
 ```
 
-During development, the `app` service is configured with a mounted volume and `nodemon` for automatic restarts on code changes.
+During development, the `server` service is configured with a mounted volume and `nodemon` for automatic restarts on code changes.
 
 Data storage: When the bot starts or joins a server, it automatically creates a per-guild folder (`data/<Server Name>/`) and populates:
 - `relationships.json` — per-user relationship entries for the guild
