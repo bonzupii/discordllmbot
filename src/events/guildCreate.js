@@ -4,8 +4,8 @@ import { loadGuildContexts } from '../memory/context.js'
 
 export async function handleGuildCreate(guild) {
     try {
-        loadGuildRelationships(guild.id, guild.name)
-        loadGuildContexts(guild.id, guild.name)
+        loadGuildRelationships(guild.id);
+        loadGuildContexts(guild.id);
         await initializeGuildRelationships(guild)
         logger.info(`Guild joined: initialized guild data for server "${guild.name}"`)
     } catch (e) {

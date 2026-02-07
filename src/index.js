@@ -6,10 +6,12 @@ import { Client, GatewayIntentBits, Partials } from 'discord.js'
 
 import { validateEnvironment } from './config/validation.js'
 import { logger, initializeLogger } from './utils/logger.js'
-import { getBotConfig } from './config/configLoader.js'
+import { getBotConfig, getMemoryConfig } from './config/configLoader.js';
+
+import { pruneOldMessages } from './storage/persistence.js';
 
 // Event handlers
-import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js'
+import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 
 // Read config early to supply logger settings before initializing logger
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -55,7 +57,12 @@ try {
 }
 
 // Register event handlers
-client.once('clientReady', () => handleClientReady(client, botConfig))
+client.once('clientReady', () => {
+    handleClientReady(client, botConfig);
+    const { maxMessageAgeDays } = getMemoryConfig();
+    pruneOldMessages(maxMessageAgeDays);
+    setInterval(() => pruneOldMessages(maxMessageAgeDays), 1000 * 60 * 60 * 24); // Every 24 hours
+});
 client.on('messageCreate', (message) => handleMessageCreate(message, client))
 client.on('guildCreate', handleGuildCreate)
 client.on('guildMemberAdd', handleGuildMemberAdd)

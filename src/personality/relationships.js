@@ -8,12 +8,10 @@ export function getRelationship(guildId, userId) {
     return guildRelationships[guildId]?.[userId] ?? getDefaultRelationship()
 }
 
-export function setRelationship(guildId, guildName, userId, config) {
-    guildRelationships[guildId] ??= {}
-    guildRelationships[guildId][userId] = config
-    
-    // Persist this guild's relationships immediately
-    saveGuildRelationships(guildId, guildName)
+export function setRelationship(guildId, userId, config) {
+    guildRelationships[guildId] ??= {};
+    guildRelationships[guildId][userId] = config;
+    saveGuildRelationships(guildId);
 }
 
 /**
@@ -22,10 +20,10 @@ export function setRelationship(guildId, guildName, userId, config) {
  * @param {string} guildName - Discord guild name
  * @returns {Object} Relationships for the guild
  */
-export function loadGuildRelationships(guildId, guildName) {
-    const rels = loadRelationships(guildId, guildName)
-    guildRelationships[guildId] = rels
-    return rels
+export function loadGuildRelationships(guildId) {
+    const rels = loadRelationships(guildId);
+    guildRelationships[guildId] = rels;
+    return rels;
 }
 
 /**
@@ -33,9 +31,9 @@ export function loadGuildRelationships(guildId, guildName) {
  * @param {string} guildId - Discord guild ID
  * @param {string} guildName - Discord guild name
  */
-export function saveGuildRelationships(guildId, guildName) {
+export function saveGuildRelationships(guildId) {
     if (guildRelationships[guildId]) {
-        saveRelationships(guildId, guildName, guildRelationships[guildId])
+        saveRelationships(guildId, guildRelationships[guildId]);
     }
 }
 
@@ -56,63 +54,69 @@ function getDefaultRelationship() {
  * @param {Guild} guild - discord.js Guild object
  */
 export async function initializeGuildRelationships(guild) {
-    const guildId = guild.id
-    const guildName = guild.name
+    const guildId = guild.id;
 
-    // Load existing relationships or start fresh
-    if (!guildRelationships[guildId]) {
-        loadGuildRelationships(guildId, guildName)
-    } else {
-        // Ensure in-memory map exists even if already loaded
-        guildRelationships[guildId] ??= {}
-    }
+    // Load all existing relationships from the DB for this guild.
+    const existingRels = loadRelationships(guildId);
+    guildRelationships[guildId] = existingRels;
 
-    // Try to fetch members; if not available due to intents, use cached members
-    let members
+    // Mark all existing relationships as potentially stale.
+    const staleUsers = new Set(Object.keys(existingRels));
+
+    let members;
     try {
-        members = await guild.members.fetch()
+        members = await guild.members.fetch();
     } catch (e) {
-        members = guild.members.cache
+        members = guild.members.cache;
     }
 
-    const defaultRel = getDefaultRelationship()
-    let changed = false
+    const defaultRel = getDefaultRelationship();
+    let changed = false;
 
     for (const [memberId, member] of members) {
-        // Skip bots
-        if (member.user?.bot) continue
+        if (member.user?.bot) continue;
 
-        const existing = guildRelationships[guildId][memberId]
-        const displayName = member.displayName ?? member.user?.username ?? memberId
-        const username = member.user?.username ?? memberId
+        // This user is active, so remove them from the stale list.
+        staleUsers.delete(memberId);
+
+        const existing = guildRelationships[guildId][memberId];
+        const displayName = member.displayName ?? member.user?.username ?? memberId;
+        const username = member.user?.username ?? memberId;
 
         if (!existing) {
+            // This is a new user, add them.
             guildRelationships[guildId][memberId] = {
                 username,
                 displayName,
                 attitude: defaultRel.attitude,
                 behavior: Array.isArray(defaultRel.behavior) ? [...defaultRel.behavior] : [],
                 boundaries: Array.isArray(defaultRel.boundaries) ? [...defaultRel.boundaries] : []
-            }
-            changed = true
+            };
+            changed = true;
         } else {
-            // Backfill missing fields
-            if (!existing.username) {
-                existing.username = username
-                changed = true
-            }
-            if (!existing.displayName) {
-                existing.displayName = displayName
-                changed = true
+            // This is an existing user, just ensure their data is up-to-date.
+            if (existing.username !== username || existing.displayName !== displayName) {
+                existing.username = username;
+                existing.displayName = displayName;
+                changed = true;
             }
         }
     }
 
-    if (changed) {
-        saveGuildRelationships(guildId, guildName)
+    // Remove stale users from the in-memory cache.
+    if (staleUsers.size > 0) {
+        for (const userId of staleUsers) {
+            delete guildRelationships[guildId][userId];
+        }
+        changed = true;
     }
 
-    return guildRelationships[guildId]
+    // If anything changed, save the entire, corrected state back to the DB.
+    if (changed) {
+        saveGuildRelationships(guildId);
+    }
+
+    return guildRelationships[guildId];
 }
 
 /**

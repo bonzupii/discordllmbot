@@ -24,7 +24,8 @@
     }
   },
   "memory": {
-    "maxMessages": 25
+    "maxMessages": 25,
+    "maxMessageAgeDays": 30
   },
   "api": {
     "geminiModel": "gemini-2.0-flash",
@@ -45,6 +46,7 @@
   },
   "logger": {
     "maxLogLines": 1000,
-    "logReplyDecisions": true
+    "logReplyDecisions": true,
+    "logSql": false
   }
 }

@@ -66,14 +66,20 @@ startChild()
 // Watch for changes in src/ (recursive watch works on Windows and macOS)
 let debounce = null
 try {
-  const watcher = fs.watch(SRC_DIR, { recursive: true }, (eventType, filename) => {
-    if (!filename) return
+  const watcher = fs.watch(process.cwd(), { recursive: true }, (eventType, filename) => {
+    if (!filename) return;
+
+    // Ignore changes in node_modules, data, and the log file itself
+    if (filename.startsWith('node_modules') || filename.startsWith('data') || filename.endsWith('.log')) {
+      return;
+    }
+
     // Debounce rapid events
-    if (debounce) clearTimeout(debounce)
+    if (debounce) clearTimeout(debounce);
     debounce = setTimeout(() => {
-      restartChild(filename)
-    }, 200)
-  })
+      restartChild(filename);
+    }, 200);
+  });
 
   process.on('SIGINT', () => {
     console.log('Dev watcher exiting...')

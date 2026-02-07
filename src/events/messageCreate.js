@@ -1,11 +1,12 @@
 import { logger } from '../utils/logger.js'
 import { generateReply } from '../llm/gemini.js'
 import { getRelationship } from '../personality/relationships.js'
-import { addMessage, getContext } from '../memory/context.js'
+import { addMessage, getContext, loadGuildContexts } from '../memory/context.js';
+import { loadContexts } from '../storage/persistence.js';
 import { buildPrompt } from '../core/prompt.js'
 import { shouldReply } from '../core/replyDecider.js'
 import { calculateDelay } from '../core/responseDelay.js'
-import { getBotConfig, getApiConfig, getReplyBehavior } from '../config/configLoader.js'
+import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '../config/configLoader.js';
 import { getAllRelationships } from '../personality/relationships.js'
 
 export async function handleMessageCreate(message, client) {
@@ -28,16 +29,15 @@ export async function handleMessageCreate(message, client) {
         // Add this message to context BEFORE building prompt
         addMessage(
             message.guild.id,
-            message.guild.name,
             message.channel.id,
-            message.channel.name,
             message.author.id,
             message.author.username,
             message.content
-        )
+        );
 
         // Build prompt with context
-        const context = getContext(message.guild.id, message.channel.id).slice(0, -1)
+        const { maxMessages } = getMemoryConfig();
+        const context = loadContexts(message.guild.id, message.channel.id, maxMessages).slice(0, -1);
         const guildRelationships = getAllRelationships()[message.guild.id] ?? {}
 
         const prompt = buildPrompt({
@@ -78,6 +78,15 @@ export async function handleMessageCreate(message, client) {
 
             // Send reply
             await message.reply(finalReply)
+
+            // Add the bot's reply to the context
+            addMessage(
+                message.guild.id,
+                message.channel.id,
+                client.user.id,
+                botConfig.name,
+                finalReply
+            );
 
             // Single combined API-level log: Gemini model -> Discord send
             const { geminiModel } = getApiConfig()

@@ -61,3 +61,12 @@ export function getReplyBehavior() {
     const config = loadConfig()
     return config.replyBehavior ?? {}
 }
+
+/**
+ * Get logger settings
+ * @returns {Object} Logger configuration
+ */
+export function getLoggerConfig() {
+    const config = loadConfig();
+    return config.logger ?? {};
+}
