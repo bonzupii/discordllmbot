@@ -32,6 +32,8 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
     - `sanitizeName.js` — sanitize names for Windows-safe filenames
   - `config/` — configuration
     - `bot.json` — main config (persona, memory, api, replyBehavior, logger)
+    - `pgadmin/` — pgAdmin configuration
+      - `servers.json` — server definitions for pgAdmin
 - `docs/` — Documentation
   - `src/` — VitePress source files
   - `package.json` — Documentation dependencies and scripts

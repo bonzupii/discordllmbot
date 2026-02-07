@@ -43,6 +43,7 @@ export async function connect() {
  * @returns {Promise<void>}
  */
 export async function setupSchema() {
+    logger.info('setupSchema: Called');
     if (!acquireLock()) {
         logger.info('Schema setup already in progress, waiting for it to complete.');
         await waitForLock();
@@ -50,7 +51,9 @@ export async function setupSchema() {
         return;
     }
 
+    logger.info('setupSchema: Lock acquired, connecting...');
     if (!pool) await connect();
+    logger.info('setupSchema: Connected, running queries...');
 
     try {
         const queries = [
@@ -86,6 +89,7 @@ export async function setupSchema() {
         ];
 
         for (const query of queries) {
+            logger.info(`setupSchema: Running query: ${query.substring(0, 50)}...`);
             await pool.query(query);
         }
 
@@ -94,6 +98,7 @@ export async function setupSchema() {
         logger.error('Failed to set up database schema', err);
         throw new Error('Cannot start without a valid database schema.');
     } finally {
+        logger.info('setupSchema: Releasing lock...');
         releaseLock();
     }
 }
