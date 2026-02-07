@@ -1,0 +1,23 @@
+FROM node:20-alpine
+
+WORKDIR /usr/src/app
+
+# Copy API package.json
+COPY src/api/package*.json ./api/
+
+# Install dependencies
+WORKDIR /usr/src/app/api
+RUN npm install
+
+# Copy shared code
+WORKDIR /usr/src/app
+COPY src/shared ./shared
+
+# Copy API code
+COPY src/api ./api
+
+# Expose port
+EXPOSE 3000
+
+WORKDIR /usr/src/app/api
+CMD ["npm", "start"]

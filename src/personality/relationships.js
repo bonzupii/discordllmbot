@@ -1,5 +1,5 @@
-import { loadRelationships, saveRelationships } from '../storage/persistence.js'
-import { getBotConfig } from '../config/configLoader.js'
+import { loadRelationships, saveRelationships } from '../shared/storage/persistence.js'
+import { getBotConfig } from '../shared/config/configLoader.js'
 
 // In-memory cache of relationships per guild: { guildId: { userId: { ... } } }
 const guildRelationships = {}

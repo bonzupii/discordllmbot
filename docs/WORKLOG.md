@@ -179,6 +179,8 @@ See **IMPROVEMENT_PLAN.md** for full architecture.
 - [commit hash] — feat: enhance documentation generator
 - [commit hash] — chore: add JSDoc comments to source files
 - [commit hash] — chore: create bot.json.defaults
+- [commit hash] — chore: stop tracking generated docs/src directory
+- [commit hash] — feat: implement web dashboard foundation (API + Frontend scaffolding)
 
 ---
 

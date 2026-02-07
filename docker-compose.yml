@@ -53,3 +53,33 @@ services:
       - ./docs/src:/usr/src/docs/src
     ports:
       - "5173:5173"
+
+  api:
+    container_name: discordllmbot-api
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    volumes:
+      - ./src:/usr/src/app
+    command: npm run dev
+    ports:
+      - "${API_PORT}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./.env
+
+  dashboard:
+    container_name: discordllmbot-dashboard
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    volumes:
+      - ./app:/usr/src/app
+    ports:
+      - "${DASHBOARD_PORT}:5173"
+    depends_on:
+      - api
+    env_file:
+      - ./.env

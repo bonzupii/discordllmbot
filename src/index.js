@@ -4,18 +4,18 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { Client, GatewayIntentBits, Partials } from 'discord.js'
 
-import { validateEnvironment } from './config/validation.js'
-import { logger, initializeLogger } from './utils/logger.js'
-import { getBotConfig, getMemoryConfig } from './config/configLoader.js';
+import { validateEnvironment } from './shared/config/validation.js'
+import { logger, initializeLogger } from './shared/utils/logger.js'
+import { getBotConfig, getMemoryConfig } from './shared/config/configLoader.js';
 
-import { pruneOldMessages } from './storage/persistence.js';
+import { pruneOldMessages } from './shared/storage/persistence.js';
 
 // Event handlers
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 
 // Read config early to supply logger settings before initializing logger
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const BOT_CONFIG_PATH = path.join(process.cwd(), 'src', 'config', 'bot.json')
+const BOT_CONFIG_PATH = path.join(process.cwd(), 'src', 'shared', 'config', 'bot.json')
 let initialMaxLogLines = undefined
 try {
     if (fs.existsSync(BOT_CONFIG_PATH)) {

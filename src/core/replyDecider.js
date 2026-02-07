@@ -1,11 +1,11 @@
 import { MentionOnlyStrategy, PassiveStrategy, ActiveStrategy, DisabledStrategy } from '../strategies/replyStrategies.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 
 /**
  * Decide whether the bot should reply to a message based on config and relationship.
  * Returns an object with the decision and a log of the checks performed.
  */
-import { getBotConfig, getReplyBehavior, loadConfig } from '../config/configLoader.js';
+import { getBotConfig, getReplyBehavior, loadConfig } from '../shared/config/configLoader.js';
 
 export function shouldReply({ message, isMentioned, replyBehavior = {}, relationship = {}, context = [], botName = '' }) {
     const config = loadConfig();
