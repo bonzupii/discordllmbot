@@ -1,4 +1,4 @@
-import { logger } from '../shared/utils/logger.js'
+import { logger } from '../../shared/utils/logger.js'
 import { updateDiscordProfile } from '../utils/profileUpdater.js'
 import { loadGuildRelationships, initializeGuildRelationships } from '../personality/relationships.js'
 import { loadGuildContexts } from '../memory/context.js'

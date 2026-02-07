@@ -1,12 +1,12 @@
-import { logger } from '../shared/utils/logger.js'
+import { logger } from '../../shared/utils/logger.js'
 import { generateReply } from '../llm/gemini.js'
 import { getRelationship } from '../personality/relationships.js'
 import { addMessage, getContext, loadGuildContexts } from '../memory/context.js';
-import { loadContexts } from '../shared/storage/persistence.js';
+import { loadContexts } from '../../shared/storage/persistence.js';
 import { buildPrompt } from '../core/prompt.js'
 import { shouldReply } from '../core/replyDecider.js'
 import { calculateDelay } from '../core/responseDelay.js'
-import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '../shared/config/configLoader.js';
+import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '../../shared/config/configLoader.js';
 import { getAllRelationships } from '../personality/relationships.js'
 
 export async function handleMessageCreate(message, client) {

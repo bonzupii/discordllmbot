@@ -20,6 +20,7 @@ services:
     build: .
     volumes:
       - ./src:/usr/src/app/src
+      - ./shared:/usr/src/app/shared
     command: npm run dev:container
     depends_on:
       db:
@@ -60,7 +61,8 @@ services:
       context: .
       dockerfile: Dockerfile.api
     volumes:
-      - ./src:/usr/src/app
+      - ./api:/usr/src/app/api
+      - ./shared:/usr/src/app/shared
     command: npm run dev
     ports:
       - "${API_PORT}:3000"

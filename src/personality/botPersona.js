@@ -1,4 +1,4 @@
-import { getBotConfig } from '../shared/config/configLoader.js'
+import { getBotConfig } from '../../shared/config/configLoader.js'
 
 /**
  * The bot's persona configuration, loaded from the config file.

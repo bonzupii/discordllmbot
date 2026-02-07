@@ -1,6 +1,6 @@
-import { logger } from '../shared/utils/logger.js'
+import { logger } from '../../shared/utils/logger.js'
 import { setRelationship } from '../personality/relationships.js'
-import { getBotConfig } from '../shared/config/configLoader.js'
+import { getBotConfig } from '../../shared/config/configLoader.js'
 
 export async function handleGuildMemberAdd(member) {
     if (member.user.bot) return
