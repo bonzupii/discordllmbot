@@ -6,9 +6,12 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { EventEmitter } from 'events'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const LOG_FILE = path.join(__dirname, '../../discordllmbot.log')
+
+const logEmitter = new EventEmitter()
 
 const LOG_LEVELS = {
     api: 'API',
@@ -40,6 +43,19 @@ function writeToFile(message) {
     }
 }
 
+function emitLog(level, message, data = null) {
+    const formatted = format(level, message)
+    const logEntry = {
+        timestamp: timestamp(),
+        level,
+        message,
+        data,
+        formatted
+    }
+    logEmitter.emit('log', logEntry)
+    return formatted
+}
+
 /**
  * Structured logger utility.
  * Logs messages to the console and to a file (`discordllmbot.log`).
@@ -47,12 +63,20 @@ function writeToFile(message) {
  */
 export const logger = {
     /**
+     * Subscribe to log events.
+     * @param {Function} callback - Function to call on each log.
+     */
+    onLog(callback) {
+        logEmitter.on('log', callback)
+    },
+
+    /**
      * Logs an API-related event.
      * @param {string} message - The log message.
      * @param {Object} [data=null] - Optional data to log.
      */
     api(message, data = null) {
-        const formatted = format(LOG_LEVELS.api, message)
+        const formatted = emitLog(LOG_LEVELS.api, message, data)
         if (data) {
             console.log(formatted, data)
             writeToFile(formatted + ' ' + JSON.stringify(data))
@@ -68,7 +92,7 @@ export const logger = {
      * @param {Object} [data=null] - Optional data to log.
      */
     message(message, data = null) {
-        const formatted = format(LOG_LEVELS.message, message)
+        const formatted = emitLog(LOG_LEVELS.message, message, data)
         if (data) {
             console.log(formatted, data)
             writeToFile(formatted + ' ' + JSON.stringify(data))
@@ -84,7 +108,7 @@ export const logger = {
      * @param {Object} [data=null] - Optional data to log.
      */
     info(message, data = null) {
-        const formatted = format(LOG_LEVELS.info, message)
+        const formatted = emitLog(LOG_LEVELS.info, message, data)
         if (data) {
             console.log(formatted, data)
             writeToFile(formatted + ' ' + JSON.stringify(data))
@@ -100,7 +124,7 @@ export const logger = {
      * @param {Object} [data=null] - Optional data to log.
      */
     warn(message, data = null) {
-        const formatted = format(LOG_LEVELS.warn, message)
+        const formatted = emitLog(LOG_LEVELS.warn, message, data)
         if (data) {
             console.warn(formatted, data)
             writeToFile(formatted + ' ' + JSON.stringify(data))
@@ -116,13 +140,10 @@ export const logger = {
      * @param {Error|Object} [error=null] - The error object or data to log.
      */
     error(message, error = null) {
-        const formatted = format(LOG_LEVELS.error, message)
+        const formatted = emitLog(LOG_LEVELS.error, message, error)
         if (error) {
             console.error(formatted, error)
             writeToFile(formatted + ' ' + (error && error.stack ? error.stack : JSON.stringify(error)))
-            if (error.stack) {
-                // already written above
-            }
         } else {
             console.error(formatted)
             writeToFile(formatted)
