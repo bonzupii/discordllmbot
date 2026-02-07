@@ -37,7 +37,7 @@ export async function handleMessageCreate(message, client) {
 
         // Build prompt with context
         const { maxMessages } = getMemoryConfig();
-        const context = loadContexts(message.guild.id, message.channel.id, maxMessages).slice(0, -1);
+        const context = (await loadContexts(message.guild.id, message.channel.id, maxMessages)).slice(0, -1);
         const guildRelationships = getAllRelationships()[message.guild.id] ?? {}
 
         const prompt = buildPrompt({

@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { logger } from '../utils/logger.js';
+import { acquireLock, releaseLock, waitForLock } from './lock.js';
 
 const { Pool } = pg;
 let pool;
@@ -29,6 +30,13 @@ export async function connect() {
 }
 
 export async function setupSchema() {
+    if (!acquireLock()) {
+        logger.info('Schema setup already in progress, waiting for it to complete.');
+        await waitForLock();
+        logger.info('Schema setup lock released, proceeding.');
+        return;
+    }
+
     if (!pool) await connect();
 
     try {
@@ -72,5 +80,7 @@ export async function setupSchema() {
     } catch (err) {
         logger.error('Failed to set up database schema', err);
         throw new Error('Cannot start without a valid database schema.');
+    } finally {
+        releaseLock();
     }
 }

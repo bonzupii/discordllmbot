@@ -1,6 +1,6 @@
 # DiscordLLMBot
 
-DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative AI) REST API to generate contextual, persona-driven replies inside Discord servers. It is designed as a configurable MVP with in-memory conversation context, file-based persistence, and developer-friendly tooling (auto-restart watcher, structured logging).
+DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative AI) REST API to generate contextual, persona-driven replies inside Discord servers. It is designed as a configurable MVP with a PostgreSQL database for persistence, and developer-friendly tooling (Docker-based development environment).
 
 ---
 
@@ -9,7 +9,10 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
 - `src/` — application source
   - `index.js` — main entry point and event loop (thin: just setup + event registration)
   - `llm/gemini.js` — Gemini REST client with retry/backoff
-  - `memory/context.js` — in-memory per-channel message history with persistence
+  - `storage/` — PostgreSQL database interaction
+    - `database.js` — connection and schema setup
+    - `persistence.js` — data access layer (CRUD operations)
+    - `lock.js` — schema setup locking mechanism
   - `personality/` — persona and relationships handling
     - `botPersona.js` — loads bot identity and speaking style
     - `relationships.js` — per-guild, per-user relationship store and initialization
@@ -29,12 +32,9 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
     - `sanitizeName.js` — sanitize names for Windows-safe filenames
   - `config/` — configuration
     - `bot.json` — main config (persona, memory, api, replyBehavior, logger)
-- `data/` — runtime persisted data (per-guild folders with sanitized names)
-  - `Server Name 1/` — folder per guild (sanitized to be Windows-safe)
-    - `relationships.json` — per-guild, per-user relationship store
-    - `contexts/` — folder containing per-channel message history
-      - `<channelId>.json` — messages for this channel
-  - `Server Name 2/` — another guild's data
+- `data/` — runtime persisted data (mounted Docker volumes)
+  - `postgres/` — PostgreSQL database files
+  - `pgadmin/` — pgAdmin 4 data
 - `scripts/` — helper scripts
   - `watch-restart.js` — dev watcher that restarts the bot on `src/` changes and writes restart markers to the log
 - `discordllmbot.log` — runtime log file (rotated/truncated on startup)
@@ -106,7 +106,12 @@ The bot requires the following environment variables (use a `.env` file in devel
 - `DISCORD_TOKEN` — Discord bot token
 - `GEMINI_API_KEY` — API key for Google Gemini/Vertex AI
 
-You can create a `.env` file in the project root for development with these values.
+- `POSTGRES_DB` - The name of the database to use.
+- `POSTGRES_USER` - The username for the database.
+- `POSTGRES_PASSWORD` - The password for the database.
+- `DATABASE_URL` - The connection string for the database.
+- `PGADMIN_DEFAULT_EMAIL` - The email for the pgAdmin user.
+- `PGADMIN_DEFAULT_PASSWORD` - The password for the pgAdmin user.
 
 ---
 
@@ -115,15 +120,10 @@ You can create a `.env` file in the project root for development with these valu
 Install dependencies and run:
 
 ```bash
-npm install
-npm start
+docker-compose up --build
 ```
 
-During development, use the watcher which restarts on changes and writes restart markers to the log:
-
-```bash
-npm run dev
-```
+During development, the `app` service is configured with a mounted volume and `nodemon` for automatic restarts on code changes.
 
 Data storage: When the bot starts or joins a server, it automatically creates a per-guild folder (`data/<Server Name>/`) and populates:
 - `relationships.json` — per-user relationship entries for the guild
