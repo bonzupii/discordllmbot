@@ -2,7 +2,7 @@ import { logger } from '../../../shared/utils/logger.js'
 import { generateReply } from '../llm/gemini.js'
 import { getRelationship } from '../personality/relationships.js'
 import { addMessage, getContext, loadGuildContexts } from '../memory/context.js';
-import { loadContexts } from '../../../shared/storage/persistence.js';
+import { loadContexts, logBotReply } from '../../../shared/storage/persistence.js';
 import { buildPrompt } from '../core/prompt.js'
 import { shouldReply } from '../core/replyDecider.js'
 import { calculateDelay } from '../core/responseDelay.js'
@@ -78,6 +78,18 @@ export async function handleMessageCreate(message, client) {
 
             // Send reply
             await message.reply(finalReply)
+
+            // Log bot reply to database
+            await logBotReply(
+                message.guild.id,
+                message.channel.id,
+                message.author.id,
+                message.author.username,
+                message.member?.displayName ?? message.author.username,
+                message.author.displayAvatarURL({ extension: 'png', size: 64 }),
+                cleanMessage,
+                finalReply
+            );
 
             // Add the bot's reply to the context
             addMessage(

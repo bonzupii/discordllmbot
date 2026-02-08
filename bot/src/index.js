@@ -15,6 +15,7 @@ import { pruneOldMessages } from '../../shared/storage/persistence.js';
 
 // Event handlers
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
+import { handleLeaveGuild } from './events/leaveGuild.js';
 
 // Read config early to supply logger settings before initializing logger
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -83,6 +84,26 @@ internalApp.post('/reload', async (req, res) => {
         res.status(200).send({ message: 'Reloaded' });
     } else {
         res.status(400).send({ error: 'Missing guildId' });
+    }
+});
+
+internalApp.delete('/guilds/:serverId', async (req, res) => {
+    await handleLeaveGuild(req, res, client);
+});
+
+// Endpoint to get guild information including join date
+internalApp.get('/guilds', async (req, res) => {
+    try {
+        const guilds = client.guilds.cache.map(guild => ({
+            id: guild.id,
+            name: guild.name,
+            joinedAt: guild.joinedAt
+        }));
+        
+        res.json(guilds);
+    } catch (err) {
+        logger.error('Failed to fetch guilds', err);
+        res.status(500).json({ error: 'Failed to fetch guilds' });
     }
 });
 
