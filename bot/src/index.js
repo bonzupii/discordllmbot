@@ -3,12 +3,15 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { Client, GatewayIntentBits, Partials } from 'discord.js'
+import express from 'express'
+import * as relationshipsModule from './personality/relationships.js';
+const { loadGuildRelationships } = relationshipsModule;
 
-import { validateEnvironment } from '../shared/config/validation.js'
-import { logger, initializeLogger } from '../shared/utils/logger.js'
-import { getBotConfig, getMemoryConfig } from '../shared/config/configLoader.js';
+import { validateEnvironment } from '../../shared/config/validation.js'
+import { logger, initializeLogger } from '../../shared/utils/logger.js'
+import { getBotConfig, getMemoryConfig } from '../../shared/config/configLoader.js';
 
-import { pruneOldMessages } from '../shared/storage/persistence.js';
+import { pruneOldMessages } from '../../shared/storage/persistence.js';
 
 // Event handlers
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
@@ -66,6 +69,26 @@ client.once('clientReady', () => {
 client.on('messageCreate', (message) => handleMessageCreate(message, client))
 client.on('guildCreate', handleGuildCreate)
 client.on('guildMemberAdd', handleGuildMemberAdd)
+
+// Internal API for hot-reloading
+const internalApp = express();
+const INTERNAL_PORT = 3001;
+internalApp.use(express.json());
+
+internalApp.post('/reload', async (req, res) => {
+    const { guildId } = req.body;
+    if (guildId) {
+        await loadGuildRelationships(guildId);
+        logger.info(`Reloaded relationships for guild ${guildId} via internal API.`);
+        res.status(200).send({ message: 'Reloaded' });
+    } else {
+        res.status(400).send({ error: 'Missing guildId' });
+    }
+});
+
+internalApp.listen(INTERNAL_PORT, () => {
+    logger.info(`Internal API listening on port ${INTERNAL_PORT}`);
+});
 
 // Graceful shutdown: Save state before exit
 process.on('SIGINT', async () => {

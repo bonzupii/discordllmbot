@@ -21,7 +21,7 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
   - `postgres/` — PostgreSQL database files
   - `pgadmin/` — pgAdmin 4 data
 - `discordllmbot.log` — runtime log file
-- `package.json` — npm scripts and metadata
+- `package.json` — root package.json for monorepo workspaces and scripts
 
 ---
 

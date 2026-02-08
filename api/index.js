@@ -8,8 +8,9 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { logger } from '../shared/utils/logger.js';
 import { loadConfig } from '../shared/config/configLoader.js';
-import { connect } from '../shared/storage/database.js';
+import { connect, setupSchema } from '../shared/storage/database.js';
 import { loadRelationships, saveRelationships } from '../shared/storage/persistence.js';
+import axios from 'axios';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BOT_CONFIG_PATH = path.join(process.cwd(), 'shared', 'config', 'bot.json');
@@ -66,8 +67,8 @@ app.post('/api/config', (req, res) => {
 app.get('/api/guilds', async (req, res) => {
   try {
     const db = await connect();
-    const result = await db.query('SELECT DISTINCT guildId FROM relationships');
-    res.json(result.rows.map(r => r.guildid));
+    const result = await db.query('SELECT guildId, guildName FROM guilds');
+    res.json(result.rows.map(r => ({ id: r.guildid, name: r.guildname })));
   } catch (err) {
     logger.error('Failed to load guilds', err);
     res.status(500).json({ error: 'Failed to load guilds' });
@@ -92,14 +93,25 @@ app.post('/api/guilds/:guildId/relationships/:userId', async (req, res) => {
 
     // Load current relationships for the guild
     const currentRels = await loadRelationships(guildId);
+
+    // Update the specific user's relationship
+    currentRels[userId] = newRel;
+
     
-    // Update the specific user
+    // Update the specific user's relationship
     currentRels[userId] = newRel;
 
     // Save back to DB
     await saveRelationships(guildId, currentRels);
-    
-    logger.info(`Relationship updated for user ${userId} in guild ${guildId}`);
+
+    // Notify bot to reload
+    try {
+      await axios.post('http://bot:3001/reload', { guildId });
+      logger.info(`Sent reload request to bot for guild ${guildId}`);
+    } catch (reloadErr) {
+      logger.error(`Failed to send reload request to bot for guild ${guildId}`, reloadErr);
+    }
+
     res.json({ message: 'Relationship updated successfully' });
   } catch (err) {
     logger.error('Failed to update relationship', err);
@@ -154,6 +166,7 @@ if (fs.existsSync(LOG_FILE_PATH)) {
 async function start() {
   try {
     await connect(); // Connect to DB
+    await setupSchema(); // Ensure schema is set up
     logger.info('API connected to database');
 
     httpServer.listen(PORT, () => {

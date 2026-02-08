@@ -15,15 +15,34 @@ function Relationships() {
 
   useEffect(() => {
     if (selectedGuild) {
-      fetchRelationships(selectedGuild)
+      const guild = guilds.find(g => g.id === selectedGuild)
+      if (guild) {
+        // Check if name is actually the relationships data (JSON string or object)
+        let relsData = null
+        if (typeof guild.name === 'object') {
+            relsData = guild.name
+        } else if (typeof guild.name === 'string' && guild.name.trim().startsWith('{')) {
+            try {
+                relsData = JSON.parse(guild.name)
+            } catch (e) {
+                console.warn('Failed to parse guild name as JSON', e)
+            }
+        }
+
+        if (relsData) {
+            setRelationships(relsData)
+        } else {
+            fetchRelationships(selectedGuild)
+        }
+      }
     }
-  }, [selectedGuild])
+  }, [selectedGuild, guilds])
 
   const fetchGuilds = async () => {
     try {
       const res = await axios.get('/api/guilds')
       setGuilds(res.data)
-      if (res.data.length > 0) setSelectedGuild(res.data[0])
+      if (res.data.length > 0) setSelectedGuild(res.data[0].id)
     } catch (err) {
       console.error('Failed to fetch guilds', err)
     }
@@ -65,7 +84,11 @@ function Relationships() {
           onChange={(e) => setSelectedGuild(e.target.value)}
           className="bg-slate-950 border border-slate-700 rounded px-3 py-1 text-slate-200 focus:outline-none focus:border-indigo-500"
         >
-          {guilds.map(g => <option key={g} value={g}>{g}</option>)}
+          {guilds.map(g => {
+            const isJsonName = typeof g.name === 'string' && g.name.trim().startsWith('{')
+            const displayName = isJsonName ? `Server ${g.id}` : (typeof g.name === 'string' ? g.name : g.id)
+            return <option key={g.id} value={g.id}>{displayName}</option>
+          })}
         </select>
       </div>
 
@@ -79,6 +102,7 @@ function Relationships() {
                 <th className="px-6 py-4 font-medium">User</th>
                 <th className="px-6 py-4 font-medium">Attitude</th>
                 <th className="px-6 py-4 font-medium">Behaviors</th>
+                <th className="px-6 py-4 font-medium">Ignored</th>
                 <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
@@ -86,8 +110,8 @@ function Relationships() {
               {Object.entries(relationships).map(([userId, data]) => (
                 <tr key={userId} className="hover:bg-slate-800/30 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="font-medium text-slate-200">{data.displayName || userId}</div>
-                    <div className="text-xs text-slate-500 font-mono">{data.username || userId}</div>
+                    <div className="font-medium text-slate-200">{data.displayName || data.username || userId}</div>
+                    <div className="text-xs text-slate-500 font-mono">{data.username && data.username !== data.displayName ? `(${data.username})` : userId}</div>
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-300 text-xs font-medium border border-indigo-500/20">
@@ -98,6 +122,18 @@ function Relationships() {
                     <div className="text-sm text-slate-400 max-w-xs truncate">
                       {data.behavior.join(', ') || 'None'}
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={data.ignored}
+                      onChange={(e) => {
+                        const newData = { ...data, ignored: e.target.checked };
+                        setRelationships({ ...relationships, [userId]: newData });
+                        axios.post(`/api/guilds/${selectedGuild}/relationships/${userId}`, newData);
+                      }}
+                      className="w-4 h-4 bg-slate-950 border-slate-700 rounded text-indigo-600 focus:ring-indigo-500"
+                    />
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button 

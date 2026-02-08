@@ -24,6 +24,8 @@ services:
       - ./bot:/usr/src/app/bot
       - ./shared:/usr/src/app/shared
     command: npm run dev:container
+    ports:
+      - "3001:3001"
     depends_on:
       db:
         condition: service_healthy
@@ -55,7 +57,7 @@ services:
     volumes:
       - ./docs/src:/usr/src/docs/src
     ports:
-      - "5173:5173"
+      - "${DOCS_PORT}:5173"
 
   api:
     container_name: discordllmbot-api
@@ -73,6 +75,11 @@ services:
         condition: service_healthy
     env_file:
       - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://api:3000/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   dashboard:
     container_name: discordllmbot-dashboard
@@ -81,9 +88,11 @@ services:
       dockerfile: dashboard/Dockerfile.dashboard
     volumes:
       - ./dashboard:/usr/src/app
+      - /usr/src/app/node_modules
     ports:
       - "${DASHBOARD_PORT}:5173"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     env_file:
       - ./.env

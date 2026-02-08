@@ -1,5 +1,5 @@
-import { saveMessage, loadContexts } from '../../shared/storage/persistence.js';
-import { getMemoryConfig } from '../../shared/config/configLoader.js';
+import { saveMessage, loadContexts } from '../../../shared/storage/persistence.js';
+import { getMemoryConfig } from '../../../shared/config/configLoader.js';
 
 const guildContexts = {};
 

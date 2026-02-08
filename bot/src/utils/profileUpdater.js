@@ -1,4 +1,4 @@
-import { logger } from '../../shared/utils/logger.js'
+import { logger } from '../../../shared/utils/logger.js'
 
 /**
  * Update Discord bot profile (username and avatar)

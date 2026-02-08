@@ -1,11 +1,11 @@
 import { MentionOnlyStrategy, PassiveStrategy, ActiveStrategy, DisabledStrategy } from '../strategies/replyStrategies.js';
-import { logger } from '../../shared/utils/logger.js';
+import { logger } from '../../../shared/utils/logger.js';
 
 /**
  * Decide whether the bot should reply to a message based on config and relationship.
  * Returns an object with the decision and a log of the checks performed.
  */
-import { getBotConfig, getReplyBehavior, loadConfig } from '../../shared/config/configLoader.js';
+import { getBotConfig, getReplyBehavior, loadConfig } from '../../../shared/config/configLoader.js';
 
 export function shouldReply({ message, isMentioned, replyBehavior = {}, relationship = {}, context = [], botName = '' }) {
     const config = loadConfig();
@@ -69,6 +69,11 @@ export function shouldReply({ message, isMentioned, replyBehavior = {}, relation
         }
     }
     checks.push({ check: 'Keyword Ignored', result: true, reason: 'Message does not contain ignored keywords.' });
+
+    if (relationship.ignored) {
+        return finalDecision(false, `User ${message.author.username} is ignored in relationship settings.`);
+    }
+    checks.push({ check: 'User Relationship Ignored', result: true, reason: 'User is not ignored in relationship settings.' });
 
     // Strategy selection
     let strategyDecision = false;

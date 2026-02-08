@@ -57,29 +57,36 @@ export async function setupSchema() {
 
     try {
         const queries = [
+            `CREATE TABLE IF NOT EXISTS guilds (
+                guildId TEXT PRIMARY KEY,
+                guildName TEXT NOT NULL
+            );`,
             `CREATE TABLE IF NOT EXISTS relationships (
-                guildId TEXT NOT NULL,
+                guildId TEXT NOT NULL REFERENCES guilds(guildId) ON DELETE CASCADE,
                 userId TEXT NOT NULL,
                 attitude TEXT,
                 PRIMARY KEY (guildId, userId)
             );`,
+            `ALTER TABLE relationships ADD COLUMN IF NOT EXISTS username TEXT;`,
+            `ALTER TABLE relationships ADD COLUMN IF NOT EXISTS displayName TEXT;`,
+            `ALTER TABLE relationships ADD COLUMN IF NOT EXISTS ignored BOOLEAN DEFAULT FALSE;`,
             `CREATE TABLE IF NOT EXISTS relationship_behaviors (
                 id SERIAL PRIMARY KEY,
-                guildId TEXT NOT NULL,
+                guildId TEXT NOT NULL REFERENCES guilds(guildId) ON DELETE CASCADE,
                 userId TEXT NOT NULL,
                 behavior TEXT NOT NULL,
                 FOREIGN KEY (guildId, userId) REFERENCES relationships(guildId, userId) ON DELETE CASCADE
             );`,
             `CREATE TABLE IF NOT EXISTS relationship_boundaries (
                 id SERIAL PRIMARY KEY,
-                guildId TEXT NOT NULL,
+                guildId TEXT NOT NULL REFERENCES guilds(guildId) ON DELETE CASCADE,
                 userId TEXT NOT NULL,
                 boundary TEXT NOT NULL,
                 FOREIGN KEY (guildId, userId) REFERENCES relationships(guildId, userId) ON DELETE CASCADE
             );`,
             `CREATE TABLE IF NOT EXISTS messages (
                 id SERIAL PRIMARY KEY,
-                guildId TEXT NOT NULL,
+                guildId TEXT NOT NULL REFERENCES guilds(guildId) ON DELETE CASCADE,
                 channelId TEXT NOT NULL,
                 authorId TEXT NOT NULL,
                 authorName TEXT NOT NULL,

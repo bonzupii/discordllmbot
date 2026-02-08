@@ -1,5 +1,5 @@
-import { loadRelationships, saveRelationships } from '../../shared/storage/persistence.js'
-import { getBotConfig } from '../../shared/config/configLoader.js'
+import { loadRelationships, saveRelationships, saveGuild } from '../../../shared/storage/persistence.js'
+import { getBotConfig } from '../../../shared/config/configLoader.js'
 
 // In-memory cache of relationships per guild: { guildId: { userId: { ... } } }
 const guildRelationships = {}
@@ -22,20 +22,19 @@ export function getRelationship(guildId, userId) {
  * @param {string} userId - The ID of the user.
  * @param {Object} config - The new relationship configuration.
  */
-export function setRelationship(guildId, userId, config) {
+export function setRelationship(guildId, guildName, userId, config) {
     guildRelationships[guildId] ??= {};
     guildRelationships[guildId][userId] = config;
-    saveGuildRelationships(guildId);
+    saveGuildRelationships(guildId, guildName);
 }
 
 /**
  * Load relationships for a guild from disk and cache in memory
  * @param {string} guildId - Discord guild ID
- * @param {string} guildName - Discord guild name
  * @returns {Object} Relationships for the guild
  */
-export function loadGuildRelationships(guildId) {
-    const rels = loadRelationships(guildId);
+export async function loadGuildRelationships(guildId) {
+    const rels = await loadRelationships(guildId);
     guildRelationships[guildId] = rels;
     return rels;
 }
@@ -43,11 +42,10 @@ export function loadGuildRelationships(guildId) {
 /**
  * Save all relationships for a guild to disk
  * @param {string} guildId - Discord guild ID
- * @param {string} guildName - Discord guild name
  */
-export function saveGuildRelationships(guildId) {
+export async function saveGuildRelationships(guildId, guildName) {
     if (guildRelationships[guildId]) {
-        saveRelationships(guildId, guildRelationships[guildId]);
+        await saveRelationships(guildId, guildName, guildRelationships[guildId]);
     }
 }
 
@@ -69,9 +67,13 @@ function getDefaultRelationship() {
  */
 export async function initializeGuildRelationships(guild) {
     const guildId = guild.id;
+    const guildName = guild.name;
+
+    // Save guild info to the guilds table
+    await saveGuild(guildId, guildName);
 
     // Load all existing relationships from the DB for this guild.
-    const existingRels = loadRelationships(guildId);
+    const existingRels = await loadRelationships(guildId);
     guildRelationships[guildId] = existingRels;
 
     // Mark all existing relationships as potentially stale.
@@ -93,7 +95,7 @@ export async function initializeGuildRelationships(guild) {
         // This user is active, so remove them from the stale list.
         staleUsers.delete(memberId);
 
-        const existing = guildRelationships[guildId][memberId];
+        const existing = guildRelationships[guildId]?.[memberId];
         const displayName = member.displayName ?? member.user?.username ?? memberId;
         const username = member.user?.username ?? memberId;
 
@@ -104,7 +106,8 @@ export async function initializeGuildRelationships(guild) {
                 displayName,
                 attitude: defaultRel.attitude,
                 behavior: Array.isArray(defaultRel.behavior) ? [...defaultRel.behavior] : [],
-                boundaries: Array.isArray(defaultRel.boundaries) ? [...defaultRel.boundaries] : []
+                boundaries: Array.isArray(defaultRel.boundaries) ? [...defaultRel.boundaries] : [],
+                ignored: false
             };
             changed = true;
         } else {
@@ -117,20 +120,15 @@ export async function initializeGuildRelationships(guild) {
         }
     }
 
-    // Remove stale users from the in-memory cache.
-    if (staleUsers.size > 0) {
-        for (const userId of staleUsers) {
-            delete guildRelationships[guildId][userId];
-        }
+    // Remove stale relationships (users who left the guild)
+    for (const userId of staleUsers) {
+        delete guildRelationships[guildId][userId];
         changed = true;
     }
 
-    // If anything changed, save the entire, corrected state back to the DB.
     if (changed) {
-        saveGuildRelationships(guildId);
+        await saveRelationships(guildId, guildRelationships[guildId]);
     }
-
-    return guildRelationships[guildId];
 }
 
 /**

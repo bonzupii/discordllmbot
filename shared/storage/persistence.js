@@ -30,14 +30,17 @@ export async function loadRelationships(guildId) {
     const db = await getDb();
     const rels = {};
 
-    const relRes = await db.query('SELECT * FROM relationships WHERE guildId = $1', [guildId]);
+    const relRes = await db.query('SELECT userId, attitude, username, displayName, ignored FROM relationships WHERE guildId = $1', [guildId]);
 
     for (const row of relRes.rows) {
         const behaviorRes = await db.query('SELECT behavior FROM relationship_behaviors WHERE guildId = $1 AND userId = $2', [guildId, row.userId]);
         const boundaryRes = await db.query('SELECT boundary FROM relationship_boundaries WHERE guildId = $1 AND userId = $2', [guildId, row.userId]);
 
-        rels[row.userId] = {
+        rels[row.userid] = {
             attitude: row.attitude,
+            username: row.username,
+            displayName: row.displayname,
+            ignored: row.ignored,
             behavior: behaviorRes.rows.map(r => r.behavior),
             boundaries: boundaryRes.rows.map(r => r.boundary),
         };
@@ -59,13 +62,14 @@ export async function saveRelationships(guildId, relationships) {
 
     try {
         await client.query('BEGIN');
+        
         await client.query('DELETE FROM relationship_behaviors WHERE guildId = $1', [guildId]);
         await client.query('DELETE FROM relationship_boundaries WHERE guildId = $1', [guildId]);
         await client.query('DELETE FROM relationships WHERE guildId = $1', [guildId]);
 
         for (const userId in relationships) {
             const rel = relationships[userId];
-            await client.query('INSERT INTO relationships (guildId, userId, attitude) VALUES ($1, $2, $3)', [guildId, userId, rel.attitude]);
+            await client.query('INSERT INTO relationships (guildId, userId, attitude, username, displayName, ignored) VALUES ($1, $2, $3, $4, $5, $6)', [guildId, userId, rel.attitude, rel.username, rel.displayName, rel.ignored ?? false]);
             for (const b of rel.behavior) {
                 await client.query('INSERT INTO relationship_behaviors (guildId, userId, behavior) VALUES ($1, $2, $3)', [guildId, userId, b]);
             }
@@ -114,6 +118,21 @@ export async function saveMessage(guildId, channelId, authorId, authorName, cont
     await db.query(
         'INSERT INTO messages (guildId, channelId, authorId, authorName, content) VALUES ($1, $2, $3, $4, $5)',
         [guildId, channelId, authorId, authorName, content]
+    );
+}
+
+/**
+ * Saves or updates a guild's information.
+ *
+ * @param {string} guildId - The ID of the guild.
+ * @param {string} guildName - The name of the guild.
+ * @returns {Promise<void>}
+ */
+export async function saveGuild(guildId, guildName) {
+    const db = await getDb();
+    await db.query(
+        'INSERT INTO guilds (guildId, guildName) VALUES ($1, $2) ON CONFLICT (guildId) DO UPDATE SET guildName = EXCLUDED.guildName',
+        [guildId, guildName]
     );
 }
 

@@ -1,4 +1,4 @@
-import { logger } from '../../shared/utils/logger.js'
+import { logger } from '../../../shared/utils/logger.js'
 import { updateDiscordProfile } from '../utils/profileUpdater.js'
 import { loadGuildRelationships, initializeGuildRelationships } from '../personality/relationships.js'
 import { loadGuildContexts } from '../memory/context.js'
@@ -21,8 +21,8 @@ export async function handleClientReady(client, botConfig) {
     try {
         for (const [, guild] of client.guilds.cache) {
             try {
-                loadGuildRelationships(guild.id, guild.name)
-                loadGuildContexts(guild.id, guild.name)
+                loadGuildRelationships(guild.id)
+                loadGuildContexts(guild.id)
                 await initializeGuildRelationships(guild)
                 logger.info(`Initialized relationships and contexts for server "${guild.name}"`)
             } catch (e) {

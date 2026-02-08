@@ -1,8 +1,19 @@
 {
   "name": "discordllmbot-monorepo",
   "version": "1.0.0",
+  "workspaces": [
+    "bot",
+    "api",
+    "dashboard",
+    "shared",
+    "docs"
+  ],
   "description": "Monorepo for DiscordLLMBot, API, and Dashboard",
   "type": "module",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "pg": "^8.11.3"
+  },
   "scripts": {
     "dev": "docker-compose up -d bot api db pgadmin dashboard",
     "dev:down": "docker-compose down",
