@@ -144,8 +144,26 @@ export async function saveGuild(guildId, guildName) {
  */
 export async function pruneOldMessages(maxAgeDays) {
     const db = await getDb();
-    const res = await db.query("DELETE FROM messages WHERE timestamp < NOW() - ($1 * INTERVAL '1 day')", [maxAgeDays]);
-    if (res.rowCount > 0) {
-        logger.info(`Pruned ${res.rowCount} old messages from the database.`);
-    }
+    await db.query("DELETE FROM messages WHERE timestamp < NOW() - INTERVAL '1 day' * $1", [maxAgeDays]);
+}
+
+export async function logBotReply(guildId, channelId, userId, username, displayName, avatarUrl, userMessage, botReply) {
+    const db = await getDb();
+    await db.query(
+        'INSERT INTO bot_replies (guildId, channelId, userId, username, displayName, avatarUrl, userMessage, botReply) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [guildId, channelId, userId, username, displayName, avatarUrl, userMessage, botReply]
+    );
+}
+
+export async function getLatestReplies(limit = 10) {
+    const db = await getDb();
+    const result = await db.query(
+        `SELECT r.*, g.guildName 
+         FROM bot_replies r 
+         JOIN guilds g ON r.guildId = g.guildId 
+         ORDER BY r.timestamp DESC 
+         LIMIT $1`,
+        [limit]
+    );
+    return result.rows;
 }

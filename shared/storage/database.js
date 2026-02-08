@@ -92,12 +92,40 @@ export async function setupSchema() {
                 authorName TEXT NOT NULL,
                 content TEXT NOT NULL,
                 timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );`,
+            `CREATE TABLE IF NOT EXISTS bot_replies (
+                id SERIAL PRIMARY KEY,
+                guildId TEXT NOT NULL REFERENCES guilds(guildId) ON DELETE CASCADE,
+                channelId TEXT NOT NULL,
+                userId TEXT NOT NULL,
+                username TEXT NOT NULL,
+                userMessage TEXT NOT NULL,
+                botReply TEXT NOT NULL,
+                timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );`
         ];
 
         for (const query of queries) {
             logger.info(`setupSchema: Running query: ${query.substring(0, 50)}...`);
             await pool.query(query);
+        }
+
+        // Add columns to bot_replies if they don't exist, for backward compatibility
+        const columns = await pool.query(`
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'bot_replies'
+        `);
+        const columnNames = columns.rows.map(r => r.column_name);
+
+        if (!columnNames.includes('displayname')) {
+            await pool.query('ALTER TABLE bot_replies ADD COLUMN displayName TEXT;');
+            logger.info('Added displayName column to bot_replies table.');
+        }
+
+        if (!columnNames.includes('avatarurl')) {
+            await pool.query('ALTER TABLE bot_replies ADD COLUMN avatarUrl TEXT;');
+            logger.info('Added avatarUrl column to bot_replies table.');
         }
 
         logger.info('✓ Database schema verified/created.');
