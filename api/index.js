@@ -9,12 +9,14 @@ import { Server } from 'socket.io';
 import { logger } from '../shared/utils/logger.js';
 import { loadConfig } from '../shared/config/configLoader.js';
 import { connect, setupSchema } from '../shared/storage/database.js';
-import { loadRelationships, saveRelationships } from '../shared/storage/persistence.js';
+import { loadRelationships, saveRelationships, getLatestReplies } from '../shared/storage/persistence.js';
 import axios from 'axios';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BOT_CONFIG_PATH = path.join(process.cwd(), 'shared', 'config', 'bot.json');
-const LOG_FILE_PATH = path.join(process.cwd(), '..', 'discordllmbot.log');
+// In Docker, process.cwd() is /usr/src/app/api, but shared is at /usr/src/app/shared
+// So we need to go up one level to access shared
+const BOT_CONFIG_PATH = path.join(process.cwd(), '..', 'shared', 'config', 'bot.json');
+const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
 
 const app = express();
 const httpServer = createServer(app);
@@ -97,10 +99,6 @@ app.post('/api/guilds/:guildId/relationships/:userId', async (req, res) => {
     // Update the specific user's relationship
     currentRels[userId] = newRel;
 
-    
-    // Update the specific user's relationship
-    currentRels[userId] = newRel;
-
     // Save back to DB
     await saveRelationships(guildId, currentRels);
 
@@ -136,6 +134,106 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     logger.info('Dashboard client disconnected');
   });
+});
+
+// NEW: Servers endpoints
+app.get('/api/servers', async (req, res) => {
+  try {
+    let servers = [];
+    
+    try {
+      // Try to fetch guild information from the bot first
+      const botResponse = await axios.get('http://bot:3001/guilds');
+      const botGuilds = botResponse.data;
+      
+      servers = botGuilds.map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        joinedAt: guild.joinedAt
+      }));
+    } catch (botErr) {
+      logger.warn('Could not fetch guilds from bot, falling back to database', botErr);
+      
+      // Fallback to database if bot is not available
+      const db = await connect();
+      const dbResult = await db.query('SELECT guildId, guildName FROM guilds');
+      
+      servers = dbResult.rows.map(row => ({
+        id: row.guildid,
+        name: row.guildname,
+        joinedAt: null // Join date not available from database
+      }));
+    }
+    
+    res.json(servers);
+  } catch (err) {
+    logger.error('Failed to load servers', err);
+    res.status(500).json({ error: 'Failed to load servers' });
+  }
+});
+
+app.delete('/api/servers/:serverId', async (req, res) => {
+  try {
+    const { serverId } = req.params;
+    
+    // Make a request to the bot to leave the server
+    await axios.delete(`http://bot:3001/guilds/${serverId}`);
+    
+    res.json({ message: 'Server left successfully' });
+  } catch (err) {
+    logger.error('Failed to leave server', err);
+    res.status(500).json({ error: 'Failed to leave server' });
+  }
+});
+
+// NEW: Endpoint to get bot invite URL
+app.get('/api/bot-info', async (req, res) => {
+  try {
+    const botInviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&permissions=274878229568&scope=bot%20applications.commands`;
+    
+    res.json({ 
+      inviteUrl: botInviteUrl,
+      clientId: process.env.DISCORD_CLIENT_ID
+    });
+  } catch (err) {
+    logger.error('Failed to get bot info', err);
+    res.status(500).json({ error: 'Failed to get bot info' });
+  }
+});
+
+// NEW: Endpoint to get available Gemini models
+app.get('/api/models', async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+    }
+
+    const response = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    
+    // Filter for models that support content generation
+    const models = response.data.models
+      .filter(m => m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => m.name.replace('models/', '')); // Remove 'models/' prefix for cleaner display
+
+    res.json(models);
+  } catch (err) {
+    logger.error('Failed to fetch Gemini models', err);
+    // Fallback to a default list if API call fails
+    res.json(['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']);
+  }
+});
+
+// NEW: Endpoint to get latest bot replies
+app.get('/api/replies', async (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+    const replies = await getLatestReplies(limit);
+    res.json(replies);
+  } catch (err) {
+    logger.error('Failed to fetch latest replies', err);
+    res.status(500).json({ error: 'Failed to fetch latest replies' });
+  }
 });
 
 // Watch log file for changes
