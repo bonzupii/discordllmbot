@@ -15,7 +15,8 @@
     "pg": "^8.11.3"
   },
   "scripts": {
-    "dev": "docker-compose up -d bot api db pgadmin dashboard",
+    "dev": "docker-compose up -d bot api db dashboard",
+    "dev:build": "docker-compose up -d --build bot api db dashboard",
     "dev:down": "docker-compose down",
     "build": "docker-compose build",
     "docs": "npm --prefix ./docs run dev",
