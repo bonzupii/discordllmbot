@@ -4,6 +4,8 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import Settings from './components/Settings'
 import Relationships from './components/Relationships'
 import Logs from './components/Logs'
+import Servers from './components/Servers'
+import LatestReplies from './components/LatestReplies'
 
 function App() {
   const [health, setHealth] = useState(null)
@@ -30,6 +32,7 @@ function App() {
           <NavLink to="/" label="Status" />
           <NavLink to="/settings" label="Settings" />
           <NavLink to="/relationships" label="Relationships" />
+          <NavLink to="/servers" label="Servers" />
           <NavLink to="/logs" label="Logs" />
         </nav>
       </header>
@@ -37,32 +40,31 @@ function App() {
       <main className="w-full max-w-5xl flex flex-col items-center">
         <Routes>
           <Route path="/" element={(
-            <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-2xl w-full max-w-md">
-              <h2 className="text-xl font-semibold mb-4 border-b border-slate-800 pb-2">System Status</h2>
-              {health ? (
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Status:</span>
-                    <span className="text-green-400 font-mono uppercase">{health.status}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Uptime:</span>
-                    <span className="text-indigo-300 font-mono">{Math.floor(health.uptime)}s</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-slate-500 animate-pulse">Connecting to API...</div>
-              )}
+            <div className="flex flex-col items-center w-full space-y-8">
+              <LatestReplies />
             </div>
           )} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/relationships" element={<Relationships />} />
+          <Route path="/servers" element={<Servers />} />
           <Route path="/logs" element={<Logs />} />
         </Routes>
       </main>
 
-      <footer className="mt-auto pt-12 text-slate-600 text-xs">
-        DiscordLLMBot Dashboard v0.1.0
+      <footer className="mt-auto pt-12 w-full max-w-5xl flex justify-between items-center text-slate-600 text-xs">
+        <div className="flex items-center space-x-4">
+          <span>DiscordLLMBot Dashboard v0.1.0</span>
+          {health ? (
+            <span className={`font-mono uppercase text-xs px-2 py-0.5 rounded ${health.status === 'ok' ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'}`}>
+              API: {health.status}
+            </span>
+          ) : (
+            <span className="text-slate-500 animate-pulse text-xs">Connecting...</span>
+          )}
+        </div>
+        {health && (
+          <span className="text-indigo-300 font-mono">Uptime: {Math.floor(health.uptime)}s</span>
+        )}
       </footer>
     </div>
   )

@@ -26,12 +26,13 @@ function Logs() {
   }, [logs])
 
   const getLevelColor = (line) => {
-    if (line.includes('[ERROR]')) return 'text-red-400'
-    if (line.includes('[WARN]')) return 'text-yellow-400'
-    if (line.includes('[API]')) return 'text-indigo-400'
-    if (line.includes('[MESSAGE]')) return 'text-green-400'
-    return 'text-slate-300'
-  }
+    if (line.includes('[ERROR]')) return 'text-red-400';
+    if (line.includes('[WARN]')) return 'text-yellow-400';
+    if (line.includes('[API]')) return 'text-cyan-400';
+    if (line.includes('[INFO]')) return 'text-blue-400';
+    if (line.includes('[MESSAGE]')) return 'text-slate-300';
+    return 'text-slate-400';
+  };
 
   return (
     <div className="w-full max-w-5xl space-y-4">
