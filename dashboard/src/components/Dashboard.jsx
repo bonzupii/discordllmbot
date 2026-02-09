@@ -77,7 +77,6 @@ function Dashboard({ health }) {
         gap: 2,
         px: 2,
         flex: 1,
-        minWidth: 0,
       }}
     >
       <Avatar
@@ -92,7 +91,7 @@ function Dashboard({ health }) {
       >
         {icon}
       </Avatar>
-      <Box sx={{ minWidth: 0 }}>
+      <Box>
         <Typography
           variant="body2"
           color="text.secondary"
@@ -116,7 +115,7 @@ function Dashboard({ health }) {
 
       <Grid container spacing={2}>
         {/* Left Column: Status Strip & Latest Activity */}
-        <Grid>
+        <Grid item xs={12}>
           <Stack spacing={2}>
             {/* Status Strip */}
             <Paper
@@ -124,8 +123,6 @@ function Dashboard({ health }) {
               sx={{
                 p: 2,
                 display: "flex",
-                alignItems: "center",
-                width: "100%",
               }}
             >
               <StatusItem
@@ -158,10 +155,7 @@ function Dashboard({ health }) {
             </Paper>
 
             {/* Latest Activity */}
-            <Paper
-              variant="outlined"
-              sx={{ height: "100%", overflow: "hidden" }}
-            >
+            <Paper variant="outlined">
               <Box
                 sx={{
                   px: 2,
@@ -271,8 +265,8 @@ function Dashboard({ health }) {
           </Stack>
         </Grid>
 
-        {/* 3. Right Column: Metrics & Health */}
-        <Grid item>
+        {/* Right Column: Metrics & Health */}
+        <Grid item xs={12}>
           <Stack spacing={2}>
             {/* Activity Table */}
             <Paper variant="outlined">
@@ -283,7 +277,7 @@ function Dashboard({ health }) {
                   Activity (7 Days)
                 </Typography>
               </Box>
-              <TableContainer sx={{ maxHeight: 300 }}>
+              <TableContainer>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -343,7 +337,7 @@ function Dashboard({ health }) {
                   Top Servers
                 </Typography>
               </Box>
-              <TableContainer sx={{ maxHeight: 300 }}>
+              <TableContainer>
                 <Table size="small">
                   <TableBody>
                     {stats?.topServers?.slice(0, 5).map((server) => (
@@ -362,11 +356,7 @@ function Dashboard({ health }) {
                             >
                               {server.guildname.charAt(0)}
                             </Avatar>
-                            <Typography
-                              variant="caption"
-                              noWrap
-                              sx={{ maxWidth: 100 }}
-                            >
+                            <Typography variant="caption" noWrap>
                               {server.guildname}
                             </Typography>
                           </Box>
