@@ -56,9 +56,30 @@ export function shouldReply({ message, isMentioned, replyBehavior = {}, relation
     }
     checks.push({ check: 'User Ignored', result: true, reason: 'Author is not on ignore list.' });
 
+    // Check if channel is in global ignore list
     if (ignoreChannels.includes(message.channel.id)) {
-        return finalDecision(false, `Channel #${message.channel.name} (${message.channel.id}) is on the ignore list.`);
+        return finalDecision(false, `Channel #${message.channel.name} (${message.channel.id}) is on the global ignore list.`);
     }
+    
+    // Check if there are guild-specific channel settings
+    const guildSpecificChannels = replyBehavior.guildSpecificChannels || {};
+    const guildChannels = guildSpecificChannels[message.guild.id];
+    
+    if (guildChannels) {
+        // If specific channels are defined for this guild, only monitor those
+        if (Array.isArray(guildChannels.allowed) && guildChannels.allowed.length > 0) {
+            // Only allow specific channels
+            if (!guildChannels.allowed.includes(message.channel.id)) {
+                return finalDecision(false, `Channel #${message.channel.name} (${message.channel.id}) is not in the allowed list for this guild.`);
+            }
+        } else if (Array.isArray(guildChannels.ignored) && guildChannels.ignored.length > 0) {
+            // Ignore specific channels in this guild
+            if (guildChannels.ignored.includes(message.channel.id)) {
+                return finalDecision(false, `Channel #${message.channel.name} (${message.channel.id}) is on the ignore list for this guild.`);
+            }
+        }
+    }
+    
     checks.push({ check: 'Channel Ignored', result: true, reason: 'Channel is not on ignore list.' });
 
     const contentLower = (message.content || '').toLowerCase();

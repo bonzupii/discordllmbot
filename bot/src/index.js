@@ -121,6 +121,35 @@ internalApp.get('/guilds', async (req, res) => {
     }
 });
 
+// Endpoint to get channels for a specific guild
+internalApp.get('/guilds/:guildId/channels', async (req, res) => {
+    try {
+        const { guildId } = req.params;
+        const guild = client.guilds.cache.get(guildId);
+        
+        if (!guild) {
+            return res.status(404).json({ error: 'Guild not found' });
+        }
+
+        // Fetch channels from the guild
+        const channels = await guild.channels.fetch();
+        const channelList = channels
+            .filter(channel => channel.type === 0) // Filter for text channels only
+            .map(channel => ({
+                id: channel.id,
+                name: channel.name,
+                type: channel.type,
+                parentId: channel.parentId,
+                position: channel.position
+            }));
+
+        res.json(channelList);
+    } catch (err) {
+        logger.error('Failed to fetch channels', err);
+        res.status(500).json({ error: 'Failed to fetch channels' });
+    }
+});
+
 internalApp.listen(INTERNAL_PORT, () => {
     logger.info(`Internal API listening on port ${INTERNAL_PORT}`);
 });

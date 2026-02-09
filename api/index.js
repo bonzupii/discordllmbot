@@ -361,6 +361,19 @@ Respond naturally. Stay in character.
   }
 });
 
+// NEW: Endpoint to get channels for a specific guild
+app.get('/api/guilds/:guildId/channels', async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    
+    const response = await axios.get(`http://bot:3001/guilds/${guildId}/channels`);
+    res.json(response.data);
+  } catch (err) {
+    logger.error('Failed to fetch channels', err);
+    res.status(500).json({ error: 'Failed to fetch channels' });
+  }
+});
+
 // Watch log file for changes
 if (fs.existsSync(LOG_FILE_PATH)) {
   let fileSize = fs.statSync(LOG_FILE_PATH).size;

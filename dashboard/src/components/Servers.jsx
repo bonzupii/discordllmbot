@@ -44,6 +44,9 @@ function Row({
   onIgnoreToggle,
   relationships,
   loadingRelationships,
+  channels,
+  loadingChannels,
+  onChannelToggle,
 }) {
   const isOpen = expanded === server.id;
 
@@ -212,6 +215,71 @@ function Row({
                   No user relationships found for this server yet.
                 </Alert>
               )}
+
+              {/* Channels Section */}
+              <Box sx={{ mt: 2 }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  component="div"
+                  sx={{ fontSize: "0.9rem", color: "text.secondary" }}
+                >
+                  Channel Monitoring
+                </Typography>
+                {loadingChannels[server.id] ? (
+                  <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : channels[server.id] && channels[server.id].length > 0 ? (
+                  <Table size="small" aria-label="channels">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Channel Name</TableCell>
+                        <TableCell align="center">Monitored</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {channels[server.id].map((channel) => (
+                        <TableRow key={channel.id}>
+                          <TableCell component="th" scope="row">
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Typography variant="body2" fontWeight="medium">
+                                #{channel.name}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Checkbox
+                              checked={!isChannelIgnored(server.id, channel.id)} // Check if channel is NOT ignored
+                              onChange={() => onChannelToggle(server.id, channel.id)}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              onClick={() => console.log(`View channel ${channel.name}`)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <Alert severity="info" sx={{ mt: 1 }}>
+                    No channels found for this server yet.
+                  </Alert>
+                )}
+              </Box>
             </Box>
           </Collapse>
         </TableCell>
@@ -228,8 +296,25 @@ function Servers() {
   const [expandedServerId, setExpandedServerId] = useState(null);
   const [relationships, setRelationships] = useState({});
   const [loadingRelationships, setLoadingRelationships] = useState({});
+  const [channels, setChannels] = useState({});
+  const [loadingChannels, setLoadingChannels] = useState({});
+  const [config, setConfig] = useState(null); // Store the bot configuration
   const [editingUser, setEditingUser] = useState(null);
   const [editData, setEditData] = useState(null);
+
+  // Fetch the current bot configuration
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const response = await axios.get("/api/config");
+      setConfig(response.data);
+    } catch (err) {
+      console.error("Failed to fetch config:", err);
+    }
+  };
 
   useEffect(() => {
     fetchServers();
@@ -273,12 +358,27 @@ function Servers() {
     }
   };
 
+  const fetchChannels = async (guildId) => {
+    if (channels[guildId]) return;
+
+    setLoadingChannels((prev) => ({ ...prev, [guildId]: true }));
+    try {
+      const res = await axios.get(`/api/guilds/${guildId}/channels`);
+      setChannels((prev) => ({ ...prev, [guildId]: res.data }));
+    } catch (err) {
+      console.error(`Failed to fetch channels for guild ${guildId}`, err);
+    } finally {
+      setLoadingChannels((prev) => ({ ...prev, [guildId]: false }));
+    }
+  };
+
   const toggleExpand = (guildId) => {
     if (expandedServerId === guildId) {
       setExpandedServerId(null);
     } else {
       setExpandedServerId(guildId);
       fetchRelationships(guildId);
+      fetchChannels(guildId);
     }
   };
 
@@ -344,6 +444,101 @@ function Servers() {
     } catch (err) {
       console.error("Failed to toggle ignore status", err);
     }
+  };
+
+  const handleChannelToggle = async (guildId, channelId) => {
+    if (!config) {
+      console.error("Config not loaded yet");
+      return;
+    }
+
+    // Create a copy of the current config to modify
+    const updatedConfig = JSON.parse(JSON.stringify(config));
+    
+    // Initialize guild-specific channels if not present
+    if (!updatedConfig.replyBehavior.guildSpecificChannels) {
+      updatedConfig.replyBehavior.guildSpecificChannels = {};
+    }
+    
+    if (!updatedConfig.replyBehavior.guildSpecificChannels[guildId]) {
+      updatedConfig.replyBehavior.guildSpecificChannels[guildId] = {
+        allowed: [],
+        ignored: []
+      };
+    }
+    
+    const guildChannels = updatedConfig.replyBehavior.guildSpecificChannels[guildId];
+    
+    // Determine if the channel is currently monitored (not ignored)
+    const isCurrentlyMonitored = !isChannelIgnored(guildId, channelId);
+    
+    // Toggle the channel status
+    if (isCurrentlyMonitored) {
+      // Currently monitored, so add to ignored list
+      if (guildChannels.allowed && guildChannels.allowed.length > 0) {
+        // If using allowed list, remove from allowed
+        guildChannels.allowed = guildChannels.allowed.filter(id => id !== channelId);
+      } else {
+        // If using ignored list, add to ignored
+        if (!guildChannels.ignored) guildChannels.ignored = [];
+        if (!guildChannels.ignored.includes(channelId)) {
+          guildChannels.ignored.push(channelId);
+        }
+      }
+    } else {
+      // Currently ignored, so remove from ignored list
+      if (guildChannels.ignored) {
+        guildChannels.ignored = guildChannels.ignored.filter(id => id !== channelId);
+      }
+      
+      // If using allowed list, add to allowed
+      if (guildChannels.allowed && Array.isArray(guildChannels.allowed)) {
+        if (!guildChannels.allowed.includes(channelId)) {
+          guildChannels.allowed.push(channelId);
+        }
+      }
+    }
+    
+    try {
+      // Update the configuration via API
+      await axios.post("/api/config", updatedConfig);
+      
+      // Update local state
+      setConfig(updatedConfig);
+      
+      // Refresh the server data to reflect changes
+      fetchServers();
+    } catch (err) {
+      console.error("Failed to update channel monitoring settings", err);
+      alert("Failed to update channel monitoring settings");
+    }
+  };
+
+  const isChannelIgnored = (guildId, channelId) => {
+    if (!config) return false; // If config isn't loaded yet, assume not ignored
+    
+    const { ignoreChannels = [], guildSpecificChannels = {} } = config.replyBehavior || {};
+    
+    // Check global ignore list
+    if (ignoreChannels.includes(channelId)) {
+      return true;
+    }
+    
+    // Check guild-specific settings
+    const guildChannels = guildSpecificChannels[guildId];
+    if (guildChannels) {
+      // If allowed channels are specified, only those are monitored
+      if (Array.isArray(guildChannels.allowed) && guildChannels.allowed.length > 0) {
+        return !guildChannels.allowed.includes(channelId);
+      }
+      
+      // Otherwise check if this channel is specifically ignored
+      if (Array.isArray(guildChannels.ignored) && guildChannels.ignored.length > 0) {
+        return guildChannels.ignored.includes(channelId);
+      }
+    }
+    
+    return false;
   };
 
   if (loading) {
@@ -418,6 +613,9 @@ function Servers() {
                   onIgnoreToggle={handleIgnoreToggle}
                   relationships={relationships}
                   loadingRelationships={loadingRelationships}
+                  channels={channels}
+                  loadingChannels={loadingChannels}
+                  onChannelToggle={handleChannelToggle}
                 />
               ))}
             </TableBody>
