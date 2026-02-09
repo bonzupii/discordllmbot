@@ -35,6 +35,34 @@ import {
   People as PeopleIcon,
 } from "@mui/icons-material";
 
+// Define isChannelIgnored function outside of components so it's accessible to both
+const isChannelIgnored = (config, guildId, channelId) => {
+  if (!config) return false; // If config isn't loaded yet, assume not ignored
+  
+  const { ignoreChannels = [], guildSpecificChannels = {} } = config?.replyBehavior || {};
+  
+  // Check global ignore list
+  if (ignoreChannels.includes(channelId)) {
+    return true;
+  }
+  
+  // Check guild-specific settings
+  const guildChannels = guildSpecificChannels[guildId];
+  if (guildChannels) {
+    // If allowed channels are specified, only those are monitored
+    if (Array.isArray(guildChannels.allowed) && guildChannels.allowed.length > 0) {
+      return !guildChannels.allowed.includes(channelId);
+    }
+    
+    // Otherwise check if this channel is specifically ignored
+    if (Array.isArray(guildChannels.ignored) && guildChannels.ignored.length > 0) {
+      return guildChannels.ignored.includes(channelId);
+    }
+  }
+  
+  return false;
+};
+
 function Row({
   server,
   expanded,
@@ -47,6 +75,7 @@ function Row({
   channels,
   loadingChannels,
   onChannelToggle,
+  config, // Pass config as prop
 }) {
   const isOpen = expanded === server.id;
 
@@ -257,7 +286,7 @@ function Row({
                           </TableCell>
                           <TableCell align="center">
                             <Checkbox
-                              checked={!isChannelIgnored(server.id, channel.id)} // Check if channel is NOT ignored
+                              checked={!isChannelIgnored(config, server.id, channel.id)} // Check if channel is NOT ignored
                               onChange={() => onChannelToggle(server.id, channel.id)}
                               size="small"
                             />
@@ -470,7 +499,7 @@ function Servers() {
     const guildChannels = updatedConfig.replyBehavior.guildSpecificChannels[guildId];
     
     // Determine if the channel is currently monitored (not ignored)
-    const isCurrentlyMonitored = !isChannelIgnored(guildId, channelId);
+    const isCurrentlyMonitored = !isChannelIgnored(config, guildId, channelId);
     
     // Toggle the channel status
     if (isCurrentlyMonitored) {
@@ -514,32 +543,7 @@ function Servers() {
     }
   };
 
-  const isChannelIgnored = (guildId, channelId) => {
-    if (!config) return false; // If config isn't loaded yet, assume not ignored
-    
-    const { ignoreChannels = [], guildSpecificChannels = {} } = config.replyBehavior || {};
-    
-    // Check global ignore list
-    if (ignoreChannels.includes(channelId)) {
-      return true;
-    }
-    
-    // Check guild-specific settings
-    const guildChannels = guildSpecificChannels[guildId];
-    if (guildChannels) {
-      // If allowed channels are specified, only those are monitored
-      if (Array.isArray(guildChannels.allowed) && guildChannels.allowed.length > 0) {
-        return !guildChannels.allowed.includes(channelId);
-      }
-      
-      // Otherwise check if this channel is specifically ignored
-      if (Array.isArray(guildChannels.ignored) && guildChannels.ignored.length > 0) {
-        return guildChannels.ignored.includes(channelId);
-      }
-    }
-    
-    return false;
-  };
+
 
   if (loading) {
     return (
@@ -616,6 +620,7 @@ function Servers() {
                   channels={channels}
                   loadingChannels={loadingChannels}
                   onChannelToggle={handleChannelToggle}
+                  config={config}
                 />
               ))}
             </TableBody>
