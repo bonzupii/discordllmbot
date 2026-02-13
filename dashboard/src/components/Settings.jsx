@@ -34,6 +34,8 @@ import {
   Chat as ChatIcon,
   Visibility as VisibilityIcon,
   KeyboardArrowDown as KeyboardArrowDownIcon,
+  FormatQuote as FormatQuoteIcon,
+  Gavel as GavelIcon,
 } from "@mui/icons-material";
 
 function Settings() {
@@ -48,6 +50,7 @@ function Settings() {
   const [models, setModels] = useState([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [activeSpeakingSection, setActiveSpeakingSection] = useState('speakingStyle'); // Default to speaking style open
   
   // Debounce timer reference
   const debounceTimer = useRef(null);
@@ -225,6 +228,11 @@ function Settings() {
     setActiveTab(newValue);
   };
 
+  const handleSpeakingSectionChange = (section) => {
+    // Always switch to the clicked section (this creates the linked behavior)
+    setActiveSpeakingSection(section);
+  };
+
   return (
     <Box sx={{ width: "100%" }}>
       <Box
@@ -349,84 +357,131 @@ function Settings() {
                   />
                 </Grid>
                 <Grid size={{ xs: 12 }}>
-                  <Accordion defaultExpanded>
-                    <AccordionSummary
-                      expandIcon={<KeyboardArrowDownIcon />}
-                      sx={{ pl: 0 }}
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <Accordion 
+                      expanded={activeSpeakingSection === 'speakingStyle'}
+                      onChange={() => handleSpeakingSectionChange('speakingStyle')}
+                      sx={{ 
+                        '&.Mui-expanded': { 
+                          margin: 0 
+                        },
+                        '&:before': {
+                          display: 'none'
+                        }
+                      }}
                     >
-                      <Typography variant="subtitle2">
-                        Speaking Style
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ pl: 0, pr: 0 }}>
-                      {config.bot.speakingStyle.map((style, index) => (
-                        <Box key={index} sx={{ display: "flex", gap: 1, mb: 1 }}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            value={style}
-                            onChange={(e) =>
-                              updateArrayItem("bot.speakingStyle", index, e.target.value)
-                            }
-                            variant="outlined"
-                          />
-                          <IconButton
-                            color="error"
-                            onClick={() => removeArrayItem("bot.speakingStyle", index)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      ))}
-                      <Button
-                        startIcon={<AddIcon />}
-                        size="small"
-                        onClick={() => addArrayItem("bot.speakingStyle")}
+                      <AccordionSummary
+                        expandIcon={<KeyboardArrowDownIcon />}
+                        sx={{ 
+                          pl: 2, 
+                          pr: 2, 
+                          backgroundColor: 'primary.main',
+                          color: 'primary.contrastText',
+                          borderRadius: 1,
+                          '&.Mui-expanded': {
+                            borderRadius: '8px 8px 0 0',
+                          }
+                        }}
                       >
-                        Add Style
-                      </Button>
-                    </AccordionDetails>
-                  </Accordion>
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Accordion>
-                    <AccordionSummary
-                      expandIcon={<KeyboardArrowDownIcon />}
-                      sx={{ pl: 0 }}
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <FormatQuoteIcon fontSize="small" />
+                          <Typography variant="subtitle2" color="inherit">
+                            Speaking Style
+                          </Typography>
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails sx={{ pl: 2, pr: 2, pt: 2, pb: 2 }}>
+                        {config.bot.speakingStyle.map((style, index) => (
+                          <Box key={index} sx={{ display: "flex", gap: 1, mb: 1 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              value={style}
+                              onChange={(e) =>
+                                updateArrayItem("bot.speakingStyle", index, e.target.value)
+                              }
+                              variant="outlined"
+                            />
+                            <IconButton
+                              color="error"
+                              onClick={() => removeArrayItem("bot.speakingStyle", index)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        ))}
+                        <Button
+                          startIcon={<AddIcon />}
+                          size="small"
+                          onClick={() => addArrayItem("bot.speakingStyle")}
+                        >
+                          Add Style
+                        </Button>
+                      </AccordionDetails>
+                    </Accordion>
+                    
+                    <Accordion 
+                      expanded={activeSpeakingSection === 'globalRules'}
+                      onChange={() => handleSpeakingSectionChange('globalRules')}
+                      sx={{ 
+                        '&.Mui-expanded': { 
+                          margin: 0 
+                        },
+                        '&:before': {
+                          display: 'none'
+                        }
+                      }}
                     >
-                      <Typography variant="subtitle2">
-                        Global Rules
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ pl: 0, pr: 0 }}>
-                      {config.bot.globalRules.map((rule, index) => (
-                        <Box key={index} sx={{ display: "flex", gap: 1, mb: 1 }}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            value={rule}
-                            onChange={(e) =>
-                              updateArrayItem("bot.globalRules", index, e.target.value)
-                            }
-                            variant="outlined"
-                          />
-                          <IconButton
-                            color="error"
-                            onClick={() => removeArrayItem("bot.globalRules", index)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      ))}
-                      <Button
-                        startIcon={<AddIcon />}
-                        size="small"
-                        onClick={() => addArrayItem("bot.globalRules")}
+                      <AccordionSummary
+                        expandIcon={<KeyboardArrowDownIcon />}
+                        sx={{ 
+                          pl: 2, 
+                          pr: 2, 
+                          backgroundColor: 'secondary.main',
+                          color: 'secondary.contrastText',
+                          borderRadius: 1,
+                          '&.Mui-expanded': {
+                            borderRadius: '8px 8px 0 0',
+                          }
+                        }}
                       >
-                        Add Rule
-                      </Button>
-                    </AccordionDetails>
-                  </Accordion>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <GavelIcon fontSize="small" />
+                          <Typography variant="subtitle2" color="inherit">
+                            Global Rules
+                          </Typography>
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails sx={{ pl: 2, pr: 2, pt: 2, pb: 2 }}>
+                        {config.bot.globalRules.map((rule, index) => (
+                          <Box key={index} sx={{ display: "flex", gap: 1, mb: 1 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              value={rule}
+                              onChange={(e) =>
+                                updateArrayItem("bot.globalRules", index, e.target.value)
+                              }
+                              variant="outlined"
+                            />
+                            <IconButton
+                              color="error"
+                              onClick={() => removeArrayItem("bot.globalRules", index)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        ))}
+                        <Button
+                          startIcon={<AddIcon />}
+                          size="small"
+                          onClick={() => addArrayItem("bot.globalRules")}
+                        >
+                          Add Rule
+                        </Button>
+                      </AccordionDetails>
+                    </Accordion>
+                  </Box>
                 </Grid>
               </Grid>
             </>
