@@ -25,6 +25,9 @@ import {
   Chip,
   Tooltip,
   Avatar,
+  Tabs,
+  Tab,
+  TablePagination,
 } from "@mui/material";
 import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
@@ -33,6 +36,7 @@ import {
   Delete as DeleteIcon,
   AddLink as AddLinkIcon,
   People as PeopleIcon,
+  Forum as ForumIcon,
 } from "@mui/icons-material";
 
 // Define isChannelIgnored function outside of components so it's accessible to both
@@ -75,25 +79,76 @@ function Row({
   channels,
   loadingChannels,
   onChannelToggle,
-  config, // Pass config as prop
+  config, // Pass config as prop,
+  serverTabs,
+  onTabChange,
+  relationshipPages,
+  setRelationshipPages,
+  relationshipRowsPerPage,
+  setRelationshipRowsPerPage,
+  channelPages,
+  setChannelPages,
+  channelRowsPerPage,
+  setChannelRowsPerPage,
 }) {
   const isOpen = expanded === server.id;
+  const currentTab = serverTabs[server.id] || 0;
+  
+  // Get pagination state for this specific server
+  const currentRelationshipPage = relationshipPages[server.id] || 0;
+  const currentRelationshipRowsPerPage = relationshipRowsPerPage[server.id] || 10;
+  const currentChannelPage = channelPages[server.id] || 0;
+  const currentChannelRowsPerPage = channelRowsPerPage[server.id] || 10;
+
+  const handleTabChange = (event, newValue) => {
+    onTabChange(server.id, newValue);
+  };
+
+  const handleRelationshipsPageChange = (event, newPage) => {
+    setRelationshipPages(prev => ({ ...prev, [server.id]: newPage }));
+  };
+
+  const handleRelationshipsRowsPerPageChange = (event) => {
+    const newRowsPerPage = parseInt(event.target.value, 10);
+    setRelationshipRowsPerPage(prev => ({ ...prev, [server.id]: newRowsPerPage }));
+    setRelationshipPages(prev => ({ ...prev, [server.id]: 0 })); // Reset to first page
+  };
+
+  const handleChannelsPageChange = (event, newPage) => {
+    setChannelPages(prev => ({ ...prev, [server.id]: newPage }));
+  };
+
+  const handleChannelsRowsPerPageChange = (event) => {
+    const newRowsPerPage = parseInt(event.target.value, 10);
+    setChannelRowsPerPage(prev => ({ ...prev, [server.id]: newRowsPerPage }));
+    setChannelPages(prev => ({ ...prev, [server.id]: 0 })); // Reset to first page
+  };
 
   return (
     <>
-      <TableRow sx={{ "& > *": { borderBottom: "unset" } }}>
+      <TableRow 
+        sx={{ 
+          "& > *": { borderBottom: "unset" },
+          cursor: "pointer",
+          "&:hover": { backgroundColor: "action.hover" }
+        }}
+        onClick={() => onExpand(server.id)}
+      >
         <TableCell>
           <IconButton
             aria-label="expand row"
             size="small"
-            onClick={() => onExpand(server.id)}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the row click
+              onExpand(server.id);
+            }}
           >
             {isOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
         <TableCell component="th" scope="row">
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Avatar src={server.iconURL} alt={server.name} variant="rounded" />
+            <Avatar src={server.iconURL} alt={server.name} variant="rounded" imgProps={{ loading: 'lazy' }} />
             <Box>
               <Typography variant="subtitle2" fontWeight="bold">
                 {server.name}
@@ -116,7 +171,7 @@ function Row({
             ? new Date(server.joinedAt).toLocaleDateString()
             : "Unknown"}
         </TableCell>
-        <TableCell align="right">
+        <TableCell align="right" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="outlined"
             color="error"
@@ -132,172 +187,216 @@ function Row({
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
-              <Typography
-                variant="h6"
-                gutterBottom
-                component="div"
-                sx={{ fontSize: "0.9rem", color: "text.secondary" }}
-              >
-                User Relationships
-              </Typography>
-              {loadingRelationships[server.id] ? (
-                <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : relationships[server.id] &&
-                Object.keys(relationships[server.id]).length > 0 ? (
-                <Table size="small" aria-label="purchases">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>User</TableCell>
-                      <TableCell>Attitude</TableCell>
-                      <TableCell>Behaviors</TableCell>
-                      <TableCell align="center">Ignored</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Object.entries(relationships[server.id]).map(
-                      ([userId, data]) => (
-                        <TableRow key={userId}>
-                          <TableCell component="th" scope="row">
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 2,
-                              }}
-                            >
-                              <Avatar
-                                src={data.avatarUrl}
-                                alt={data.displayName || data.username}
-                                sx={{ width: 32, height: 32 }}
-                              />
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  flexDirection: "column",
-                                }}
-                              >
-                                <Typography variant="body2" fontWeight="medium">
-                                  {data.displayName || data.username || userId}
-                                </Typography>
-                                {data.username &&
-                                  data.username !== data.displayName && (
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
+              <Tabs value={currentTab} onChange={handleTabChange} sx={{ mb: 2, minHeight: 32, '& .MuiTab-root': { minHeight: 32, minWidth: 120 } }}>
+                <Tab icon={<PeopleIcon />} iconPosition="start" label="User Relationships" />
+                <Tab icon={<ForumIcon />} iconPosition="start" label="Channel Monitoring" />
+              </Tabs>
+              
+              {/* User Relationships Tab Panel */}
+              <Box hidden={currentTab !== 0}>
+                {loadingRelationships[server.id] ? (
+                  <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                    <CircularProgress size={24} />
+                    <Typography variant="body2" sx={{ ml: 2, alignSelf: "center" }}>
+                      Loading relationships...
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    {relationships[server.id] && Object.keys(relationships[server.id]).length > 0 ? (
+                      <>
+                        <Table size="small" aria-label="purchases">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>User</TableCell>
+                              <TableCell>Attitude</TableCell>
+                              <TableCell>Behaviors</TableCell>
+                              <TableCell align="center">Ignored</TableCell>
+                              <TableCell align="right">Actions</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {Object.entries(relationships[server.id])
+                              .slice(currentRelationshipPage * currentRelationshipRowsPerPage, currentRelationshipPage * currentRelationshipRowsPerPage + currentRelationshipRowsPerPage)
+                              .map(([userId, data]) => (
+                                <TableRow key={userId}>
+                                  <TableCell component="th" scope="row">
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 2,
+                                      }}
                                     >
-                                      ({data.username})
-                                    </Typography>
-                                  )}
-                              </Box>
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={data.attitude}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              sx={{ height: 20, fontSize: "0.7rem" }}
-                            />
-                          </TableCell>
-                          <TableCell
-                            sx={{
-                              maxWidth: 200,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            <Tooltip title={data.behavior.join(", ")}>
-                              <Typography variant="body2" noWrap>
-                                {data.behavior.join(", ") || "None"}
-                              </Typography>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Checkbox
-                              checked={data.ignored || false}
-                              onChange={() =>
-                                onIgnoreToggle(server.id, userId, data)
-                              }
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              onClick={() => onEditUser(userId, data)}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ),
+                                      <Avatar
+                                        src={data.avatarUrl}
+                                        alt={data.displayName || data.username}
+                                        sx={{ width: 32, height: 32 }}
+                                        imgProps={{ loading: 'lazy' }}
+                                      />
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                        }}
+                                      >
+                                        <Typography variant="body2" fontWeight="medium">
+                                          {data.displayName || data.username || userId}
+                                        </Typography>
+                                        {data.username &&
+                                          data.username !== data.displayName && (
+                                            <Typography
+                                              variant="caption"
+                                              color="text.secondary"
+                                            >
+                                              ({data.username})
+                                            </Typography>
+                                          )}
+                                      </Box>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Chip
+                                      label={data.attitude}
+                                      size="small"
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{ height: 20, fontSize: "0.7rem" }}
+                                    />
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      maxWidth: 200,
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                    }}
+                                  >
+                                    <Tooltip title={data.behavior.join(", ")}>
+                                      <Typography variant="body2" noWrap>
+                                        {data.behavior.join(", ") || "None"}
+                                      </Typography>
+                                    </Tooltip>
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    <Checkbox
+                                      checked={data.ignored || false}
+                                      onChange={() =>
+                                        onIgnoreToggle(server.id, userId, data)
+                                      }
+                                      size="small"
+                                    />
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => onEditUser(userId, data)}
+                                    >
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                        <TablePagination
+                          rowsPerPageOptions={[10, 20, 50]}
+                          component="div"
+                          count={Object.keys(relationships[server.id] || {}).length}
+                          rowsPerPage={currentRelationshipRowsPerPage}
+                          page={currentRelationshipPage}
+                          onPageChange={handleRelationshipsPageChange}
+                          onRowsPerPageChange={handleRelationshipsRowsPerPageChange}
+                        />
+                      </>
+                    ) : relationships[server.id] ? ( // Only show "no relationships" if relationships object exists but is empty
+                      <Alert severity="info" sx={{ mt: 1 }}>
+                        No user relationships found for this server yet.
+                      </Alert>
+                    ) : ( // If relationships object doesn't exist yet, show nothing or loading
+                      <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                        <CircularProgress size={24} />
+                        <Typography variant="body2" sx={{ ml: 2, alignSelf: "center" }}>
+                          Loading relationships...
+                        </Typography>
+                      </Box>
                     )}
-                  </TableBody>
-                </Table>
-              ) : (
-                <Alert severity="info" sx={{ mt: 1 }}>
-                  No user relationships found for this server yet.
-                </Alert>
-              )}
+                  </>
+                )}
+              </Box>
 
-              {/* Channels Section */}
-              <Box sx={{ mt: 2 }}>
-                <Typography
-                  variant="h6"
-                  gutterBottom
-                  component="div"
-                  sx={{ fontSize: "0.9rem", color: "text.secondary" }}
-                >
-                  Channel Monitoring
-                </Typography>
+              {/* Channel Monitoring Tab Panel */}
+              <Box hidden={currentTab !== 1}>
                 {loadingChannels[server.id] ? (
                   <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
                     <CircularProgress size={24} />
+                    <Typography variant="body2" sx={{ ml: 2, alignSelf: "center" }}>
+                      Loading channels...
+                    </Typography>
                   </Box>
-                ) : channels[server.id] && channels[server.id].length > 0 ? (
-                  <Table size="small" aria-label="channels">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Channel Name</TableCell>
-                        <TableCell align="center">Monitored</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {channels[server.id].map((channel) => (
-                        <TableRow key={channel.id}>
-                          <TableCell component="th" scope="row">
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                              }}
-                            >
-                              <Typography variant="body2" fontWeight="medium">
-                                #{channel.name}
-                              </Typography>
-                            </Box>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Checkbox
-                              checked={!isChannelIgnored(config, server.id, channel.id)} // Check if channel is NOT ignored
-                              onChange={() => onChannelToggle(server.id, channel.id)}
-                              size="small"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
                 ) : (
-                  <Alert severity="info" sx={{ mt: 1 }}>
-                    No channels found for this server yet.
-                  </Alert>
+                  <>
+                    {channels[server.id] && channels[server.id].length > 0 ? (
+                      <>
+                        <Table size="small" aria-label="channels">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Channel Name</TableCell>
+                              <TableCell align="center">Monitored</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {channels[server.id]
+                              .slice(currentChannelPage * currentChannelRowsPerPage, currentChannelPage * currentChannelRowsPerPage + currentChannelRowsPerPage)
+                              .map((channel) => (
+                                <TableRow key={channel.id}>
+                                  <TableCell component="th" scope="row">
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                      }}
+                                    >
+                                      <Typography variant="body2" fontWeight="medium">
+                                        #{channel.name}
+                                      </Typography>
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    <Checkbox
+                                      checked={!isChannelIgnored(config, server.id, channel.id)} // Check if channel is NOT ignored
+                                      onChange={() => onChannelToggle(server.id, channel.id)}
+                                      size="small"
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                        <TablePagination
+                          rowsPerPageOptions={[10, 20, 50]}
+                          component="div"
+                          count={channels[server.id]?.length || 0}
+                          rowsPerPage={currentChannelRowsPerPage}
+                          page={currentChannelPage}
+                          onPageChange={handleChannelsPageChange}
+                          onRowsPerPageChange={handleChannelsRowsPerPageChange}
+                        />
+                      </>
+                    ) : channels[server.id] ? ( // Only show "no channels" if channels array exists but is empty
+                      <Alert severity="info" sx={{ mt: 1 }}>
+                        No channels found for this server yet.
+                      </Alert>
+                    ) : ( // If channels array doesn't exist yet, show loading
+                      <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                        <CircularProgress size={24} />
+                        <Typography variant="body2" sx={{ ml: 2, alignSelf: "center" }}>
+                          Loading channels...
+                        </Typography>
+                      </Box>
+                    )}
+                  </>
                 )}
               </Box>
             </Box>
@@ -321,6 +420,11 @@ function Servers() {
   const [config, setConfig] = useState(null); // Store the bot configuration
   const [editingUser, setEditingUser] = useState(null);
   const [editData, setEditData] = useState(null);
+  const [serverTabs, setServerTabs] = useState({}); // Track tab state per server
+  const [relationshipPages, setRelationshipPages] = useState({}); // Track pagination per server
+  const [relationshipRowsPerPage, setRelationshipRowsPerPage] = useState({}); // Track rows per page per server
+  const [channelPages, setChannelPages] = useState({}); // Track pagination per server
+  const [channelRowsPerPage, setChannelRowsPerPage] = useState({}); // Track rows per page per server
 
   // Fetch the current bot configuration
   useEffect(() => {
@@ -380,29 +484,57 @@ function Servers() {
   };
 
   const fetchRelationships = async (guildId) => {
-    if (relationships[guildId]) return;
+    // Only fetch if not currently loading
+    if (loadingRelationships[guildId]) return;
 
+    console.log(`Fetching relationships for guild ${guildId}`);
     setLoadingRelationships((prev) => ({ ...prev, [guildId]: true }));
+    
+    // Set a timeout to ensure loading state is reset even if API call hangs
+    const timeoutId = setTimeout(() => {
+      console.log(`Timeout: Setting loading to false for relationships guild ${guildId}`);
+      setLoadingRelationships((prev) => ({ ...prev, [guildId]: false }));
+    }, 10000); // 10 second timeout
+    
     try {
       const res = await axios.get(`/api/guilds/${guildId}/relationships`);
+      console.log(`Fetched relationships for guild ${guildId}:`, res.data);
       setRelationships((prev) => ({ ...prev, [guildId]: res.data }));
     } catch (err) {
       console.error(`Failed to fetch relationships for guild ${guildId}`, err);
+      // Still set the relationships to an empty object on error to stop loading state
+      setRelationships((prev) => ({ ...prev, [guildId]: {} }));
     } finally {
+      clearTimeout(timeoutId);
+      console.log(`Setting loading to false for relationships guild ${guildId}`);
       setLoadingRelationships((prev) => ({ ...prev, [guildId]: false }));
     }
   };
 
   const fetchChannels = async (guildId) => {
-    if (channels[guildId]) return;
+    // Only fetch if not currently loading
+    if (loadingChannels[guildId]) return;
 
+    console.log(`Fetching channels for guild ${guildId}`);
     setLoadingChannels((prev) => ({ ...prev, [guildId]: true }));
+    
+    // Set a timeout to ensure loading state is reset even if API call hangs
+    const timeoutId = setTimeout(() => {
+      console.log(`Timeout: Setting loading to false for channels guild ${guildId}`);
+      setLoadingChannels((prev) => ({ ...prev, [guildId]: false }));
+    }, 10000); // 10 second timeout
+    
     try {
       const res = await axios.get(`/api/guilds/${guildId}/channels`);
+      console.log(`Fetched channels for guild ${guildId}:`, res.data);
       setChannels((prev) => ({ ...prev, [guildId]: res.data }));
     } catch (err) {
       console.error(`Failed to fetch channels for guild ${guildId}`, err);
+      // Still set the channels to an empty array on error to stop loading state
+      setChannels((prev) => ({ ...prev, [guildId]: [] }));
     } finally {
+      clearTimeout(timeoutId);
+      console.log(`Setting loading to false for channels guild ${guildId}`);
       setLoadingChannels((prev) => ({ ...prev, [guildId]: false }));
     }
   };
@@ -412,8 +544,15 @@ function Servers() {
       setExpandedServerId(null);
     } else {
       setExpandedServerId(guildId);
-      fetchRelationships(guildId);
-      fetchChannels(guildId);
+      // Reset tab to first when expanding a new server
+      setServerTabs(prev => ({ ...prev, [guildId]: 0 }));
+      // Pre-fetch relationships when expanding to avoid initial loading state
+      if (!relationships[guildId] && !loadingRelationships[guildId]) {
+        fetchRelationships(guildId);
+      }
+      if (!channels[guildId] && !loadingChannels[guildId]) {
+        fetchChannels(guildId);
+      }
     }
   };
 
@@ -481,6 +620,19 @@ function Servers() {
     }
   };
 
+  const handleTabChange = (guildId, tabIndex) => {
+    setServerTabs(prev => ({ ...prev, [guildId]: tabIndex }));
+    
+    // Fetch data only when the tab is selected, data hasn't been loaded yet, and not currently loading
+    if (tabIndex === 0 && !relationships[guildId] && !loadingRelationships[guildId]) {
+      // Fetch relationships if not loaded yet and not currently loading
+      fetchRelationships(guildId);
+    } else if (tabIndex === 1 && !channels[guildId] && !loadingChannels[guildId]) {
+      // Fetch channels if not loaded yet and not currently loading
+      fetchChannels(guildId);
+    }
+  };
+
   const handleChannelToggle = async (guildId, channelId) => {
     if (!config) {
       console.error("Config not loaded yet");
@@ -489,24 +641,24 @@ function Servers() {
 
     // Create a copy of the current config to modify
     const updatedConfig = JSON.parse(JSON.stringify(config));
-    
+
     // Initialize guild-specific channels if not present
     if (!updatedConfig.replyBehavior.guildSpecificChannels) {
       updatedConfig.replyBehavior.guildSpecificChannels = {};
     }
-    
+
     if (!updatedConfig.replyBehavior.guildSpecificChannels[guildId]) {
       updatedConfig.replyBehavior.guildSpecificChannels[guildId] = {
         allowed: [],
         ignored: []
       };
     }
-    
+
     const guildChannels = updatedConfig.replyBehavior.guildSpecificChannels[guildId];
-    
+
     // Determine if the channel is currently monitored (not ignored)
     const isCurrentlyMonitored = !isChannelIgnored(config, guildId, channelId);
-    
+
     // Toggle the channel status
     if (isCurrentlyMonitored) {
       // Currently monitored, so add to ignored list
@@ -525,7 +677,7 @@ function Servers() {
       if (guildChannels.ignored) {
         guildChannels.ignored = guildChannels.ignored.filter(id => id !== channelId);
       }
-      
+
       // If using allowed list, add to allowed
       if (guildChannels.allowed && Array.isArray(guildChannels.allowed)) {
         if (!guildChannels.allowed.includes(channelId)) {
@@ -533,14 +685,14 @@ function Servers() {
         }
       }
     }
-    
+
     try {
       // Update the configuration via API
       await axios.post("/api/config", updatedConfig);
-      
+
       // Update local state
       setConfig(updatedConfig);
-      
+
       // Refresh the server data to reflect changes
       fetchServers();
     } catch (err) {
@@ -602,6 +754,16 @@ function Servers() {
                   loadingChannels={loadingChannels}
                   onChannelToggle={handleChannelToggle}
                   config={config}
+                  serverTabs={serverTabs}
+                  onTabChange={handleTabChange}
+                  relationshipPages={relationshipPages}
+                  setRelationshipPages={setRelationshipPages}
+                  relationshipRowsPerPage={relationshipRowsPerPage}
+                  setRelationshipRowsPerPage={setRelationshipRowsPerPage}
+                  channelPages={channelPages}
+                  setChannelPages={setChannelPages}
+                  channelRowsPerPage={channelRowsPerPage}
+                  setChannelRowsPerPage={setChannelRowsPerPage}
                 />
               ))}
             </TableBody>
