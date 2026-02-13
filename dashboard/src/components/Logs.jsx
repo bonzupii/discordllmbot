@@ -246,25 +246,16 @@ function Logs() {
   };
 
   return (
-    <Box
-      sx={{
-        width: "100%",
-        height: "calc(100vh - 140px)",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <Box sx={{ width: "100%" }}>
       <Box
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 2,
-          flexWrap: "wrap",
-          gap: 1,
+          mb: 3,
         }}
       >
-        <Typography variant="h6" color="primary">
+        <Typography variant="h5" fontWeight="bold" color="primary">
           System Logs
         </Typography>
 
@@ -341,18 +332,20 @@ function Logs() {
 
       <Paper
         ref={scrollRef}
-        elevation={3}
+        elevation={2}
         sx={{
-          p: 2,
+          borderRadius: 2,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
           bgcolor: "#0f172a", // Darker background for logs
           color: "#f8fafc",
           fontFamily: "monospace",
           fontSize: "0.85rem",
-          flexGrow: 1,
+          height: "70vh",
           overflowY: "auto",
-          borderRadius: 2,
-          border: 1,
-          borderColor: "divider",
         }}
       >
         {filteredLogs.length === 0 ? (
