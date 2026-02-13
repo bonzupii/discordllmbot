@@ -37,7 +37,7 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
 
 - **Web Dashboard**: A React-based dashboard (running on port 5173 by default) allows you to view logs, manage relationships, and configure the bot.
 
-- **Gemini client**: `bot/src/llm/gemini.js` sends prompts to Gemini REST API with configurable `api.geminiModel`, `api.retryAttempts`, and `api.retryBackoffMs`.
+- **Multi-provider LLM support**: `bot/src/llm/index.js` provides a unified interface for both Google's Gemini API and local Ollama models, with configurable `api.provider`, `api.geminiModel`, and `api.ollamaModel`.
 
  
 
@@ -56,8 +56,10 @@ Important fields:
 - `memory.maxMessages`: how many messages to keep per-channel in memory (and DB)
 
 - `api`:
-  - `geminiModel`: e.g. `gemini-1.5-flash`
-  - `retryAttempts`: integer retries for Gemini client
+  - `provider`: (`"gemini"` or `"ollama"`) — The LLM provider to use for generating replies
+  - `geminiModel`: e.g. `gemini-1.5-flash` (used when provider is "gemini")
+  - `ollamaModel`: e.g. `llama3.2` (used when provider is "ollama")
+  - `retryAttempts`: integer retries for LLM API calls
   - `retryBackoffMs`: base backoff in ms used to scale exponential backoff
 
 - `replyBehavior`: controls the bot's reply decision logic and behavior.
@@ -82,7 +84,8 @@ See [shared/config/bot.json.defaults](shared/config/bot.json.defaults) for defau
 
 ## Environment Variables
 - `DISCORD_TOKEN`: From Discord Developer Portal
-- `GEMINI_API_KEY`: From Google Cloud (free tier available)
+- `GEMINI_API_KEY`: From Google Cloud (free tier available) - Required when using Gemini provider
+- `OLLAMA_API_URL`: URL for Ollama API (e.g., http://host.docker.internal:11434) - Required when using Ollama provider
 - `POSTGRES_DB`: The name of the database to use.
 - `POSTGRES_USER`: The username for the database.
 - `POSTGRES_PASSWORD`: The password for the database.
@@ -112,6 +115,49 @@ During development, the `bot` service is configured with a mounted volume and `n
 Data storage: When the bot starts or joins a server, it automatically creates database entries for the guild and its members.
 
 Log file: `discordllmbot.log` — the logger truncates the file on startup to keep the last `logger.maxLogLines` (configurable in `bot.json`).
+
+---
+
+## Using Ollama Provider
+
+To use Ollama instead of Google's Gemini API:
+
+1. **Install and run Ollama** on your host machine:
+   ```bash
+   # Download from https://ollama.ai and run the service
+   ollama serve
+   ```
+
+2. **Pull the model you want to use**:
+   ```bash
+   ollama pull llama3.2
+   # Or any other model you prefer
+   ```
+
+3. **Configure the bot** in `shared/config/bot.json`:
+   ```json
+   {
+     "api": {
+       "provider": "ollama",
+       "ollamaModel": "llama3.2",
+       "geminiModel": "gemini-2.5-flash"
+     }
+   }
+   ```
+
+4. **Update your .env file**:
+   ```
+   OLLAMA_API_URL=http://host.docker.internal:11434
+   # Remove or comment out GEMINI_API_KEY when using Ollama
+   # GEMINI_API_KEY=your_key_here
+   ```
+
+5. **Restart the bot**:
+   ```bash
+   docker-compose down && docker-compose up
+   ```
+
+Note: When using Docker on Windows/Mac, `host.docker.internal` is the special DNS name that resolves to the host machine. On Linux, you may need to use the host's IP address or add `--network=host` to access Ollama running on the host.
 
 ---
 
@@ -147,6 +193,7 @@ Suggested next steps you can implement:
 ## Troubleshooting
 
 - If Gemini returns `429 Resource exhausted`, check `api.retryAttempts` and `api.retryBackoffMs` in `bot.json` and ensure `GEMINI_API_KEY` has billing/quota enabled.
+- If Ollama returns connection errors, ensure `OLLAMA_API_URL` is accessible and Ollama service is running. When using Docker, use `http://host.docker.internal:11434` to connect from the container to the host.
 - If you see repeated avatar update attempts on startup, ensure `bot.username` and `bot.avatarUrl` in `bot.json` match the bot's Discord profile, or let the code update once (it now strips query params when comparing).
 - If member population is slow or fails, ensure the bot has the `Server Members Intent` enabled in the Discord Developer Portal.
 
@@ -157,7 +204,7 @@ Suggested next steps you can implement:
 - [bot/src/index.js](bot/src/index.js)
 - [bot/src/events/](bot/src/events/) — event handlers
 - [bot/src/core/](bot/src/core/) — business logic
-- [bot/src/llm/gemini.js](bot/src/llm/gemini.js)
+- [bot/src/llm/](bot/src/llm/) — LLM provider implementations
 - [shared/utils/logger.js](shared/utils/logger.js)
 - [bot/src/personality/relationships.js](bot/src/personality/relationships.js)
 - [shared/config/bot.json](shared/config/bot.json)

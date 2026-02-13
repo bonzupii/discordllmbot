@@ -8,7 +8,7 @@ import { Server } from 'socket.io';
 import { logger } from '../../../shared/utils/logger.js';
 import { loadConfig, reloadConfig } from '../../../shared/config/configLoader.js';
 import { loadGuildRelationships } from '../personality/relationships.js';
-import { generateReply } from '../llm/gemini.js';
+import { generateReply, getAvailableModels } from '../llm/index.js';
 import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships } from '../../../shared/storage/persistence.js';
 import os from 'os';
 
@@ -246,28 +246,22 @@ export function startApi(client) {
         }
     });
 
-    // Endpoint to get available Gemini models
     app.get('/api/models', async (req, res) => {
         try {
-            const apiKey = process.env.GEMINI_API_KEY;
-            if (!apiKey) {
-                return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+            const requestedProvider = req.query.provider || loadConfig().api?.provider || 'gemini';
+            
+            if (requestedProvider === 'gemini') {
+                const apiKey = process.env.GEMINI_API_KEY;
+                if (!apiKey) {
+                    return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+                }
             }
 
-            // We can use axios here since it's external API
-            const axios = (await import('axios')).default;
-            const response = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-
-            // Filter for models that support content generation
-            const models = response.data.models
-                .filter(m => m.supportedGenerationMethods.includes('generateContent'))
-                .map(m => m.name.replace('models/', ''));
-
+            const models = await getAvailableModels(requestedProvider);
             res.json(models);
         } catch (err) {
-            logger.error('Failed to fetch Gemini models', err);
-            // Return a 500 error instead of a fallback
-            res.status(500).json({ error: 'Failed to fetch models from Google' }); 
+            logger.error(`Failed to fetch models:`, err);
+            res.status(500).json({ error: `Failed to fetch models from ${req.query.provider || 'Gemini'} API` }); 
         }
     });
 

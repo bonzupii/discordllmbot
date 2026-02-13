@@ -74,7 +74,7 @@ async function retry(fn, maxRetries = 3, baseBackoffMs = 1000) {
 /**
  * Generate a reply from Gemini API with retry logic
  * @param {string} prompt - The prompt to send to Gemini
- * @returns {Promise<string|null>} Reply text or null if no content
+ * @returns {Promise<{text: string|null, usageMetadata: Object|null}>} Reply text and usage metadata or null if no content
  */
 export async function generateReply(prompt) {
     const apiCfg = getApiConfig();
@@ -143,5 +143,46 @@ export async function generateReply(prompt) {
 
         return { text: reply, usageMetadata };
     }, retryAttempts, retryBackoffMs);
+}
+
+/**
+ * Fetch available models from Gemini API
+ * @returns {Promise<Array<string>>} List of available model names
+ */
+export async function getAvailableModels() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error('GEMINI_API_KEY not set in environment');
+    }
+
+    try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new GeminiAPIError(
+                `Gemini API error fetching models: ${res.status}${errorText ? `: ${errorText}` : ''}`,
+                res.status,
+                res.status >= 500 || res.status === 429
+            );
+        }
+
+        const data = await res.json();
+
+        // Filter for models that support content generation
+        const models = data.models
+            .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+            .map(m => m.name.replace('models/', ''));
+
+        logger.api(`→ Gemini API Request: Function=getAvailableModels() - Found ${models.length} models`);
+        
+        return models;
+    } catch (err) {
+        logger.error('Failed to fetch Gemini models', err);
+        throw err;
+    }
 }
 

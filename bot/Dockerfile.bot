@@ -11,6 +11,7 @@ COPY docs/package*.json ./docs/
 
 # Install dependencies for all workspaces
 RUN npm install
+RUN apk add --no-cache curl
 
 WORKDIR /usr/src/app/bot
 EXPOSE 3000

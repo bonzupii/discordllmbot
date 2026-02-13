@@ -1,5 +1,5 @@
 import { logger } from '../../../shared/utils/logger.js';
-import { generateReply } from '../llm/gemini.js';
+import { generateReply } from '../llm/index.js';
 import { getRelationship } from '../personality/relationships.js';
 import { addMessage } from '../memory/context.js';
 import { loadContexts, logBotReply } from '../../../shared/storage/persistence.js';

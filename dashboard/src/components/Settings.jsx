@@ -38,31 +38,44 @@ function Settings() {
   const [isFetchingModels, setIsFetchingModels] = useState(false);
 
   useEffect(() => {
-    fetchConfig();
-    fetchModels();
+    fetchConfig().then(initialConfig => {
+      if (initialConfig) {
+        fetchModels(initialConfig.api?.provider || "gemini");
+      }
+    });
   }, []);
 
   const fetchConfig = async () => {
     try {
       const res = await axios.get("/api/config");
       setConfig(res.data);
+      return res.data; // Return the fetched config
     } catch (err) {
       console.error("Failed to fetch config", err);
+      setMessage({
+        open: true,
+        text: "Failed to load configuration.",
+        severity: "error",
+      });
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchModels = async () => {
+  const fetchModels = async (explicitProvider) => {
+    const providerToFetch = explicitProvider || config?.api?.provider;
+    if (!providerToFetch) return; // Don't fetch if provider isn't set yet
+
     setIsFetchingModels(true);
     try {
-      const res = await axios.get("/api/models");
+      const res = await axios.get("/api/models", { params: { provider: providerToFetch } });
       setModels(res.data);
     } catch (err) {
       console.error("Failed to fetch models", err);
       setMessage({
         open: true,
-        text: "Could not fetch models from the API.",
+        text: `Could not fetch models from the ${providerToFetch} API.`,
         severity: "warning",
       });
       // Don't set a fallback, let the user know there's an issue.
@@ -293,32 +306,84 @@ function Settings() {
         </Typography>
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <FormControl fullWidth disabled={isFetchingModels}>
-              <InputLabel>Gemini Model</InputLabel>
+            <FormControl fullWidth>
+              <InputLabel>Provider</InputLabel>
               <Select
-                value={
-                  models.includes(config.api.geminiModel)
-                    ? config.api.geminiModel
-                    : ""
-                }
-                label="Gemini Model"
-                onChange={(e) =>
-                  updateNested("api.geminiModel", e.target.value)
-                }
+                value={config.api.provider || "gemini"}
+                label="Provider"
+                onChange={async (e) => {
+                  const newProvider = e.target.value;
+                  updateNested("api.provider", newProvider);
+                  // Reset model selection when switching providers
+                  if (newProvider === "gemini") {
+                    updateNested("api.geminiModel", "gemini-2.0-flash");
+                  } else if (newProvider === "ollama") {
+                    updateNested("api.ollamaModel", "llama3.2");
+                  }
+                  await fetchModels(newProvider); // Fetch models for the new provider
+                }}
               >
-                {isFetchingModels ? (
-                  <MenuItem value="">
-                    <CircularProgress size={20} />
-                  </MenuItem>
-                ) : (
-                  models.map((m) => (
-                    <MenuItem key={m} value={m}>
-                      {m}
-                    </MenuItem>
-                  ))
-                )}
+                <MenuItem value="gemini">Google Gemini</MenuItem>
+                <MenuItem value="ollama">Ollama (Local)</MenuItem>
               </Select>
             </FormControl>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            {config.api.provider === "ollama" ? (
+              <FormControl fullWidth disabled={isFetchingModels}>
+                <InputLabel>Ollama Model</InputLabel>
+                <Select
+                  value={
+                    models.includes(config.api.ollamaModel)
+                      ? config.api.ollamaModel
+                      : ""
+                  }
+                  label="Ollama Model"
+                  onChange={(e) =>
+                    updateNested("api.ollamaModel", e.target.value)
+                  }
+                >
+                  {isFetchingModels ? (
+                    <MenuItem value="">
+                      <CircularProgress size={20} />
+                    </MenuItem>
+                  ) : (
+                    models.map((m) => (
+                      <MenuItem key={m} value={m}>
+                        {m}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            ) : (
+              <FormControl fullWidth disabled={isFetchingModels}>
+                <InputLabel>Gemini Model</InputLabel>
+                <Select
+                  value={
+                    models.includes(config.api.geminiModel)
+                      ? config.api.geminiModel
+                      : ""
+                  }
+                  label="Gemini Model"
+                  onChange={(e) =>
+                    updateNested("api.geminiModel", e.target.value)
+                  }
+                >
+                  {isFetchingModels ? (
+                    <MenuItem value="">
+                      <CircularProgress size={20} />
+                    </MenuItem>
+                  ) : (
+                    models.map((m) => (
+                      <MenuItem key={m} value={m}>
+                        {m}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            )}
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
