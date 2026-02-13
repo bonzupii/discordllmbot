@@ -158,16 +158,16 @@ function Settings() {
       const lastKey = keys.pop();
       for (const key of keys) current = current[key];
 
-      current[lastKey] = [...current[lastKey], item];
-      
-      // Trigger debounced save
-      debouncedSave(newConfig);
-      
+      const currentArray = current[lastKey];
+      if (currentArray.length > 0 && currentArray[currentArray.length - 1] === "") {
+        return newConfig;
+      }
+      current[lastKey] = [...currentArray, item];
       return newConfig;
     });
   };
 
-  const removeArrayItem = (path, index) => {
+  const removeArrayItem = (path, itemToRemove) => {
     setConfig((prev) => {
       const newConfig = { ...prev };
       let current = newConfig;
@@ -175,11 +175,7 @@ function Settings() {
       const lastKey = keys.pop();
       for (const key of keys) current = current[key];
 
-      current[lastKey] = current[lastKey].filter((_, i) => i !== index);
-      
-      // Trigger debounced save
-      debouncedSave(newConfig);
-      
+      current[lastKey] = [...current[lastKey]].filter(item => item !== itemToRemove);
       return newConfig;
     });
   };
@@ -286,7 +282,7 @@ function Settings() {
                 />
                 <IconButton
                   color="error"
-                  onClick={() => removeArrayItem("bot.speakingStyle", index)}
+                  onClick={() => removeArrayItem("bot.speakingStyle", style)}
                 >
                   <DeleteIcon />
                 </IconButton>
@@ -317,7 +313,7 @@ function Settings() {
                 />
                 <IconButton
                   color="error"
-                  onClick={() => removeArrayItem("bot.globalRules", index)}
+                  onClick={() => removeArrayItem("bot.globalRules", rule)}
                 >
                   <DeleteIcon />
                 </IconButton>

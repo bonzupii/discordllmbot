@@ -2,6 +2,8 @@ import { getBotConfig } from '../../../shared/config/configLoader.js';
 
 /**
  * The bot's persona configuration, loaded from the config file.
- * @type {Object}
+ * @returns {Object} Current bot persona config
  */
-export const botPersona = getBotConfig();
+export function getBotPersona() {
+    return getBotConfig();
+}

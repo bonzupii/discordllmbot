@@ -1,4 +1,4 @@
-import { botPersona } from '../personality/botPersona.js';
+import { getBotPersona } from '../personality/botPersona.js';
 
 /**
  * Builds the prompt string to send to the Gemini API.
@@ -20,6 +20,8 @@ export function buildPrompt({
     userMessage,
     username
 }) {
+    const botPersona = getBotPersona();
+    
     // Build a compact view of relationships for users present in the recent context
     const uniqueUserIds = Array.from(new Set(context.map(m => m.authorId).filter(Boolean)));
     const relationshipLines = uniqueUserIds.map(id => {
