@@ -9,8 +9,7 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
 - `bot/` — Discord bot application
   - `src/` — application source
   - `Dockerfile.bot` — Docker configuration for the bot
-- `api/` — Express.js API for the dashboard
-  - `Dockerfile.api` — Docker configuration for the API
+        
 - `dashboard/` — Vite + React frontend dashboard
   - `Dockerfile.dashboard` — Docker configuration for the dashboard
 - `shared/` — common logic and configuration used by bot and api
@@ -40,7 +39,7 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
 
 - **Gemini client**: `bot/src/llm/gemini.js` sends prompts to Gemini REST API with configurable `api.geminiModel`, `api.retryAttempts`, and `api.retryBackoffMs`.
 
-- **Internal API**: The bot runs an internal Express API (port 3001) for hot-reloading configuration and managing guild operations.
+ 
 
 ---
 
@@ -104,7 +103,7 @@ docker-compose up --build
 
 Access the services:
 - **Dashboard**: http://localhost:5173
-- **API**: http://localhost:3000
+- **Internal API (bot)**: http://localhost:3001
 - **Documentation**: http://localhost:5174
 - **pgAdmin**: http://localhost:5050 (Login with email/password from .env)
 
@@ -138,7 +137,7 @@ Suggested next steps you can implement:
 - **More advanced reply strategies**: add context-aware scoring, conversation topic detection, and rate-limiting heuristics.
 - **Tests**: add unit tests for `replyDecider`, `responseDelay`, and `prompt` to validate behavior.
 - **Improve Dashboard**: Add more visualizations and controls to the web dashboard
-- Web Dashboard: Use the provided `dashboard` and `api` services to manage the bot via a web interface.
+        
 - Admin commands: add Discord commands for admins to inspect and edit relationships in-chat (eg. `!rel set <userId> <json>`).
 - More advanced reply strategies: add context-aware scoring, conversation topic detection, and rate-limiting heuristics.
 - Tests: add unit tests for `replyDecider`, `responseDelay`, and `prompt` to validate behavior.

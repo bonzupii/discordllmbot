@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Documentation for DiscordLLMBot",
   "scripts": {
-    "dev": "vitepress dev src",
+    "dev": "vitepress dev src --host",
     "build": "vitepress build src",
     "preview": "vitepress preview src",
     "generate": "node scripts/generate-docs.js"

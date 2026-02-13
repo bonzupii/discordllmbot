@@ -35,6 +35,7 @@ function Settings() {
     severity: "success",
   });
   const [models, setModels] = useState([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
 
   useEffect(() => {
     fetchConfig();
@@ -53,12 +54,21 @@ function Settings() {
   };
 
   const fetchModels = async () => {
+    setIsFetchingModels(true);
     try {
       const res = await axios.get("/api/models");
       setModels(res.data);
     } catch (err) {
       console.error("Failed to fetch models", err);
-      setModels(["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]);
+      setMessage({
+        open: true,
+        text: "Could not fetch models from the API.",
+        severity: "warning",
+      });
+      // Don't set a fallback, let the user know there's an issue.
+      setModels([]);
+    } finally {
+      setIsFetchingModels(false);
     }
   };
 
@@ -183,7 +193,7 @@ function Settings() {
           Bot Persona
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Bot Name"
@@ -192,7 +202,7 @@ function Settings() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Username"
@@ -201,7 +211,7 @@ function Settings() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <TextField
               fullWidth
               label="Description"
@@ -212,7 +222,7 @@ function Settings() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Typography variant="subtitle2" gutterBottom>
               Speaking Style
             </Typography>
@@ -243,7 +253,7 @@ function Settings() {
               Add Style
             </Button>
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Typography variant="subtitle2" gutterBottom>
               Global Rules
             </Typography>
@@ -282,25 +292,35 @@ function Settings() {
           API & Memory
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormControl fullWidth disabled={isFetchingModels}>
               <InputLabel>Gemini Model</InputLabel>
               <Select
-                value={config.api.geminiModel}
+                value={
+                  models.includes(config.api.geminiModel)
+                    ? config.api.geminiModel
+                    : ""
+                }
                 label="Gemini Model"
                 onChange={(e) =>
                   updateNested("api.geminiModel", e.target.value)
                 }
               >
-                {models.map((m) => (
-                  <MenuItem key={m} value={m}>
-                    {m}
+                {isFetchingModels ? (
+                  <MenuItem value="">
+                    <CircularProgress size={20} />
                   </MenuItem>
-                ))}
+                ) : (
+                  models.map((m) => (
+                    <MenuItem key={m} value={m}>
+                      {m}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               type="number"
@@ -320,7 +340,7 @@ function Settings() {
           Reply Behavior
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <FormControl fullWidth>
               <InputLabel>Mode</InputLabel>
               <Select
@@ -337,7 +357,7 @@ function Settings() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Box sx={{ px: 1 }}>
               <Typography gutterBottom variant="caption">
                 Reply Probability: {config.replyBehavior.replyProbability}
@@ -354,7 +374,7 @@ function Settings() {
               />
             </Box>
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <FormControlLabel
               control={
                 <Switch

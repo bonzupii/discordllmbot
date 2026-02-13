@@ -6,23 +6,23 @@
  */
 export function sanitizeName(name) {
     if (!name || typeof name !== 'string') {
-        return 'unnamed'
+        return 'unnamed';
     }
 
     // Replace Windows-invalid characters: < > : " / \ | ? *
-    let sanitized = name
+    const sanitized = name
         .replace(/[<>:"/\\|?*]/g, '_')
         // Replace leading/trailing spaces and dots
         .replace(/^[\s.]+|[\s.]+$/g, '')
         // Collapse multiple underscores
         .replace(/_+/g, '_')
         // Limit length to 200 chars (Windows has 260 char path limit, be conservative)
-        .substring(0, 200)
+        .substring(0, 200);
 
     // If empty after sanitization, use a default
     if (!sanitized) {
-        return 'unnamed'
+        return 'unnamed';
     }
 
-    return sanitized
+    return sanitized;
 }

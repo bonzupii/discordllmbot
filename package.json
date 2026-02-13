@@ -1,9 +1,12 @@
 {
   "name": "discordllmbot-monorepo",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lnorton89/discordllmbot.git"
+  },
   "workspaces": [
     "bot",
-    "api",
     "dashboard",
     "shared",
     "docs"
@@ -15,8 +18,8 @@
     "pg": "^8.11.3"
   },
   "scripts": {
-    "dev": "docker-compose up -d bot api db dashboard",
-    "dev:build": "docker-compose up -d --build bot api db dashboard",
+    "dev": "docker-compose up -d bot db dashboard",
+    "dev:build": "docker-compose up -d --build bot db dashboard",
     "dev:down": "docker-compose down",
     "build": "docker-compose build",
     "docs": "npm --prefix ./docs run dev",

@@ -2,11 +2,11 @@ import fs from 'fs/promises';
 import path from 'path';
 import * as documentation from 'documentation';
 
-const DOCS_SRC_DIR = path.resolve(process.cwd(), 'src');
-const PROJECT_ROOT = path.resolve(process.cwd(), '..');
+const DOCS_SRC_DIR = path.resolve(process.cwd(), './docs/src');
+const PROJECT_ROOT = path.resolve(process.cwd(), './docs');
 
 async function generateReadmePages() {
-  const readmePath = path.resolve(PROJECT_ROOT, 'README.md');
+  const readmePath = path.resolve(PROJECT_ROOT, '../README.md');
   const readmeContent = await fs.readFile(readmePath, 'utf-8');
   const sections = readmeContent.split('---\n\n## ');
   const sidebar = [];
@@ -84,9 +84,9 @@ async function getFiles(dir) {
 }
 
 async function generateApiDocs() {
-  const srcDir = path.join(PROJECT_ROOT, 'src');
+  const srcDir = path.join('./bot/src');
   const apiDocsDir = path.join(DOCS_SRC_DIR, 'api');
-  
+
   // Ensure the API docs directory exists
   await fs.mkdir(apiDocsDir, { recursive: true });
 
@@ -99,14 +99,14 @@ async function generateApiDocs() {
     if (filePath.endsWith('.js')) {
       const relativePath = path.relative(srcDir, filePath);
       const fileName = relativePath.replace(/\\/g, '-').replace(/\//g, '-').replace('.js', '');
-      
+
       try {
         const comments = await documentation.build([filePath], { shallow: true });
         if (comments.length > 0) {
-            const output = await documentation.formats.md(comments);
-            await fs.writeFile(path.join(apiDocsDir, `${fileName}.md`), output);
-            apiSidebar.push({ text: relativePath, link: `/api/${fileName}` });
-            indexContent += `- [${relativePath}](/api/${fileName})\n`;
+          const output = await documentation.formats.md(comments);
+          await fs.writeFile(path.join(apiDocsDir, `${fileName}.md`), output);
+          apiSidebar.push({ text: relativePath, link: `/api/${fileName}` });
+          indexContent += `- [${relativePath}](/api/${fileName})\n`;
         }
       } catch (error) {
         console.warn(`Could not generate docs for ${relativePath}: ${error.message}`);
@@ -117,7 +117,7 @@ async function generateApiDocs() {
   // Write the API index file
   await fs.writeFile(path.join(apiDocsDir, 'index.md'), indexContent);
 
-  if(apiSidebar.length > 0) {
+  if (apiSidebar.length > 0) {
     apiNav.push({ text: 'API Reference', link: '/api/' });
   }
   return { apiSidebar: [{ text: 'API Reference', items: apiSidebar, link: '/api/' }], apiNav };

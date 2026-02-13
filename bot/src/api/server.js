@@ -3,20 +3,21 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { logger } from '../../../shared/utils/logger.js';
-import { loadConfig, reloadConfig, getApiConfig } from '../../../shared/config/configLoader.js';
-import { connect, setupSchema } from '../../../shared/storage/database.js';
-import { loadRelationships, saveRelationships, getLatestReplies, getAnalyticsData } from '../../../shared/storage/persistence.js';
-import { loadGuildRelationships } from '../../personality/relationships.js';
-import { generateReply } from '../../llm/gemini.js'; // Import directly from bot source
+import { loadConfig, reloadConfig } from '../../../shared/config/configLoader.js';
+import { loadGuildRelationships } from '../personality/relationships.js';
+import { generateReply } from '../llm/gemini.js';
+import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships } from '../../../shared/storage/persistence.js';
+import os from 'os';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// In Docker, process.cwd() is /usr/src/app/bot
 const BOT_CONFIG_PATH = path.join(process.cwd(), '..', 'shared', 'config', 'bot.json');
 const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
+
+// Variables to track CPU usage over time
+let prevCpuTimes = null;
+let prevTimestamp = null;
 
 export function startApi(client) {
     const app = express();
@@ -35,7 +36,57 @@ export function startApi(client) {
 
     // Basic health check
     app.get('/api/health', (req, res) => {
-        res.json({ status: 'ok', uptime: process.uptime(), botStatus: client.isReady() ? 'ready' : 'not_ready' });
+        
+        const totalMemory = os.totalmem();
+        const freeMemory = os.freemem();
+        const usedMemory = totalMemory - freeMemory;
+        const memoryUsagePercent = (usedMemory / totalMemory) * 100;
+        
+        // Calculate CPU usage by comparing with previous measurement
+        const currentTimestamp = Date.now();
+        const currentCpus = os.cpus();
+        
+        let currentTotalIdle = 0;
+        let currentTotalTick = 0;
+        
+        for (let i = 0; i < currentCpus.length; i++) {
+            const cpu = currentCpus[i];
+            for (const type in cpu.times) {
+                currentTotalTick += cpu.times[type];
+            }
+            currentTotalIdle += cpu.times.idle;
+        }
+        
+        let cpuUsagePercent = 0;
+        
+        if (prevCpuTimes !== null && prevTimestamp !== null) {
+            const elapsedMs = currentTimestamp - prevTimestamp;
+            const idleDiff = currentTotalIdle - prevCpuTimes.idle;
+            const totalDiff = currentTotalTick - prevCpuTimes.total;
+            
+            if (elapsedMs > 0 && totalDiff > 0) {
+                const idlePercentage = (idleDiff / totalDiff) * 100;
+                cpuUsagePercent = 100 - idlePercentage;
+                
+                // Ensure the value is within reasonable bounds
+                cpuUsagePercent = Math.max(0, Math.min(100, cpuUsagePercent));
+            }
+        }
+        
+        // Store current values for next comparison
+        prevCpuTimes = {
+            idle: currentTotalIdle,
+            total: currentTotalTick
+        };
+        prevTimestamp = currentTimestamp;
+        
+        res.json({ 
+            status: 'ok', 
+            uptime: process.uptime(),
+            cpu_usage: parseFloat(cpuUsagePercent.toFixed(2)),
+            memory_usage: parseFloat(memoryUsagePercent.toFixed(2)),
+            botStatus: client.isReady() ? 'ready' : 'not_ready' 
+        });
     });
 
     // Config endpoint
@@ -215,7 +266,36 @@ export function startApi(client) {
             res.json(models);
         } catch (err) {
             logger.error('Failed to fetch Gemini models', err);
-            res.json(['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']);
+            // Return a 500 error instead of a fallback
+            res.status(500).json({ error: 'Failed to fetch models from Google' }); 
+        }
+    });
+
+    // Endpoint to get channels for a specific guild
+    app.get('/api/guilds/:guildId/channels', async (req, res) => {
+        try {
+            const { guildId } = req.params;
+            const guild = client.guilds.cache.get(guildId);
+
+            if (!guild) {
+                return res.status(404).json({ error: 'Guild not found' });
+            }
+
+            const channels = await guild.channels.fetch();
+            const channelList = channels
+                .filter(channel => channel.type === 0) // Filter for text channels only
+                .map(channel => ({
+                    id: channel.id,
+                    name: channel.name,
+                    type: channel.type,
+                    parentId: channel.parentId,
+                    position: channel.position
+                }));
+
+            res.json(channelList);
+        } catch (err) {
+            logger.error('Failed to fetch channels', err);
+            res.status(500).json({ error: 'Failed to fetch channels' });
         }
     });
 
@@ -245,100 +325,12 @@ export function startApi(client) {
     // Endpoint for playground chat
     app.post('/api/chat', async (req, res) => {
         try {
-            const { message, username = 'User', guildName = 'Playground Server' } = req.body;
-
-            if (!message) {
-                return res.status(400).json({ error: 'Message is required' });
-            }
-
-            const apiCfg = getApiConfig();
-            const { geminiModel } = apiCfg;
-
-            const prompt = `
-You are a human Discord user named DiscordLLMBot.
-
-Who you are:
-You are an AI assistant integrated into Discord. You are helpful, creative, and friendly.
-
-Speaking style:
-- Use natural, conversational language
-- Be engaging and responsive
-- Keep your replies concise but informative
-
-Rules you always follow:
-- Stay in character as described
-- Be helpful and respectful
-- Avoid harmful or inappropriate content
-
-Server: ${guildName}
-
-Your relationship with ${username}:
-Attitude: friendly
-Behavior rules:
-- Be helpful and engaging
-- Respond naturally to conversation
-Boundaries:
-- Keep content appropriate for all ages
-
-Recent conversation (context only):
-(empty)
-
-Message you are replying to:
-${username}: ${message}
-
-Respond naturally. Stay in character.
-`.trim();
-
-            // Use the generateReply function from bot logic if possible, or direct call
-            // But generateReply takes a prompt string.
-            // Let's use direct call to match existing API logic but using shared config
-            // Actually, we can reuse generateReply from ../llm/gemini.js if it accepts raw prompt?
-            // generateReply(prompt) returns { text, usageMetadata }
-            // Let's try to use it to be consistent!
-            
-            const { text: reply, usageMetadata } = await generateReply(prompt);
-
-            if (!reply) {
-                return res.status(500).json({ error: 'No response generated' });
-            }
-
-            res.json({
-                reply: reply,
-                usage: usageMetadata,
-                timestamp: new Date().toISOString()
-            });
-
+            const { content } = req.body;
+            const reply = await generateReply(content);
+            res.json(reply);
         } catch (err) {
-            logger.error('Failed to generate chat response', err);
-            res.status(500).json({ error: 'Failed to generate response' });
-        }
-    });
-
-    // Endpoint to get channels for a specific guild
-    app.get('/api/guilds/:guildId/channels', async (req, res) => {
-        try {
-            const { guildId } = req.params;
-            const guild = client.guilds.cache.get(guildId);
-
-            if (!guild) {
-                return res.status(404).json({ error: 'Guild not found' });
-            }
-
-            const channels = await guild.channels.fetch();
-            const channelList = channels
-                .filter(channel => channel.type === 0) // Filter for text channels only
-                .map(channel => ({
-                    id: channel.id,
-                    name: channel.name,
-                    type: channel.type,
-                    parentId: channel.parentId,
-                    position: channel.position
-                }));
-
-            res.json(channelList);
-        } catch (err) {
-            logger.error('Failed to fetch channels', err);
-            res.status(500).json({ error: 'Failed to fetch channels' });
+            logger.error('Failed to generate reply', err);
+            res.status(500).json({ error: 'Failed to generate reply' });
         }
     });
 

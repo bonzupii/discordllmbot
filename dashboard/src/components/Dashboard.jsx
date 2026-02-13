@@ -33,6 +33,8 @@ import {
   Token as TokenIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
+  TrendingUp as TrendingUpIcon,
+  EmojiEvents as EmojiEventsIcon,
 } from "@mui/icons-material";
 
 const StatusItem = ({ icon, label, value, color }) => (
@@ -40,9 +42,11 @@ const StatusItem = ({ icon, label, value, color }) => (
     sx={{
       display: "flex",
       alignItems: "center",
-      gap: 2,
-      px: 2,
+      gap: { xs: 0.5, sm: 1 }, // Smaller gap on small screens
+      p: 1, // Reduced padding on smaller screens
+      px: 1, // Reduced horizontal padding on small screens
       flex: 1,
+      minWidth: 0, // Allows the box to shrink below its content's natural width
     }}
   >
     <Avatar
@@ -50,23 +54,43 @@ const StatusItem = ({ icon, label, value, color }) => (
       sx={{
         bgcolor: (theme) => alpha(theme.palette[color].main, 0.1),
         color: (theme) => theme.palette[color].main,
-        width: 48,
-        height: 48,
+        width: { xs: 24, sm: 28, md: 32 }, // Even smaller avatar on small and medium screens
+        height: { xs: 24, sm: 28, md: 32 },
         flexShrink: 0,
       }}
     >
       {icon}
     </Avatar>
-    <Box>
+    <Box sx={{ minWidth: 0, flex: 1 }}>
       <Typography
         variant="body2"
         color="text.secondary"
         fontWeight="medium"
         noWrap
+        sx={{
+          fontSize: {
+            xs: "0.65rem", // Smaller font size for extra small screens
+            sm: "0.75rem", // Default size for small and above
+          },
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
       >
         {label}
       </Typography>
-      <Typography variant="h6" fontWeight="bold" noWrap>
+      <Typography
+        variant="h6"
+        fontWeight="bold"
+        noWrap
+        sx={{
+          fontSize: {
+            xs: "0.8rem", // Smaller font size for extra small screens
+            sm: "1rem", // Default size for small and above
+          },
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         {value}
       </Typography>
     </Box>
@@ -116,14 +140,17 @@ function Dashboard({ health }) {
 
       <Grid container spacing={2}>
         {/* Left Column: Status Strip & Latest Activity */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12, md: 9 }}>
           <Stack spacing={2}>
             {/* Status Strip */}
             <Paper
               variant="outlined"
               sx={{
-                p: 2,
+                p: 1, // Reduced padding on smaller screens
+                px: 2, // Keep horizontal padding consistent
                 display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                gap: { xs: 1, sm: 0 },
               }}
             >
               <StatusItem
@@ -132,21 +159,33 @@ function Dashboard({ health }) {
                 value={stats?.stats24h?.total_replies || 0}
                 color="primary"
               />
-              <Divider orientation="vertical" flexItem sx={{ mx: 2 }} />
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 2, display: { xs: "none", sm: "block" } }}
+              />
               <StatusItem
                 icon={<DnsIcon />}
                 label="Active Servers"
                 value={stats?.stats24h?.active_servers || 0}
                 color="secondary"
               />
-              <Divider orientation="vertical" flexItem sx={{ mx: 2 }} />
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 2, display: { xs: "none", sm: "block" } }}
+              />
               <StatusItem
                 icon={<PeopleIcon />}
                 label="Active Users"
                 value={stats?.stats24h?.active_users || 0}
                 color="success"
               />
-              <Divider orientation="vertical" flexItem sx={{ mx: 2 }} />
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 2, display: { xs: "none", sm: "block" } }}
+              />
               <StatusItem
                 icon={<TokenIcon />}
                 label="Tokens Used"
@@ -170,7 +209,7 @@ function Dashboard({ health }) {
                   Latest Activity
                 </Typography>
               </Box>
-              <Box sx={{ height: "calc(100vh - 300px)", overflowY: "auto" }}>
+              <Box sx={{}}>
                 <List dense sx={{ p: 0 }}>
                   {loading && !replies.length
                     ? [...Array(10)].map((_, i) => (
@@ -267,13 +306,22 @@ function Dashboard({ health }) {
         </Grid>
 
         {/* Right Column: Metrics & Health */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12, md: 3 }}>
           <Stack spacing={2}>
             {/* Activity Table */}
             <Paper variant="outlined">
               <Box
-                sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider" }}
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderBottom: 1,
+                  borderColor: "divider",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
               >
+                <TrendingUpIcon fontSize="small" color="action" />
                 <Typography variant="subtitle2" fontWeight="bold">
                   Activity (7 Days)
                 </Typography>
@@ -332,8 +380,17 @@ function Dashboard({ health }) {
             {/* Top Servers */}
             <Paper variant="outlined">
               <Box
-                sx={{ px: 2, py: 1, borderBottom: 1, borderColor: "divider" }}
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderBottom: 1,
+                  borderColor: "divider",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
               >
+                <EmojiEventsIcon fontSize="small" color="action" />
                 <Typography variant="subtitle2" fontWeight="bold">
                   Top Servers
                 </Typography>
@@ -378,20 +435,28 @@ function Dashboard({ health }) {
             </Paper>
 
             {/* System Health */}
-            <Accordion variant="outlined" defaultExpanded={false}>
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon fontSize="small" />}
+            <Paper variant="outlined">
+              <Box
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderBottom: 1,
+                  borderColor: "divider",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
               >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  {health?.status === "ok" ? (
-                    <CheckCircleIcon color="success" fontSize="small" />
-                  ) : (
-                    <ErrorIcon color="error" fontSize="small" />
-                  )}
-                  <Typography variant="subtitle2">System Health</Typography>
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
+                {health?.status === "ok" ? (
+                  <CheckCircleIcon fontSize="small" color="success" />
+                ) : (
+                  <ErrorIcon fontSize="small" color="error" />
+                )}
+                <Typography variant="subtitle2" fontWeight="bold">
+                  System Health
+                </Typography>
+              </Box>
+              <Box sx={{ p: 2 }}>
                 <Stack spacing={1}>
                   <Box
                     sx={{ display: "flex", justifyContent: "space-between" }}
@@ -415,7 +480,7 @@ function Dashboard({ health }) {
                         CPU
                       </Typography>
                       <Typography variant="caption">
-                        {Math.round(health?.cpu_usage || 0)}%
+                        {health?.cpu_usage !== undefined ? `${Math.round(health.cpu_usage)}%` : 'N/A'}
                       </Typography>
                     </Box>
                     <LinearProgress
@@ -436,7 +501,7 @@ function Dashboard({ health }) {
                         Memory
                       </Typography>
                       <Typography variant="caption">
-                        {Math.round(health?.memory_usage || 0)}%
+                        {health?.memory_usage !== undefined ? `${Math.round(health.memory_usage)}%` : 'N/A'}
                       </Typography>
                     </Box>
                     <LinearProgress
@@ -447,8 +512,8 @@ function Dashboard({ health }) {
                     />
                   </Box>
                 </Stack>
-              </AccordionDetails>
-            </Accordion>
+              </Box>
+            </Paper>
           </Stack>
         </Grid>
       </Grid>

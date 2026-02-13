@@ -111,8 +111,8 @@ export async function setupSchema() {
             );`
         ];
 
+        logger.info('setupSchema: Verifying and updating schema...');
         for (const query of queries) {
-            logger.info(`setupSchema: Running query: ${query.substring(0, 50)}...`);
             await pool.query(query);
         }
 
@@ -124,29 +124,34 @@ export async function setupSchema() {
         `);
         const columnNames = columns.rows.map(r => r.column_name);
 
+        let schemaUpdated = false;
         if (!columnNames.includes('displayname')) {
             await pool.query('ALTER TABLE bot_replies ADD COLUMN displayName TEXT;');
-            logger.info('Added displayName column to bot_replies table.');
+            schemaUpdated = true;
         }
 
         if (!columnNames.includes('avatarurl')) {
             await pool.query('ALTER TABLE bot_replies ADD COLUMN avatarUrl TEXT;');
-            logger.info('Added avatarUrl column to bot_replies table.');
+            schemaUpdated = true;
         }
 
         if (!columnNames.includes('processingtimems')) {
             await pool.query('ALTER TABLE bot_replies ADD COLUMN processingTimeMs INTEGER;');
-            logger.info('Added processingTimeMs column to bot_replies table.');
+            schemaUpdated = true;
         }
 
         if (!columnNames.includes('prompttokens')) {
             await pool.query('ALTER TABLE bot_replies ADD COLUMN promptTokens INTEGER;');
-            logger.info('Added promptTokens column to bot_replies table.');
+            schemaUpdated = true;
         }
 
         if (!columnNames.includes('responsetokens')) {
             await pool.query('ALTER TABLE bot_replies ADD COLUMN responseTokens INTEGER;');
-            logger.info('Added responseTokens column to bot_replies table.');
+            schemaUpdated = true;
+        }
+
+        if (schemaUpdated) {
+            logger.info('Updated bot_replies table for backward compatibility.');
         }
 
         logger.info('✓ Database schema verified/created.');

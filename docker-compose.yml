@@ -32,11 +32,11 @@ services:
         condition: service_healthy
     env_file:
       - ./.env
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 5
 
   pgadmin:
     container_name: discordllmbot-pgadmin
@@ -76,7 +76,7 @@ services:
     ports:
       - "${DASHBOARD_PORT}:5173"
     depends_on:
-      bot:
+      db:
         condition: service_healthy
     env_file:
       - ./.env

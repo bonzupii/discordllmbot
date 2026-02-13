@@ -3,17 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/lnorton89/discordllmbot.git"
-  },
   "scripts": {
     "build": "docker-compose build",
-    "dev": "docker-compose up -d bot api db pgadmin dashboard",
     "dev:container": "nodemon src/index.js",
-    "dev:down": "docker-compose down",
-    "docs": "npm --prefix ./docs run dev",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "lint": "eslint src/"
   },
   "engines": {
     "node": ">=20"
@@ -31,6 +25,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.0",
     "nodemon": "^3.1.11"
   }
 }

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 import { EventEmitter } from 'events'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const LOG_FILE = path.join(__dirname, '../../discordllmbot.log')
+const LOG_FILE = path.join(__dirname, '../../logs/discordllmbot.log')
 
 const logEmitter = new EventEmitter()
 
@@ -158,6 +158,11 @@ export const logger = {
 export function initializeLogger(maxLines) {
     if (typeof maxLines === 'number' && maxLines > 0) {
         MAX_LOG_LINES = Math.floor(maxLines)
+    }
+
+    const logDir = path.dirname(LOG_FILE)
+    if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true })
     }
 
     try {

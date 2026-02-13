@@ -1,8 +1,8 @@
-import { loadRelationships, saveRelationships, saveGuild } from '../../../shared/storage/persistence.js'
-import { getBotConfig } from '../../../shared/config/configLoader.js'
+import { loadRelationships, saveRelationships, saveGuild } from '../../../shared/storage/persistence.js';
+import { getBotConfig } from '../../../shared/config/configLoader.js';
 
 // In-memory cache of relationships per guild: { guildId: { userId: { ... } } }
-const guildRelationships = {}
+const guildRelationships = {};
 
 /**
  * Retrieves the relationship configuration for a specific user in a guild.
@@ -12,7 +12,7 @@ const guildRelationships = {}
  * @returns {Object} The relationship configuration object.
  */
 export function getRelationship(guildId, userId) {
-    return guildRelationships[guildId]?.[userId] ?? getDefaultRelationship()
+    return guildRelationships[guildId]?.[userId] ?? getDefaultRelationship();
 }
 
 /**
@@ -50,14 +50,14 @@ export async function saveGuildRelationships(guildId, guildName) {
 }
 
 function getDefaultRelationship() {
-    const botConfig = getBotConfig()
+    const botConfig = getBotConfig();
     return botConfig.defaultRelationship ?? {
         attitude: 'neutral',
         behavior: [
             'treat them like a normal server regular'
         ],
         boundaries: []
-    }
+    };
 }
 
 /**
@@ -82,7 +82,7 @@ export async function initializeGuildRelationships(guild) {
     let members;
     try {
         members = await guild.members.fetch();
-    } catch (e) {
+    } catch (_) {
         members = guild.members.cache;
     }
 
@@ -138,5 +138,5 @@ export async function initializeGuildRelationships(guild) {
  * Expose function to get all relationships for inspection
  */
 export function getAllRelationships() {
-    return guildRelationships
+    return guildRelationships;
 }

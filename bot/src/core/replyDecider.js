@@ -5,7 +5,7 @@ import { logger } from '../../../shared/utils/logger.js';
  * Decide whether the bot should reply to a message based on config and relationship.
  * Returns an object with the decision and a log of the checks performed.
  */
-import { getBotConfig, getReplyBehavior, loadConfig } from '../../../shared/config/configLoader.js';
+import { loadConfig } from '../../../shared/config/configLoader.js';
 
 export function shouldReply({ message, isMentioned, replyBehavior = {}, relationship = {}, context = [], botName = '' }) {
     const config = loadConfig();
@@ -140,7 +140,7 @@ export function shouldReply({ message, isMentioned, replyBehavior = {}, relation
         if (roll > prob) {
             return finalDecision(false, `Random roll ${roll.toFixed(2)} exceeded reply probability ${prob}.`);
         }
-        checks.push({ check: 'Probability Passed', result: true, reason: `Roll was under threshold.` });
+        checks.push({ check: 'Probability Passed', result: true, reason: 'Roll was under threshold.' });
     } else {
         checks.push({ check: 'Probability', result: true, reason: 'Probability is 1.0, no roll needed.' });
     }

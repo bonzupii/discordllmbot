@@ -1,4 +1,4 @@
-import { botPersona } from '../personality/botPersona.js'
+import { botPersona } from '../personality/botPersona.js';
 
 /**
  * Builds the prompt string to send to the Gemini API.
@@ -13,24 +13,24 @@ import { botPersona } from '../personality/botPersona.js'
  * @returns {string} The constructed prompt string.
  */
 export function buildPrompt({
-  relationship,
-  context,
-  guildRelationships = {},
-  guildName = '',
-  userMessage,
-  username
+    relationship,
+    context,
+    guildRelationships = {},
+    guildName = '',
+    userMessage,
+    username
 }) {
-  // Build a compact view of relationships for users present in the recent context
-  const uniqueUserIds = Array.from(new Set(context.map(m => m.authorId).filter(Boolean)))
-  const relationshipLines = uniqueUserIds.map(id => {
-    const rel = guildRelationships[id] ?? { attitude: 'unknown', behavior: [], boundaries: [], username: id }
-    const nameFromContext = (context.find(m => m.authorId === id)?.author)
-    const display = rel.displayName ?? rel.username ?? nameFromContext ?? id
-    const usernameNote = rel.username && rel.username !== display ? ` (${rel.username})` : ''
-    return `${display}${usernameNote}: Attitude=${rel.attitude}; Behavior=${rel.behavior.join('; ') || 'none'}`
-  })
+    // Build a compact view of relationships for users present in the recent context
+    const uniqueUserIds = Array.from(new Set(context.map(m => m.authorId).filter(Boolean)));
+    const relationshipLines = uniqueUserIds.map(id => {
+        const rel = guildRelationships[id] ?? { attitude: 'unknown', behavior: [], boundaries: [], username: id };
+        const nameFromContext = (context.find(m => m.authorId === id)?.author);
+        const display = rel.displayName ?? rel.username ?? nameFromContext ?? id;
+        const usernameNote = rel.username && rel.username !== display ? ` (${rel.username})` : '';
+        return `${display}${usernameNote}: Attitude=${rel.attitude}; Behavior=${rel.behavior.join('; ') || 'none'}`;
+    });
 
-  return `
+    return `
 You are a human Discord user named ${botPersona.name}.
 
 Who you are:
@@ -61,5 +61,5 @@ Message you are replying to:
 ${username}: ${userMessage}
 
 Respond naturally. Stay in character.
-`.trim()
+`.trim();
 }
