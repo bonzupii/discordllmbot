@@ -14,6 +14,7 @@ import { logger } from '../../../shared/utils/logger.js';
  */
 export async function generateReply(prompt) {
     const apiConfig = await getApiConfig();
+    console.log(`DEBUG: generateReply using apiConfig:`, apiConfig);
     const provider = apiConfig.provider || 'gemini'; // Default to gemini for backward compatibility
 
     switch (provider.toLowerCase()) {
