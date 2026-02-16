@@ -36,9 +36,9 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
   - Strategy pattern (`bot/src/strategies/replyStrategies.js`) provides `MentionOnly`, `Passive`, `Active`, and `Disabled` strategies.
 
 - **Web Dashboard**: A React-based dashboard (running on port 5173 by default) allows you to view logs, manage relationships, and configure the bot. The dashboard features:
-  - **Settings Page**: Comprehensive configuration with tabbed interface for Bot Persona, API, Memory, Reply Behavior, and Logger settings. Includes auto-save functionality with debouncing to prevent API spam, and accordion sections for speaking style and global rules.
-  - **Servers Page**: View and manage servers the bot is connected to, with per-user relationship management and channel monitoring controls
-  - **Logs Page**: Real-time log viewing with filtering options, console-like appearance, and collapsible detail sections
+  - **Settings Page**: Comprehensive configuration with tabbed interface for Bot Persona, API, Memory, and Logger settings. Includes auto-save functionality with debouncing (1-second delay) to prevent API spam, and accordion sections for speaking style and global rules.
+  - **Servers Page**: View and manage servers the bot is connected to, with per-server configuration tabs (Server Config, User Relationships, Channel Monitoring), relationship management, and channel monitoring controls
+  - **Logs Page**: Real-time log viewing via Socket.io with filtering options (ERROR, WARN, API, INFO, MESSAGE), console-like appearance, auto-scroll toggle, and collapsible JSON detail sections
   - **Playground Page**: Test bot responses in a chat interface without affecting Discord servers
   - **Responsive Design**: Modern dark-themed UI with consistent styling, intuitive navigation, and Material-UI components
 
@@ -124,7 +124,7 @@ docker-compose up --build
 
 Access the services:
 - **Dashboard**: http://localhost:5173
-- **Internal API (bot)**: http://localhost:3001
+- **Bot API**: http://localhost:3000 (Express + Socket.io for dashboard)
 - **Documentation**: http://localhost:5174
 - **pgAdmin**: http://localhost:5050 (Login with email/password from .env)
 
@@ -181,7 +181,9 @@ Note: When using Docker on Windows/Mac, `host.docker.internal` is the special DN
 
 ## Key Implementation Notes
 
-- **Relationship persistence**: `bot/src/personality/relationships.js` maintains in-memory caches per guild (`guildRelationships[guildId]`) and saves to the PostgreSQL database using the persistence layer (`shared/storage/persistence.js`). Relationships include per-user `username`, `displayName`, `attitude`, `behavior`, and `boundaries`.
+- **Configuration persistence**: All configuration (global and per-server) is stored in the PostgreSQL database (`global_config` and `server_configs` tables). The dashboard provides real-time editing with auto-save.
+
+- **Relationship persistence**: `bot/src/personality/relationships.js` maintains in-memory caches per guild (`guildRelationships[guildId]`) and saves to the PostgreSQL database using the persistence layer (`shared/storage/persistence.js`). Relationships include per-user `username`, `displayName`, `attitude`, `behavior`, `boundaries`, and `ignored` flag.
 
 - **Conversation context**: `bot/src/memory/context.js` maintains per-channel message history in memory (`guildContexts[guildId][channelId]`) and persists to the database.
 
@@ -218,10 +220,12 @@ Suggested next steps you can implement:
 
 ## Files to inspect when debugging
 
-- [bot/src/index.js](bot/src/index.js)
-- [bot/src/events/](bot/src/events/) — event handlers
-- [bot/src/core/](bot/src/core/) — business logic
-- [bot/src/llm/](bot/src/llm/) — LLM provider implementations
-- [shared/utils/logger.js](shared/utils/logger.js)
-- [bot/src/personality/relationships.js](bot/src/personality/relationships.js)
-- [shared/config/bot.json](shared/config/bot.json)
+- [bot/src/index.js](bot/src/index.js) — Main entry point
+- [bot/src/events/](bot/src/events/) — Discord event handlers
+- [bot/src/api/server.js](bot/src/api/server.js) — Express + Socket.io API for dashboard
+- [bot/src/core/](bot/src/core/) — Business logic (prompt, reply decision, delay)
+- [bot/src/llm/](bot/src/llm/) — LLM provider implementations (Gemini, Ollama)
+- [shared/utils/logger.js](shared/utils/logger.js) — Structured logging
+- [bot/src/personality/relationships.js](bot/src/personality/relationships.js) — Per-user relationship management
+- [shared/config/configLoader.js](shared/config/configLoader.js) — Configuration loading (global + per-server)
+- [shared/config/bot.json.defaults](shared/config/bot.json.defaults) — Default configuration values

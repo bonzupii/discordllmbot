@@ -1,23 +1,7 @@
-import { connect, setupSchema } from './database.js';
-
-let db;
-let schemaSetupComplete = false;
-let schemaSetupPromise = null;
+import { getPool } from './database.js';
 
 async function getDb() {
-    if (!db) {
-        db = await connect();
-    }
-
-    if (!schemaSetupComplete) {
-        if (!schemaSetupPromise) {
-            schemaSetupPromise = setupSchema().then(() => {
-                schemaSetupComplete = true;
-            });
-        }
-        await schemaSetupPromise;
-    }
-    return db;
+    return getPool();
 }
 
 /**

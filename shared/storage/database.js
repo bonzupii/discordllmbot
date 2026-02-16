@@ -4,12 +4,15 @@ import { acquireLock, releaseLock, waitForLock } from './lock.js';
 
 const { Pool } = pg;
 let pool;
+let isConnected = false;
+let isSchemaReady = false;
+let initPromise = null;
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Establishes a connection to the PostgreSQL database.
- * Retries connection up to 5 times with exponential backoff.
+ * Retries connection up to 3 times with 2-second delays.
  *
  * @returns {Promise<Pool>} The PostgreSQL connection pool.
  * @throws {Error} If connection fails after all retries.
@@ -17,23 +20,67 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 export async function connect() {
     if (pool) return pool;
 
-    let retries = 5;
+    let retries = 3;
     while (retries) {
         try {
             pool = new Pool({
                 connectionString: process.env.DATABASE_URL,
+                connectionTimeoutMillis: 5000,
+                idleTimeoutMillis: 30000,
             });
             await pool.query('SELECT 1'); // Test the connection
             logger.info('✓ Connected to PostgreSQL database.');
+            isConnected = true;
             return pool;
         } catch (err) {
-            logger.error(`Failed to connect to PostgreSQL database. Retrying in 5 seconds... (${retries} retries left)`);
+            logger.error(`Failed to connect to PostgreSQL database. Retrying in 2 seconds... (${retries} retries left)`);
             retries--;
-            await sleep(5000);
+            await sleep(2000);
         }
     }
 
     throw new Error('Cannot start without a valid database connection.');
+}
+
+/**
+ * Initialize database connection and schema at bot startup.
+ * This should be called once during bot initialization.
+ *
+ * @returns {Promise<void>}
+ */
+export async function initializeDatabase() {
+    if (initPromise) return initPromise;
+    
+    initPromise = (async () => {
+        await connect();
+        await setupSchema();
+        isSchemaReady = true;
+        logger.info('✓ Database initialization complete.');
+    })();
+    
+    return initPromise;
+}
+
+/**
+ * Get the database pool.
+ * Returns immediately if already initialized, otherwise waits for initialization.
+ *
+ * @returns {Promise<Pool>} The PostgreSQL connection pool.
+ */
+export async function getPool() {
+    if (isConnected && isSchemaReady) {
+        return pool;
+    }
+    
+    // If initialization is in progress, wait for it
+    if (initPromise) {
+        await initPromise;
+        return pool;
+    }
+    
+    // Fallback: initialize on demand (for backward compatibility)
+    await initializeDatabase();
+    return pool;
 }
 
 /**

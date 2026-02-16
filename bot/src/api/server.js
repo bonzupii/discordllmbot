@@ -18,10 +18,16 @@ const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log'
 let prevCpuTimes = null;
 let prevTimestamp = null;
 
+// Track bot restart state
+let isRestarting = false;
+
+// Socket.io instance (exported for use in other modules)
+let io;
+
 export function startApi(client) {
     const app = express();
     const httpServer = createServer(app);
-    const io = new Server(httpServer, {
+    io = new Server(httpServer, {
         cors: {
             origin: '*', // Allow all origins for now (dev)
             methods: ['GET', 'POST']
@@ -175,6 +181,10 @@ export function startApi(client) {
             await saveGlobalConfig(newConfig);
             logger.info('Global config updated via API and saved to database');
 
+            // Notify dashboard that bot is restarting
+            isRestarting = true;
+            io.emit('bot:status', { isRestarting });
+
             // Reload config in memory
             try {
                 await reloadConfig();
@@ -182,6 +192,10 @@ export function startApi(client) {
                 console.log('Updated Global Config:', JSON.stringify(newConfig, null, 2));
             } catch (reloadErr) {
                 logger.error('Failed to reload global config in memory', reloadErr);
+            } finally {
+                // Notify dashboard that restart is complete
+                isRestarting = false;
+                io.emit('bot:status', { isRestarting });
             }
 
             res.json({ message: 'Global config updated successfully' });
@@ -246,6 +260,9 @@ export function startApi(client) {
     // Socket.io connection
     io.on('connection', (socket) => {
         logger.info('Dashboard client connected');
+
+        // Send current restart state on connection
+        socket.emit('bot:status', { isRestarting });
 
         // Send last 50 lines of logs on connection
         try {
@@ -424,3 +441,6 @@ export function startApi(client) {
 
     return { app, io };
 }
+
+// Export io for external use
+export { io };

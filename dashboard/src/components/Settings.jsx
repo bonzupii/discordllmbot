@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { io } from "socket.io-client";
 import {
   Box,
   Paper,
@@ -38,6 +39,7 @@ function Settings() {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
   const [message, setMessage] = useState({
     open: false,
     text: "",
@@ -51,6 +53,27 @@ function Settings() {
 
   // Debounce timer reference
   const debounceTimer = useRef(null);
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize socket connection
+    socketRef.current = io();
+
+    // Listen for bot restart status
+    socketRef.current.on("bot:status", (status) => {
+      setIsRestarting(status.isRestarting);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetchConfig().then((initialConfig) => {
@@ -58,13 +81,7 @@ function Settings() {
         fetchModels(initialConfig.api?.provider || "gemini");
       }
     });
-
-    // Cleanup on unmount
-    return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchConfig = async () => {
@@ -134,6 +151,11 @@ function Settings() {
 
   // Debounced save function to prevent spamming the server
   const debouncedSave = (newConfig) => {
+    // Don't save if bot is restarting
+    if (isRestarting) {
+      return;
+    }
+
     // Clear the existing timer if there is one
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -247,11 +269,11 @@ function Settings() {
           mb: 3,
         }}
       >
-        {saving && (
+        {(saving || isRestarting) && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <CircularProgress size={20} />
             <Typography variant="body2" color="textSecondary">
-              Saving...
+              {isRestarting ? "Bot restarting..." : "Saving..."}
             </Typography>
           </Box>
         )}
@@ -328,6 +350,7 @@ function Settings() {
                     value={config.bot.name}
                     onChange={(e) => updateNested("bot.name", e.target.value)}
                     variant="outlined"
+                    disabled={isRestarting}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -340,6 +363,7 @@ function Settings() {
                       updateNested("bot.username", e.target.value)
                     }
                     variant="outlined"
+                    disabled={isRestarting}
                   />
                 </Grid>
                 <Grid size={{ xs: 12 }}>
@@ -354,6 +378,7 @@ function Settings() {
                       updateNested("bot.description", e.target.value)
                     }
                     variant="outlined"
+                    disabled={isRestarting}
                   />
                 </Grid>
                 <Grid size={{ xs: 12 }}>
@@ -414,12 +439,14 @@ function Settings() {
                                 )
                               }
                               variant="outlined"
+                              disabled={isRestarting}
                             />
                             <IconButton
                               color="error"
                               onClick={() =>
                                 removeArrayItem("bot.globalRules", index)
                               }
+                              disabled={isRestarting}
                             >
                               <DeleteIcon />
                             </IconButton>
@@ -429,6 +456,7 @@ function Settings() {
                           startIcon={<AddIcon />}
                           size="small"
                           onClick={() => addArrayItem("bot.globalRules")}
+                          disabled={isRestarting}
                         >
                           Add Rule
                         </Button>
@@ -482,6 +510,7 @@ function Settings() {
                           await fetchModels(newProvider); // Fetch models for the new provider
                         }
                       }}
+                      disabled={isRestarting}
                     >
                       <MenuItem value="gemini">Google Gemini</MenuItem>
                       <MenuItem value="ollama">Ollama (Local)</MenuItem>
@@ -490,7 +519,7 @@ function Settings() {
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   {config.api.provider === "ollama" ? (
-                    <FormControl fullWidth disabled={isFetchingModels}>
+                    <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
                       <InputLabel>Ollama Model</InputLabel>
                       <Select
                         value={
@@ -521,7 +550,7 @@ function Settings() {
                       </Select>
                     </FormControl>
                   ) : (
-                    <FormControl fullWidth disabled={isFetchingModels}>
+                    <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
                       <InputLabel>Gemini Model</InputLabel>
                       <Select
                         value={
@@ -566,6 +595,7 @@ function Settings() {
                       )
                     }
                     variant="outlined"
+                    disabled={isRestarting}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -581,6 +611,7 @@ function Settings() {
                       )
                     }
                     variant="outlined"
+                    disabled={isRestarting}
                   />
                 </Grid>
               </Grid>
@@ -616,6 +647,7 @@ function Settings() {
                       )
                     }
                     variant="outlined"
+                    disabled={isRestarting}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
@@ -631,6 +663,7 @@ function Settings() {
                       )
                     }
                     variant="outlined"
+                    disabled={isRestarting}
                   />
                 </Grid>
               </Grid>
@@ -666,6 +699,7 @@ function Settings() {
                       )
                     }
                     variant="outlined"
+                    disabled={isRestarting}
                   />
                 </Grid>
                 <Grid size={{ xs: 12 }}>
@@ -680,6 +714,7 @@ function Settings() {
                           )
                         }
                         color="primary"
+                        disabled={isRestarting}
                       />
                     }
                     label="Log Reply Decisions"
@@ -694,6 +729,7 @@ function Settings() {
                           updateNested("logger.logSql", e.target.checked)
                         }
                         color="primary"
+                        disabled={isRestarting}
                       />
                     }
                     label="Log SQL Queries"

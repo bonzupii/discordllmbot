@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { io } from "socket.io-client";
 import {
   Box,
   Paper,
@@ -34,15 +35,8 @@ import {
   Select,
   MenuItem,
   Grid,
-  Card,
-  CardHeader,
-  CardContent,
   LinearProgress,
-  Divider,
   Snackbar,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Slider,
 } from "@mui/material";
 import {
@@ -55,10 +49,9 @@ import {
   Forum as ForumIcon,
   Settings as SettingsIcon,
   Cached as CachedIcon,
-  Tune as TuneIcon,
   Add as AddIcon,
-  FormatQuote as FormatQuoteIcon,
-  Gavel as GavelIcon,
+  Event as EventIcon,
+  Dns as DnsIcon,
 } from "@mui/icons-material";
 
 // Define isChannelIgnored function outside of components so it's accessible to both
@@ -124,11 +117,11 @@ function Row({
   setChannelPages,
   channelRowsPerPage,
   setChannelRowsPerPage,
+  isRestarting,
 }) {
   const isOpen = expanded === server.id;
   const currentTab = serverTabs[server.id] || 0;
   const serverConfig = serverConfigs[server.id];
-  const isConfigLoading = loadingConfigs[server.id];
   const isSaving = savingConfigs[server.id];
 
   // Get pagination state for this specific server
@@ -652,6 +645,7 @@ function Row({
                                         e.target.value,
                                       )
                                     }
+                                    disabled={isRestarting}
                                   />
                                   <IconButton
                                     size="small"
@@ -659,6 +653,7 @@ function Row({
                                     onClick={() =>
                                       removeArrayItem("bot.speakingStyle", idx)
                                     }
+                                    disabled={isRestarting}
                                   >
                                     <DeleteIcon fontSize="small" />
                                   </IconButton>
@@ -669,6 +664,7 @@ function Row({
                               size="small"
                               startIcon={<AddIcon />}
                               onClick={() => addArrayItem("bot.speakingStyle")}
+                              disabled={isRestarting}
                             >
                               Add Style
                             </Button>
@@ -713,6 +709,7 @@ function Row({
                                     e.target.value,
                                   )
                                 }
+                                disabled={isRestarting}
                               >
                                 <MenuItem value="mention-only">
                                   Mention Only
@@ -746,6 +743,7 @@ function Row({
                                     val,
                                   )
                                 }
+                                disabled={isRestarting}
                               />
                             </Box>
 
@@ -762,6 +760,7 @@ function Row({
                                       e.target.checked,
                                     )
                                   }
+                                  disabled={isRestarting}
                                 />
                               }
                               label={
@@ -783,6 +782,7 @@ function Row({
                                   parseInt(e.target.value),
                                 )
                               }
+                              disabled={isRestarting}
                             />
 
                             <TextField
@@ -797,6 +797,7 @@ function Row({
                                   parseInt(e.target.value),
                                 )
                               }
+                              disabled={isRestarting}
                             />
 
                             <FormControl fullWidth size="small">
@@ -812,6 +813,7 @@ function Row({
                                     e.target.value,
                                   )
                                 }
+                                disabled={isRestarting}
                               >
                                 <MenuItem value="passive">Passive</MenuItem>
                                 <MenuItem value="active">Active</MenuItem>
@@ -842,6 +844,7 @@ function Row({
                                     val,
                                   )
                                 }
+                                disabled={isRestarting}
                               />
                             </Box>
                           </Box>
@@ -882,6 +885,7 @@ function Servers() {
   const [serverConfigs, setServerConfigs] = useState({});
   const [loadingConfigs, setLoadingConfigs] = useState({});
   const [savingConfigs, setSavingConfigs] = useState({});
+  const [isRestarting, setIsRestarting] = useState(false);
   const [message, setMessage] = useState({
     open: false,
     text: "",
@@ -889,10 +893,39 @@ function Servers() {
   });
 
   const debounceTimers = useRef({});
+  const socketRef = useRef(null);
 
-  // Fetch the current bot configuration
+  // Initialize socket connection for restart status and fetch initial data
   useEffect(() => {
-    fetchConfig();
+    socketRef.current = io();
+
+    socketRef.current.on("bot:status", (status) => {
+      setIsRestarting(status.isRestarting);
+    });
+
+    // Fetch all initial data in parallel
+    Promise.all([
+      fetchServers(),
+      fetchBotInfo(),
+      fetchConfig(),
+    ]).catch((err) => {
+      console.error("Failed to fetch initial data:", err);
+    });
+
+    // Store current timers reference for cleanup
+    const timersRef = debounceTimers.current;
+
+    // Cleanup on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      // Clear all debounce timers
+      Object.values(timersRef).forEach((timer) => {
+        if (timer) clearTimeout(timer);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchConfig = async () => {
@@ -903,12 +936,6 @@ function Servers() {
       console.error("Failed to fetch config:", err);
     }
   };
-
-  useEffect(() => {
-    fetchServers();
-    fetchBotInfo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const fetchServers = async () => {
     try {
@@ -1207,6 +1234,11 @@ function Servers() {
   };
 
   const handleConfigUpdate = (guildId, newConfig) => {
+    // Don't update if bot is restarting
+    if (isRestarting) {
+      return;
+    }
+
     setServerConfigs((prev) => ({ ...prev, [guildId]: newConfig }));
     setSavingConfigs((prev) => ({ ...prev, [guildId]: true }));
 
@@ -1281,9 +1313,24 @@ function Servers() {
             <TableHead>
               <TableRow>
                 <TableCell width={50} />
-                <TableCell>Server Name</TableCell>
-                <TableCell align="right">Join Date</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <DnsIcon fontSize="small" />
+                    Server Name
+                  </Box>
+                </TableCell>
+                <TableCell align="right">
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "flex-end" }}>
+                    <EventIcon fontSize="small" />
+                    Join Date
+                  </Box>
+                </TableCell>
+                <TableCell align="right">
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "flex-end" }}>
+                    <SettingsIcon fontSize="small" />
+                    Actions
+                  </Box>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -1317,6 +1364,7 @@ function Servers() {
                   setChannelPages={setChannelPages}
                   channelRowsPerPage={channelRowsPerPage}
                   setChannelRowsPerPage={setChannelRowsPerPage}
+                  isRestarting={isRestarting}
                 />
               ))}
             </TableBody>

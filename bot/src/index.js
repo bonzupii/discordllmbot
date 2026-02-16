@@ -4,8 +4,8 @@ import path from 'path';
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import { validateEnvironment } from '../../shared/config/validation.js';
 import { logger, initializeLogger } from '../../shared/utils/logger.js';
-import { getBotConfig, getMemoryConfig } from '../../shared/config/configLoader.js';
 import { pruneOldMessages } from '../../shared/storage/persistence.js';
+import { initializeDatabase } from '../../shared/storage/database.js';
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 import { startApi } from './api/server.js';
 
@@ -15,7 +15,7 @@ initializeLogger(undefined);
 // Async function to handle startup
 async function startBot() {
     let cleanupInterval = null;
-    
+
     try {
         // For initial logger settings, we'll use a synchronous approach to read the file if it exists
         // This is only for the initial logger setup, the actual config will come from the database
@@ -29,6 +29,11 @@ async function startBot() {
                 initializeLogger(initialMaxLogLines);
             }
         }
+
+        // Initialize database connection and schema FIRST
+        logger.info('Initializing database...');
+        await initializeDatabase();
+        logger.info('Database ready.');
 
         // Now load the actual config from database (async)
         const { loadConfig, getGlobalMemoryConfig } = await import('../../shared/config/configLoader.js');
