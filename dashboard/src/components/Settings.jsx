@@ -1,6 +1,4 @@
-import { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import { io } from "socket.io-client";
+import { useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -16,14 +14,14 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
-  IconButton,
   Tabs,
   Tab,
   Button,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-} from "@mui/material";
+  IconButton,
+} from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -33,220 +31,39 @@ import {
   Visibility as VisibilityIcon,
   KeyboardArrowDown as KeyboardArrowDownIcon,
   Gavel as GavelIcon,
-} from "@mui/icons-material";
+} from '@mui/icons-material';
+
+import { useGlobalConfig } from '../hooks/useGlobalConfig';
+import { useSocket } from '../hooks/useSocket';
 
 function Settings() {
-  const [config, setConfig] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [isRestarting, setIsRestarting] = useState(false);
-  const [message, setMessage] = useState({
-    open: false,
-    text: "",
-    severity: "success",
-  });
-  const [models, setModels] = useState([]);
-  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const {
+    config,
+    models,
+    loading,
+    saving,
+    isFetchingModels,
+    message,
+    updateNested,
+    addArrayItem,
+    removeArrayItem,
+    updateArrayItem,
+    fetchModels,
+    clearMessage,
+  } = useGlobalConfig();
+
+  const { isRestarting } = useSocket();
   const [activeTab, setActiveTab] = useState(0);
   const [activeSpeakingSection, setActiveSpeakingSection] =
-    useState("globalRules"); // Default to global rules open
-
-  // Debounce timer reference
-  const debounceTimer = useRef(null);
-  const socketRef = useRef(null);
-
-  useEffect(() => {
-    // Initialize socket connection
-    socketRef.current = io();
-
-    // Listen for bot restart status
-    socketRef.current.on("bot:status", (status) => {
-      setIsRestarting(status.isRestarting);
-    });
-
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchConfig().then((initialConfig) => {
-      if (initialConfig) {
-        fetchModels(initialConfig.api?.provider || "gemini");
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchConfig = async () => {
-    try {
-      const res = await axios.get("/api/config");
-      setConfig(res.data);
-      return res.data; // Return the fetched config
-    } catch (err) {
-      console.error("Failed to fetch config", err);
-      setMessage({
-        open: true,
-        text: "Failed to load configuration.",
-        severity: "error",
-      });
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchModels = async (explicitProvider) => {
-    const providerToFetch = explicitProvider || config?.api?.provider;
-    if (!providerToFetch) return []; // Don't fetch if provider isn't set yet
-
-    setIsFetchingModels(true);
-    try {
-      const res = await axios.get("/api/models", {
-        params: { provider: providerToFetch },
-      });
-      setModels(res.data);
-      return res.data; // Return the models
-    } catch (err) {
-      console.error("Failed to fetch models", err);
-      setMessage({
-        open: true,
-        text: `Could not fetch models from the ${providerToFetch} API.`,
-        severity: "warning",
-      });
-      // Don't set a fallback, let the user know there's an issue.
-      setModels([]);
-      return []; // Return empty array on error
-    } finally {
-      setIsFetchingModels(false);
-    }
-  };
-
-  const saveConfig = async (newConfig) => {
-    setSaving(true);
-    try {
-      await axios.post("/api/config", newConfig);
-      setMessage({
-        open: true,
-        text: "Settings saved successfully!",
-        severity: "success",
-      });
-    } catch (err) {
-      console.error("Failed to save config", err);
-      setMessage({
-        open: true,
-        text: "Error saving settings.",
-        severity: "error",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Debounced save function to prevent spamming the server
-  const debouncedSave = (newConfig) => {
-    // Don't save if bot is restarting
-    if (isRestarting) {
-      return;
-    }
-
-    // Clear the existing timer if there is one
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-
-    // Set a new timer to save after 1000ms (1 second)
-    debounceTimer.current = setTimeout(() => {
-      saveConfig(newConfig);
-    }, 1000);
-  };
-
-  const updateNested = (path, value) => {
-    setConfig((prev) => {
-      const newConfig = { ...prev };
-      let current = newConfig;
-      const keys = path.split(".");
-      const lastKey = keys.pop();
-
-      for (const key of keys) {
-        current[key] = { ...current[key] };
-        current = current[key];
-      }
-      current[lastKey] = value;
-
-      // Trigger debounced save
-      debouncedSave(newConfig);
-
-      return newConfig;
-    });
-  };
-
-  const addArrayItem = (path, item = "") => {
-    setConfig((prev) => {
-      const newConfig = { ...prev };
-      let current = newConfig;
-      const keys = path.split(".");
-      const lastKey = keys.pop();
-      for (const key of keys) current = current[key];
-
-      const currentArray = current[lastKey];
-      if (
-        currentArray.length > 0 &&
-        currentArray[currentArray.length - 1] === ""
-      ) {
-        return newConfig;
-      }
-      current[lastKey] = [...currentArray, item];
-      return newConfig;
-    });
-  };
-
-  const removeArrayItem = (path, itemToRemove) => {
-    setConfig((prev) => {
-      const newConfig = { ...prev };
-      let current = newConfig;
-      const keys = path.split(".");
-      const lastKey = keys.pop();
-      for (const key of keys) current = current[key];
-
-      current[lastKey] = [...current[lastKey]].filter(
-        (item) => item !== itemToRemove,
-      );
-      return newConfig;
-    });
-  };
-
-  const updateArrayItem = (path, index, value) => {
-    setConfig((prev) => {
-      const newConfig = { ...prev };
-      let current = newConfig;
-      const keys = path.split(".");
-      const lastKey = keys.pop();
-      for (const key of keys) current = current[key];
-
-      const newArray = [...current[lastKey]];
-      newArray[index] = value;
-      current[lastKey] = newArray;
-
-      // Trigger debounced save
-      debouncedSave(newConfig);
-
-      return newConfig;
-    });
-  };
+    useState('globalRules');
 
   if (loading)
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
         <CircularProgress />
       </Box>
     );
+
   if (!config)
     return <Alert severity="error">Failed to load configuration.</Alert>;
 
@@ -255,31 +72,50 @@ function Settings() {
   };
 
   const handleSpeakingSectionChange = (section) => {
-    // Always switch to the clicked section (this creates the linked behavior)
     setActiveSpeakingSection(section);
   };
 
+  const handleProviderChange = async (e) => {
+    const newProvider = e.target.value;
+    updateNested('api.provider', newProvider, isRestarting);
+    
+    // Reset model selection when switching providers
+    if (newProvider === 'gemini') {
+      updateNested('api.geminiModel', 'gemini-2.0-flash', isRestarting);
+      await fetchModels(newProvider);
+    } else if (newProvider === 'ollama') {
+      const fetchedModels = await fetchModels(newProvider);
+      if (fetchedModels && fetchedModels.length > 0) {
+        updateNested('api.ollamaModel', fetchedModels[0], isRestarting);
+      } else {
+        updateNested('api.ollamaModel', '', isRestarting);
+      }
+    } else {
+      await fetchModels(newProvider);
+    }
+  };
+
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ width: '100%' }}>
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           mb: 3,
         }}
       >
         {(saving || isRestarting) && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <CircularProgress size={20} />
             <Typography variant="body2" color="textSecondary">
-              {isRestarting ? "Bot restarting..." : "Saving..."}
+              {isRestarting ? 'Bot restarting...' : 'Saving...'}
             </Typography>
           </Box>
         )}
       </Box>
 
-      <Paper elevation={2} sx={{ borderRadius: 2, overflow: "hidden" }}>
+      <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
         <Tabs
           value={activeTab}
           onChange={handleTabChange}
@@ -287,41 +123,51 @@ function Settings() {
           scrollButtons="auto"
           sx={{
             borderBottom: 1,
-            borderColor: "divider",
-            backgroundColor: "background.paper",
+            borderColor: 'divider',
+            backgroundColor: 'background.paper',
           }}
+          role="tablist"
+          aria-label="Settings tabs"
         >
           <Tab
             label={
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <PersonIcon fontSize="small" />
                 <span>Bot Persona</span>
               </Box>
             }
+            id="persona-tab"
+            aria-controls="persona-panel"
           />
           <Tab
             label={
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <LLMIcon fontSize="small" />
                 <span>LLM</span>
               </Box>
             }
+            id="llm-tab"
+            aria-controls="llm-panel"
           />
           <Tab
             label={
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <StorageIcon fontSize="small" />
                 <span>Memory</span>
               </Box>
             }
+            id="memory-tab"
+            aria-controls="memory-panel"
           />
           <Tab
             label={
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <VisibilityIcon fontSize="small" />
                 <span>Logger</span>
               </Box>
             }
+            id="logger-tab"
+            aria-controls="logger-panel"
           />
         </Tabs>
 
@@ -334,10 +180,12 @@ function Settings() {
                 gutterBottom
                 component="div"
                 sx={{
-                  fontSize: "0.9rem",
-                  color: "text.secondary",
+                  fontSize: '0.9rem',
+                  color: 'text.secondary',
                   mb: 2,
                 }}
+                id="persona-panel"
+                role="tabpanel"
               >
                 Bot Persona
               </Typography>
@@ -348,7 +196,7 @@ function Settings() {
                     label="Global Bot Name"
                     helperText="The name used for the Discord application"
                     value={config.bot.name}
-                    onChange={(e) => updateNested("bot.name", e.target.value)}
+                    onChange={(e) => updateNested('bot.name', e.target.value, isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -359,9 +207,7 @@ function Settings() {
                     label="Global Username"
                     helperText="The username used for the Discord application"
                     value={config.bot.username}
-                    onChange={(e) =>
-                      updateNested("bot.username", e.target.value)
-                    }
+                    onChange={(e) => updateNested('bot.username', e.target.value, isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -374,28 +220,22 @@ function Settings() {
                     multiline
                     rows={3}
                     value={config.bot.description}
-                    onChange={(e) =>
-                      updateNested("bot.description", e.target.value)
-                    }
+                    onChange={(e) => updateNested('bot.description', e.target.value, isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
                 </Grid>
                 <Grid size={{ xs: 12 }}>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 1 }}
-                  >
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Accordion
-                      expanded={activeSpeakingSection === "globalRules"}
-                      onChange={() =>
-                        handleSpeakingSectionChange("globalRules")
-                      }
+                      expanded={activeSpeakingSection === 'globalRules'}
+                      onChange={() => handleSpeakingSectionChange('globalRules')}
                       sx={{
-                        "&.Mui-expanded": {
+                        '&.Mui-expanded': {
                           margin: 0,
                         },
-                        "&:before": {
-                          display: "none",
+                        '&:before': {
+                          display: 'none',
                         },
                       }}
                     >
@@ -404,49 +244,44 @@ function Settings() {
                         sx={{
                           pl: 2,
                           pr: 2,
-                          backgroundColor: "secondary.main",
-                          color: "secondary.contrastText",
+                          backgroundColor: 'secondary.main',
+                          color: 'secondary.contrastText',
                           borderRadius: 1,
-                          "&.Mui-expanded": {
-                            borderRadius: "8px 8px 0 0",
+                          '&.Mui-expanded': {
+                            borderRadius: '8px 8px 0 0',
                           },
                         }}
+                        aria-controls="global-rules-content"
+                        id="global-rules-header"
                       >
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <GavelIcon fontSize="small" />
                           <Typography variant="subtitle2" color="inherit">
                             Global Rules
                           </Typography>
                         </Box>
                       </AccordionSummary>
-                      <AccordionDetails sx={{ pl: 2, pr: 2, pt: 2, pb: 2 }}>
+                      <AccordionDetails
+                        sx={{ pl: 2, pr: 2, pt: 2, pb: 2 }}
+                        id="global-rules-content"
+                      >
                         {config.bot.globalRules.map((rule, index) => (
-                          <Box
-                            key={index}
-                            sx={{ display: "flex", gap: 1, mb: 1 }}
-                          >
+                          <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
                             <TextField
                               fullWidth
                               size="small"
                               value={rule}
                               onChange={(e) =>
-                                updateArrayItem(
-                                  "bot.globalRules",
-                                  index,
-                                  e.target.value,
-                                )
+                                updateArrayItem('bot.globalRules', index, e.target.value, isRestarting)
                               }
                               variant="outlined"
                               disabled={isRestarting}
                             />
                             <IconButton
                               color="error"
-                              onClick={() =>
-                                removeArrayItem("bot.globalRules", index)
-                              }
+                              onClick={() => removeArrayItem('bot.globalRules', index)}
                               disabled={isRestarting}
+                              aria-label={`Remove rule ${index + 1}`}
                             >
                               <DeleteIcon />
                             </IconButton>
@@ -455,8 +290,9 @@ function Settings() {
                         <Button
                           startIcon={<AddIcon />}
                           size="small"
-                          onClick={() => addArrayItem("bot.globalRules")}
+                          onClick={() => addArrayItem('bot.globalRules')}
                           disabled={isRestarting}
+                          aria-label="Add new rule"
                         >
                           Add Rule
                         </Button>
@@ -476,10 +312,12 @@ function Settings() {
                 gutterBottom
                 component="div"
                 sx={{
-                  fontSize: "0.9rem",
-                  color: "text.secondary",
+                  fontSize: '0.9rem',
+                  color: 'text.secondary',
                   mb: 2,
                 }}
+                id="llm-panel"
+                role="tabpanel"
               >
                 LLM Settings
               </Typography>
@@ -488,28 +326,9 @@ function Settings() {
                   <FormControl fullWidth>
                     <InputLabel>Provider</InputLabel>
                     <Select
-                      value={config.api.provider || "gemini"}
+                      value={config.api.provider || 'gemini'}
                       label="Provider"
-                      onChange={async (e) => {
-                        const newProvider = e.target.value;
-                        updateNested("api.provider", newProvider);
-                        // Reset model selection when switching providers
-                        if (newProvider === "gemini") {
-                          updateNested("api.geminiModel", "gemini-2.0-flash");
-                          await fetchModels(newProvider); // Fetch models for the new provider
-                        } else if (newProvider === "ollama") {
-                          // Fetch models first, then set the first available model
-                          const fetchedModels = await fetchModels(newProvider);
-                          if (fetchedModels && fetchedModels.length > 0) {
-                            updateNested("api.ollamaModel", fetchedModels[0]);
-                          } else {
-                            // If no models are available, set to empty string
-                            updateNested("api.ollamaModel", "");
-                          }
-                        } else {
-                          await fetchModels(newProvider); // Fetch models for the new provider
-                        }
-                      }}
+                      onChange={handleProviderChange}
                       disabled={isRestarting}
                     >
                       <MenuItem value="gemini">Google Gemini</MenuItem>
@@ -518,19 +337,17 @@ function Settings() {
                   </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  {config.api.provider === "ollama" ? (
+                  {config.api.provider === 'ollama' ? (
                     <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
                       <InputLabel>Ollama Model</InputLabel>
                       <Select
                         value={
                           models.includes(config.api.ollamaModel)
                             ? config.api.ollamaModel
-                            : ""
+                            : ''
                         }
                         label="Ollama Model"
-                        onChange={(e) =>
-                          updateNested("api.ollamaModel", e.target.value)
-                        }
+                        onChange={(e) => updateNested('api.ollamaModel', e.target.value, isRestarting)}
                       >
                         {isFetchingModels ? (
                           <MenuItem value="">
@@ -556,12 +373,10 @@ function Settings() {
                         value={
                           models.includes(config.api.geminiModel)
                             ? config.api.geminiModel
-                            : ""
+                            : ''
                         }
                         label="Gemini Model"
-                        onChange={(e) =>
-                          updateNested("api.geminiModel", e.target.value)
-                        }
+                        onChange={(e) => updateNested('api.geminiModel', e.target.value, isRestarting)}
                       >
                         {isFetchingModels ? (
                           <MenuItem value="">
@@ -588,12 +403,7 @@ function Settings() {
                     type="number"
                     label="Retry Attempts"
                     value={config.api.retryAttempts}
-                    onChange={(e) =>
-                      updateNested(
-                        "api.retryAttempts",
-                        parseInt(e.target.value),
-                      )
-                    }
+                    onChange={(e) => updateNested('api.retryAttempts', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -604,12 +414,7 @@ function Settings() {
                     type="number"
                     label="Retry Backoff (ms)"
                     value={config.api.retryBackoffMs}
-                    onChange={(e) =>
-                      updateNested(
-                        "api.retryBackoffMs",
-                        parseInt(e.target.value),
-                      )
-                    }
+                    onChange={(e) => updateNested('api.retryBackoffMs', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -626,10 +431,12 @@ function Settings() {
                 gutterBottom
                 component="div"
                 sx={{
-                  fontSize: "0.9rem",
-                  color: "text.secondary",
+                  fontSize: '0.9rem',
+                  color: 'text.secondary',
                   mb: 2,
                 }}
+                id="memory-panel"
+                role="tabpanel"
               >
                 Memory Settings
               </Typography>
@@ -640,12 +447,7 @@ function Settings() {
                     type="number"
                     label="Max Memory (Messages)"
                     value={config.memory.maxMessages}
-                    onChange={(e) =>
-                      updateNested(
-                        "memory.maxMessages",
-                        parseInt(e.target.value),
-                      )
-                    }
+                    onChange={(e) => updateNested('memory.maxMessages', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -656,12 +458,7 @@ function Settings() {
                     type="number"
                     label="Max Message Age (Days)"
                     value={config.memory.maxMessageAgeDays}
-                    onChange={(e) =>
-                      updateNested(
-                        "memory.maxMessageAgeDays",
-                        parseInt(e.target.value),
-                      )
-                    }
+                    onChange={(e) => updateNested('memory.maxMessageAgeDays', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -678,10 +475,12 @@ function Settings() {
                 gutterBottom
                 component="div"
                 sx={{
-                  fontSize: "0.9rem",
-                  color: "text.secondary",
+                  fontSize: '0.9rem',
+                  color: 'text.secondary',
                   mb: 2,
                 }}
+                id="logger-panel"
+                role="tabpanel"
               >
                 Logger Settings
               </Typography>
@@ -692,12 +491,7 @@ function Settings() {
                     type="number"
                     label="Max Log Lines"
                     value={config.logger.maxLogLines}
-                    onChange={(e) =>
-                      updateNested(
-                        "logger.maxLogLines",
-                        parseInt(e.target.value),
-                      )
-                    }
+                    onChange={(e) => updateNested('logger.maxLogLines', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -707,12 +501,7 @@ function Settings() {
                     control={
                       <Switch
                         checked={config.logger.logReplyDecisions}
-                        onChange={(e) =>
-                          updateNested(
-                            "logger.logReplyDecisions",
-                            e.target.checked,
-                          )
-                        }
+                        onChange={(e) => updateNested('logger.logReplyDecisions', e.target.checked, isRestarting)}
                         color="primary"
                         disabled={isRestarting}
                       />
@@ -725,9 +514,7 @@ function Settings() {
                     control={
                       <Switch
                         checked={config.logger.logSql}
-                        onChange={(e) =>
-                          updateNested("logger.logSql", e.target.checked)
-                        }
+                        onChange={(e) => updateNested('logger.logSql', e.target.checked, isRestarting)}
                         color="primary"
                         disabled={isRestarting}
                       />
@@ -744,13 +531,13 @@ function Settings() {
       <Snackbar
         open={message.open}
         autoHideDuration={4000}
-        onClose={() => setMessage({ ...message, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        onClose={clearMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert
           severity={message.severity}
           variant="filled"
-          onClose={() => setMessage({ ...message, open: false })}
+          onClose={clearMessage}
         >
           {message.text}
         </Alert>

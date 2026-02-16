@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { io } from "socket.io-client";
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import {
   Box,
   Paper,
@@ -13,7 +13,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Tooltip,
-} from "@mui/material";
+} from '@mui/material';
 import {
   Delete as DeleteIcon,
   ExpandMore as ExpandMoreIcon,
@@ -23,7 +23,19 @@ import {
   Api as ApiIcon,
   Chat as ChatIcon,
   Visibility as VisibilityIcon,
-} from "@mui/icons-material";
+} from '@mui/icons-material';
+
+import { parseLogLine, getLogType, getLevelColor } from '../utils/logParser';
+
+// Map icon names to components
+const iconMap = {
+  ERROR: ErrorIcon,
+  WARN: WarningIcon,
+  API: ApiIcon,
+  INFO: InfoIcon,
+  MESSAGE: ChatIcon,
+  OTHER: VisibilityIcon,
+};
 
 function Logs() {
   const [logs, setLogs] = useState([]);
@@ -41,35 +53,30 @@ function Logs() {
   useEffect(() => {
     const socket = io();
 
-    socket.on("logs:init", (initialLogs) => {
+    socket.on('logs:init', (initialLogs) => {
       setLogs(initialLogs.filter((l) => l.trim()));
     });
 
-    socket.on("log", (line) => {
+    socket.on('log', (line) => {
       setLogs((prev) => [...prev.slice(-499), line]); // Keep last 500 lines
     });
 
     return () => socket.disconnect();
   }, []);
 
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     if (autoScroll && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs, autoScroll, filters]);
+  }, [autoScroll]);
 
-  const toggleFilter = (type) => {
+  useEffect(() => {
+    scrollToBottom();
+  }, [logs, scrollToBottom]);
+
+  const toggleFilter = useCallback((type) => {
     setFilters((prev) => ({ ...prev, [type]: !prev[type] }));
-  };
-
-  const getLogType = (line) => {
-    if (line.includes("[ERROR]")) return "ERROR";
-    if (line.includes("[WARN]")) return "WARN";
-    if (line.includes("[API]")) return "API";
-    if (line.includes("[INFO]")) return "INFO";
-    if (line.includes("[MESSAGE]")) return "MESSAGE";
-    return "OTHER";
-  };
+  }, []);
 
   const filteredLogs = useMemo(() => {
     return logs.filter((line) => {
@@ -78,113 +85,18 @@ function Logs() {
     });
   }, [logs, filters]);
 
-  const getLevelColor = (type) => {
-    switch (type) {
-      case "ERROR":
-        return "error.main";
-      case "WARN":
-        return "warning.main";
-      case "API":
-        return "info.main";
-      case "INFO":
-        return "success.main";
-      case "MESSAGE":
-        return "text.primary";
-      default:
-        return "text.secondary";
-    }
-  };
-
-  const getLogIcon = (type) => {
-    switch (type) {
-      case "ERROR":
-        return <ErrorIcon fontSize="small" />;
-      case "WARN":
-        return <WarningIcon fontSize="small" />;
-      case "API":
-        return <ApiIcon fontSize="small" />;
-      case "INFO":
-        return <InfoIcon fontSize="small" />;
-      case "MESSAGE":
-        return <ChatIcon fontSize="small" />;
-      default:
-        return <VisibilityIcon fontSize="small" />;
-    }
-  };
-
-  const parseLogLine = (line) => {
-    try {
-      // Extract timestamp and level
-      const timestampMatch = line.match(
-        /\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\]/,
-      );
-      const levelMatch = line.match(/\[([A-Z]+)\]/);
-
-      // Find JSON object at the end of the line using a balanced bracket approach
-      let braceCount = 0;
-      let jsonStartIndex = -1;
-
-      // Search backwards from the end to find the opening brace that balances the closing brace at the end
-      for (let i = line.length - 1; i >= 0; i--) {
-        if (line[i] === "}") {
-          braceCount++;
-        } else if (line[i] === "{") {
-          braceCount--;
-          if (braceCount === 0) {
-            jsonStartIndex = i;
-            break;
-          }
-        }
-      }
-
-      if (jsonStartIndex !== -1) {
-        const textPart = line.substring(0, jsonStartIndex).trim();
-        const jsonPart = line.substring(jsonStartIndex);
-
-        try {
-          const jsonObject = JSON.parse(jsonPart);
-          return {
-            timestamp: timestampMatch ? timestampMatch[1] : null,
-            level: levelMatch ? levelMatch[1] : "OTHER",
-            text: textPart,
-            json: jsonObject,
-          };
-        } catch {
-          // If JSON parsing fails, return the whole line as text
-          return {
-            timestamp: timestampMatch ? timestampMatch[1] : null,
-            level: levelMatch ? levelMatch[1] : "OTHER",
-            text: line,
-            json: null,
-          };
-        }
-      } else {
-        // If no JSON object found, return the whole line as text
-        return {
-          timestamp: timestampMatch ? timestampMatch[1] : null,
-          level: levelMatch ? levelMatch[1] : "OTHER",
-          text: line,
-          json: null,
-        };
-      }
-    } catch {
-      return {
-        timestamp: null,
-        level: "OTHER",
-        text: line,
-        json: null,
-      };
-    }
-  };
+  const handleClearLogs = useCallback(() => {
+    setLogs([]);
+  }, []);
 
   const formatJsonForDisplay = (obj, depth = 0) => {
-    const indent = "\u00A0".repeat(depth * 4); // Non-breaking space for indentation
+    const indent = '\u00A0'.repeat(depth * 4); // Non-breaking space for indentation
 
-    if (typeof obj !== "object" || obj === null) {
+    if (typeof obj !== 'object' || obj === null) {
       return (
         <Typography
           component="span"
-          sx={{ color: "text.primary", fontFamily: "monospace" }}
+          sx={{ color: 'text.primary', fontFamily: 'monospace' }}
         >
           {JSON.stringify(obj)}
         </Typography>
@@ -196,20 +108,20 @@ function Logs() {
 
       return (
         <Box component="div" sx={{ ml: 2 }}>
-          <Typography component="span" sx={{ color: "text.secondary" }}>
+          <Typography component="span" sx={{ color: 'text.secondary' }}>
             [
           </Typography>
           {obj.map((item, index) => (
             <Box key={index} component="div" sx={{ ml: 2 }}>
               <Typography component="span">
                 {indent}
-                <strong>{index}:</strong>{" "}
+                <strong>{index}:</strong>{' '}
               </Typography>
               {formatJsonForDisplay(item, depth + 1)}
               {index < obj.length - 1 && <br />}
             </Box>
           ))}
-          <Typography component="span" sx={{ color: "text.secondary" }}>
+          <Typography component="span" sx={{ color: 'text.secondary' }}>
             ]
           </Typography>
         </Box>
@@ -222,15 +134,15 @@ function Logs() {
 
     return (
       <Box component="div" sx={{ ml: 2 }}>
-        <Typography component="span" sx={{ color: "text.secondary" }}>
-          {"{"}{" "}
+        <Typography component="span" sx={{ color: 'text.secondary' }}>
+          {'{'}{' '}
         </Typography>
         {entries.map(([key, value], index) => (
           <Box key={key} component="div" sx={{ ml: 2 }}>
             <Typography component="span">
               {indent}
               <strong>&quot;{key}&quot;</strong>:
-            </Typography>{" "}
+            </Typography>{' '}
             {formatJsonForDisplay(value, depth + 1)}
             {index < entries.length - 1 && (
               <Typography component="span">,</Typography>
@@ -238,20 +150,25 @@ function Logs() {
             <br />
           </Box>
         ))}
-        <Typography component="span" sx={{ color: "text.secondary" }}>
-          {"}"}
+        <Typography component="span" sx={{ color: 'text.secondary' }}>
+          {'}'}
         </Typography>
       </Box>
     );
   };
 
+  const getLogIcon = (type) => {
+    const IconComponent = iconMap[type] || iconMap.OTHER;
+    return <IconComponent fontSize="small" />;
+  };
+
   return (
-    <Box sx={{ width: "100%", p: 2 }}>
+    <Box sx={{ width: '100%', p: 2 }}>
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           mb: 3,
         }}
       >
@@ -260,41 +177,41 @@ function Logs() {
             label="ERROR"
             size="small"
             color="error"
-            variant={filters.ERROR ? "filled" : "outlined"}
-            onClick={() => toggleFilter("ERROR")}
-            icon={getLogIcon("ERROR")}
+            variant={filters.ERROR ? 'filled' : 'outlined'}
+            onClick={() => toggleFilter('ERROR')}
+            icon={getLogIcon('ERROR')}
           />
           <Chip
             label="WARN"
             size="small"
             color="warning"
-            variant={filters.WARN ? "filled" : "outlined"}
-            onClick={() => toggleFilter("WARN")}
-            icon={getLogIcon("WARN")}
+            variant={filters.WARN ? 'filled' : 'outlined'}
+            onClick={() => toggleFilter('WARN')}
+            icon={getLogIcon('WARN')}
           />
           <Chip
             label="API"
             size="small"
             color="info"
-            variant={filters.API ? "filled" : "outlined"}
-            onClick={() => toggleFilter("API")}
-            icon={getLogIcon("API")}
+            variant={filters.API ? 'filled' : 'outlined'}
+            onClick={() => toggleFilter('API')}
+            icon={getLogIcon('API')}
           />
           <Chip
             label="INFO"
             size="small"
             color="success"
-            variant={filters.INFO ? "filled" : "outlined"}
-            onClick={() => toggleFilter("INFO")}
-            icon={getLogIcon("INFO")}
+            variant={filters.INFO ? 'filled' : 'outlined'}
+            onClick={() => toggleFilter('INFO')}
+            icon={getLogIcon('INFO')}
           />
           <Chip
             label="MSG"
             size="small"
             color="default"
-            variant={filters.MESSAGE ? "filled" : "outlined"}
-            onClick={() => toggleFilter("MESSAGE")}
-            icon={getLogIcon("MESSAGE")}
+            variant={filters.MESSAGE ? 'filled' : 'outlined'}
+            onClick={() => toggleFilter('MESSAGE')}
+            icon={getLogIcon('MESSAGE')}
           />
         </Stack>
 
@@ -317,9 +234,10 @@ function Logs() {
           <Button
             startIcon={<DeleteIcon />}
             size="small"
-            onClick={() => setLogs([])}
+            onClick={handleClearLogs}
             color="inherit"
             variant="outlined"
+            aria-label="Clear logs"
           >
             Clear
           </Button>
@@ -331,24 +249,24 @@ function Logs() {
         elevation={2}
         sx={{
           borderRadius: 2,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
           flex: 1,
           minHeight: 0,
-          bgcolor: "#0a0a0a", // Dark console background
-          color: "#f8fafc",
+          bgcolor: '#0a0a0a',
+          color: '#f8fafc',
           fontFamily: "'Fira Code', 'Courier New', monospace",
-          fontSize: "0.75rem",
-          height: "70vh",
-          overflowY: "auto",
+          fontSize: '0.75rem',
+          height: '70vh',
+          overflowY: 'auto',
         }}
       >
         {filteredLogs.length === 0 ? (
           <Typography color="text.secondary" align="center" sx={{ mt: 4 }}>
             {logs.length > 0
-              ? "No logs match current filters."
-              : "Waiting for logs..."}
+              ? 'No logs match current filters.'
+              : 'Waiting for logs...'}
           </Typography>
         ) : (
           filteredLogs.map((line, index) => {
@@ -360,57 +278,57 @@ function Logs() {
               <Accordion
                 key={index}
                 sx={{
-                  bgcolor: "transparent",
-                  boxShadow: "none",
-                  border: "none",
-                  "&:before": { display: "none" },
-                  "&.Mui-expanded": { margin: 0 },
+                  bgcolor: 'transparent',
+                  boxShadow: 'none',
+                  border: 'none',
+                  '&:before': { display: 'none' },
+                  '&.Mui-expanded': { margin: 0 },
                   mb: 0.5,
-                  borderRadius: "4px !important",
-                  "&:not(:last-child)": {
+                  borderRadius: '4px !important',
+                  '&:not(:last-child)': {
                     borderBottomLeftRadius: 0,
                     borderBottomRightRadius: 0,
                   },
-                  "&:first-of-type": {
-                    borderTopLeftRadius: "4px",
-                    borderTopRightRadius: "4px",
+                  '&:first-of-type': {
+                    borderTopLeftRadius: '4px',
+                    borderTopRightRadius: '4px',
                   },
                 }}
               >
                 <AccordionSummary
                   expandIcon={
                     hasJson ? (
-                      <ExpandMoreIcon sx={{ color: "text.secondary" }} />
+                      <ExpandMoreIcon sx={{ color: 'text.secondary' }} />
                     ) : null
                   }
                   sx={{
-                    padding: "6px 8px",
-                    minHeight: "auto",
-                    "& .MuiAccordionSummary-content": {
+                    padding: '6px 8px',
+                    minHeight: 'auto',
+                    '& .MuiAccordionSummary-content': {
                       margin: 0,
                     },
-                    "&:hover": {
-                      bgcolor: "rgba(255,255,255,0.1)",
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.1)',
                     },
-                    borderRadius: "4px",
-                    margin: "2px 0",
-                    backgroundColor: "rgba(30, 30, 30, 0.5)",
+                    borderRadius: '4px',
+                    margin: '2px 0',
+                    backgroundColor: 'rgba(30, 30, 30, 0.5)',
                   }}
                 >
                   <Box
                     sx={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      width: "100%",
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      width: '100%',
                     }}
                   >
                     <Tooltip title={type} placement="top">
                       <Box
                         sx={{
                           mr: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          height: "100%",
+                          display: 'flex',
+                          alignItems: 'center',
+                          height: '100%',
                         }}
                       >
                         {getLogIcon(type)}
@@ -418,24 +336,24 @@ function Logs() {
                     </Tooltip>
                     <Box
                       sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        width: "100%",
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%',
                       }}
                     >
                       <Typography
                         component="span"
                         sx={{
                           color: getLevelColor(type),
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-all",
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all',
                           lineHeight: 1.4,
-                          display: "inline",
+                          display: 'inline',
                           fontFamily: "'Fira Code', 'Courier New', monospace",
-                          fontSize: "0.75rem",
-                          backgroundColor: "rgba(0, 0, 0, 0.2)",
-                          padding: "2px 4px",
-                          borderRadius: "3px",
+                          fontSize: '0.75rem',
+                          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                          padding: '2px 4px',
+                          borderRadius: '3px',
                           borderLeft: `2px solid ${getLevelColor(type)}`,
                         }}
                       >
@@ -448,10 +366,10 @@ function Logs() {
                             mt: 0.5,
                             ml: 3,
                             pl: 1,
-                            borderLeft: "2px solid",
-                            borderLeftColor: "divider",
-                            fontSize: "0.75rem",
-                            color: "text.secondary",
+                            borderLeft: '2px solid',
+                            borderLeftColor: 'divider',
+                            fontSize: '0.75rem',
+                            color: 'text.secondary',
                           }}
                         >
                           {Object.entries(parsedLog.json)
@@ -460,10 +378,10 @@ function Logs() {
                               <Typography
                                 key={key}
                                 component="span"
-                                sx={{ display: "block", mb: 0.5 }}
+                                sx={{ display: 'block', mb: 0.5 }}
                               >
-                                <strong>{key}:</strong>{" "}
-                                {typeof value === "object"
+                                <strong>{key}:</strong>{' '}
+                                {typeof value === 'object'
                                   ? JSON.stringify(value)
                                   : String(value)}
                               </Typography>
@@ -471,9 +389,9 @@ function Logs() {
                           {Object.keys(parsedLog.json).length > 3 && (
                             <Typography
                               component="span"
-                              sx={{ fontStyle: "italic" }}
+                              sx={{ fontStyle: 'italic' }}
                             >
-                              ... and {Object.keys(parsedLog.json).length - 3}{" "}
+                              ... and {Object.keys(parsedLog.json).length - 3}{' '}
                               more fields
                             </Typography>
                           )}
@@ -486,17 +404,17 @@ function Logs() {
                 {hasJson && (
                   <AccordionDetails
                     sx={{
-                      padding: "8px 0 0 24px",
-                      bgcolor: "rgba(0,0,0,0.1)",
-                      borderTop: "1px solid rgba(255,255,255,0.05)",
+                      padding: '8px 0 0 24px',
+                      bgcolor: 'rgba(0,0,0,0.1)',
+                      borderTop: '1px solid rgba(255,255,255,0.05)',
                     }}
                   >
                     <Box
                       component="div"
                       sx={{
-                        color: "#cbd5e1",
-                        fontFamily: "monospace",
-                        fontSize: "0.8rem",
+                        color: '#cbd5e1',
+                        fontFamily: 'monospace',
+                        fontSize: '0.8rem',
                         lineHeight: 1.4,
                       }}
                     >

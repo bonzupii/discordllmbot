@@ -12,6 +12,11 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    extensions: ['.js', '.jsx', '.json'],
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
   },
   server: {
     host: '0.0.0.0',
@@ -28,6 +33,11 @@ export default defineConfig({
         target: 'http://bot:3000',
         ws: true,
       },
+    },
+  },
+  build: {
+    rollupOptions: {
+      external: [],
     },
   },
 })
