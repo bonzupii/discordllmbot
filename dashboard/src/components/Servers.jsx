@@ -335,7 +335,14 @@ function Row({
                                   currentRelationshipRowsPerPage,
                               )
                               .map(([userId, data]) => (
-                                <TableRow key={userId}>
+                                <TableRow 
+                                  key={userId}
+                                  sx={{ 
+                                    '&:hover': { 
+                                      backgroundColor: 'action.hover' 
+                                    } 
+                                  }}
+                                >
                                   <TableCell component="th" scope="row">
                                     <Box
                                       sx={{
@@ -401,7 +408,7 @@ function Row({
                                     </Tooltip>
                                   </TableCell>
                                   <TableCell align="center">
-                                    <Checkbox
+                                    <Switch
                                       checked={data.ignored || false}
                                       onChange={() =>
                                         onIgnoreToggle(server.id, userId, data)
@@ -488,7 +495,14 @@ function Row({
                                   currentChannelRowsPerPage,
                               )
                               .map((channel) => (
-                                <TableRow key={channel.id}>
+                                <TableRow 
+                                  key={channel.id}
+                                  sx={{ 
+                                    '&:hover': { 
+                                      backgroundColor: 'action.hover' 
+                                    } 
+                                  }}
+                                >
                                   <TableCell component="th" scope="row">
                                     <Box
                                       sx={{
@@ -506,10 +520,10 @@ function Row({
                                     </Box>
                                   </TableCell>
                                   <TableCell align="center">
-                                    <Checkbox
+                                    <Switch
                                       checked={
                                         !isChannelIgnored(
-                                          config,
+                                          serverConfigs[server.id] || config,
                                           server.id,
                                           channel.id,
                                         )
