@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   Dns as DnsIcon,
@@ -14,7 +14,6 @@ import { Dashboard, Settings, Servers, Playground, Logs } from '@pages';
 import { ErrorBoundary } from '@components/common';
 import { Header, Sidebar, MainContent } from '@components/Layout';
 import { useHealth } from '@hooks';
-import type { ReactNode } from 'react';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
