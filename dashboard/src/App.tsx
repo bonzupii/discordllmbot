@@ -25,6 +25,7 @@ import {
   Chat as ChatIcon,
   Menu as MenuIcon,
   ChevronLeft as ChevronLeftIcon,
+  GitHub as GitHubIcon,
 } from '@mui/icons-material';
 
 import theme from '@theme';
@@ -85,6 +86,16 @@ function AppContent() {
           >
             DiscordLLMBot Dashboard
           </Typography>
+          <IconButton
+            color="inherit"
+            href="https://github.com/lnorton89/discordllmbot"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View on GitHub"
+            sx={{ mr: 1 }}
+          >
+            <GitHubIcon />
+          </IconButton>
           {health ? (
             <Chip
               label={`API: ${health.status}`}
