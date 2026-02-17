@@ -146,7 +146,7 @@ function Relationships({
                 </TableRow>
               ))}
             {emptyRows > 0 && (
-              <TableRow style={{ height: 53 * emptyRows }}>
+              <TableRow sx={{ height: 53 * emptyRows }}>
                 <TableCell sx={{ gridColumn: '1 / -1' }} />
               </TableRow>
             )}

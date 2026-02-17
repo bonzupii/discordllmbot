@@ -193,7 +193,7 @@ function ServerRow({
               </Tabs>
 
               {/* Server Configuration Tab Panel */}
-              <Box hidden={currentTab !== 0}>
+              <Box sx={{ display: currentTab !== 0 ? 'none' : 'block' }}>
                 {loadingConfigs[server.id] ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                     <CircularProgress size={24} />
@@ -220,7 +220,7 @@ function ServerRow({
               </Box>
 
               {/* User Relationships Tab Panel */}
-              <Box hidden={currentTab !== 1}>
+              <Box sx={{ display: currentTab !== 1 ? 'none' : 'block' }}>
                 <Relationships
                   guildId={server.id}
                   relationships={relationships[server.id]}
@@ -236,7 +236,7 @@ function ServerRow({
               </Box>
 
               {/* Channel Monitoring Tab Panel */}
-              <Box hidden={currentTab !== 2}>
+              <Box sx={{ display: currentTab !== 2 ? 'none' : 'block' }}>
                 <Channels
                   guildId={server.id}
                   channels={channels[server.id]}
