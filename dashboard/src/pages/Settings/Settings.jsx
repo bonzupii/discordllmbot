@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Paper,
@@ -33,8 +33,8 @@ import {
   Gavel as GavelIcon,
 } from '@mui/icons-material';
 
-import { useGlobalConfig } from '../hooks/useGlobalConfig';
-import { useSocket } from '../hooks/useSocket';
+import { useGlobalConfig } from '../../hooks/useGlobalConfig';
+import { useSocket } from '../../hooks/useSocket';
 
 function Settings() {
   const {

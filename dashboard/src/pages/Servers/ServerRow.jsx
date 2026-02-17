@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Box,
   Typography,
@@ -10,7 +9,6 @@ import {
   Avatar,
   Tabs,
   Tab,
-  LinearProgress,
   Alert,
   CircularProgress,
 } from '@mui/material';

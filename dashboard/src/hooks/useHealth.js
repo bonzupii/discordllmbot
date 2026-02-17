@@ -13,8 +13,8 @@ export function useHealth(pollingInterval = POLLING_INTERVAL) {
       const response = await healthApi.getHealth();
       setHealth(response.data);
       setError(null);
-    } catch (err) {
-      setError(err);
+    } catch {
+      setError(new Error('Failed to fetch health status'));
     } finally {
       setLoading(false);
     }

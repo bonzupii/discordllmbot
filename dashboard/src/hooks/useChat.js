@@ -48,7 +48,7 @@ export function useChat(initialMessages = []) {
 
       setMessages((prev) => [...prev, botMsg]);
       return botMsg;
-    } catch (err) {
+    } catch {
       const errorMsg = {
         id: Date.now() + 1,
         role: 'system',

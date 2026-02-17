@@ -25,7 +25,7 @@ import {
   Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 
-import { parseLogLine, getLogType, getLevelColor } from '../utils/logParser';
+import { parseLogLine, getLogType, getLevelColor } from '../../utils/logParser';
 
 // Map icon names to components
 const iconMap = {

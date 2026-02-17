@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -10,14 +11,15 @@ import {
   Button,
 } from '@mui/material';
 
+/**
+ * EditRelationshipDialog component
+ * 
+ * Note: When using this component, pass a `key` prop equal to `userId` to ensure
+ * the form resets when editing different users:
+ * <EditRelationshipDialog key={userId} userId={userId} ... />
+ */
 function EditRelationshipDialog({ open, userId, data, onClose, onSave }) {
   const [editData, setEditData] = useState(data || { attitude: '', behavior: [], ignored: false });
-
-  useEffect(() => {
-    if (data) {
-      setEditData(data);
-    }
-  }, [data]);
 
   const handleSave = () => {
     onSave(userId, editData);
@@ -81,7 +83,5 @@ function EditRelationshipDialog({ open, userId, data, onClose, onSave }) {
     </Dialog>
   );
 }
-
-import { useState, useEffect } from 'react';
 
 export default EditRelationshipDialog;

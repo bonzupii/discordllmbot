@@ -18,8 +18,8 @@ export function useGlobalConfig() {
       setConfig(response.data);
       setError(null);
       return response.data;
-    } catch (err) {
-      setError(err);
+    } catch {
+      setError(null);
       setMessage({ open: true, text: 'Failed to load configuration.', severity: 'error' });
       return null;
     } finally {
@@ -35,7 +35,7 @@ export function useGlobalConfig() {
       const response = await modelsApi.getModels(provider);
       setModels(response.data);
       return response.data;
-    } catch (err) {
+    } catch {
       setMessage({ 
         open: true, 
         text: `Could not fetch models from the ${provider} API.`, 
@@ -54,7 +54,7 @@ export function useGlobalConfig() {
       await configApi.updateConfig(newConfig);
       setMessage({ open: true, text: 'Settings saved successfully!', severity: 'success' });
       return true;
-    } catch (err) {
+    } catch {
       setMessage({ open: true, text: 'Error saving settings.', severity: 'error' });
       return false;
     } finally {

@@ -1,27 +1,43 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useSyncExternalStore } from 'react';
 import { io } from 'socket.io-client';
 
-export function useSocket() {
-  const [socket, setSocket] = useState(null);
-  const [isRestarting, setIsRestarting] = useState(false);
+// Singleton socket instance
+let socketInstance = null;
+let isRestarting = false;
+const listeners = new Set();
 
-  useEffect(() => {
-    const socketInstance = io();
-
+// Initialize socket if not already done
+function getSocket() {
+  if (!socketInstance) {
+    socketInstance = io();
     socketInstance.on('bot:status', (status) => {
-      setIsRestarting(status.isRestarting);
+      isRestarting = status.isRestarting;
+      notifyListeners();
     });
+  }
+  return socketInstance;
+}
 
-    setSocket(socketInstance);
+function notifyListeners() {
+  listeners.forEach((listener) => listener());
+}
 
-    return () => {
-      socketInstance.disconnect();
-    };
-  }, []);
+function subscribe(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
-  const clearRestarting = useCallback(() => {
-    setIsRestarting(false);
-  }, []);
+export function useSocket() {
+  const isRestartingValue = useSyncExternalStore(
+    subscribe,
+    () => isRestarting,
+    () => isRestarting
+  );
 
-  return { socket, isRestarting, clearRestarting };
+  const clearRestarting = () => {
+    isRestarting = false;
+    notifyListeners();
+  };
+
+  return { socket: getSocket(), isRestarting: isRestartingValue, clearRestarting };
 }

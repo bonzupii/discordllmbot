@@ -19,8 +19,8 @@ export function useAnalytics(pollingInterval = DEFAULT_POLLING_INTERVAL) {
       setStats(analyticsRes.data);
       setReplies(repliesRes.data);
       setError(null);
-    } catch (err) {
-      setError(err);
+    } catch {
+      setError(new Error('Failed to fetch analytics'));
     } finally {
       setLoading(false);
     }

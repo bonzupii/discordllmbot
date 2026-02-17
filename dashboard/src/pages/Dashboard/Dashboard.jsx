@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import React from 'react';
 import {
   Box,
   Paper,
@@ -33,6 +32,8 @@ import {
   EmojiEvents as EmojiEventsIcon,
 } from '@mui/icons-material';
 
+import { useAnalytics } from '../../hooks/useAnalytics';
+
 const formatUptime = (seconds) => {
   if (!seconds) return 'N/A';
   const d = Math.floor(seconds / (3600 * 24));
@@ -40,43 +41,6 @@ const formatUptime = (seconds) => {
   const m = Math.floor((seconds % 3600) / 60);
   return `${d}d ${h}h ${m}m`;
 };
-
-const DEFAULT_POLLING_INTERVAL = 30000;
-
-function useAnalyticsLocal(pollingInterval = DEFAULT_POLLING_INTERVAL) {
-  const [stats, setStats] = useState(null);
-  const [replies, setReplies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [analyticsRes, repliesRes] = await Promise.all([
-        axios.get('/api/analytics'),
-        axios.get('/api/replies?limit=50'),
-      ]);
-      setStats(analyticsRes.data);
-      setReplies(repliesRes.data);
-      setError(null);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-
-    if (pollingInterval > 0) {
-      const interval = setInterval(fetchData, pollingInterval);
-      return () => clearInterval(interval);
-    }
-  }, [fetchData, pollingInterval]);
-
-  return { stats, replies, loading, error, refetch: fetchData };
-}
 
 const StatusItem = ({ icon, label, value, color }) => (
   <Box
@@ -139,7 +103,7 @@ const StatusItem = ({ icon, label, value, color }) => (
 );
 
 function Dashboard({ health }) {
-  const { stats, replies, loading } = useAnalyticsLocal();
+  const { stats, replies, loading } = useAnalytics();
 
   const renderLoadingSkeleton = () =>
     [...Array(10)].map((_, i) => (

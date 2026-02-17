@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -22,7 +22,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useTheme } from '@mui/material/styles';
 
-import { useChat } from '../hooks/useChat';
+import { useChat } from '../../hooks/useChat';
 
 function Playground() {
   const {
@@ -31,7 +31,6 @@ function Playground() {
     error,
     sendMessage,
     clearChat,
-    setMessages,
   } = useChat();
 
   const [inputValue, setInputValue] = useState('');
@@ -292,7 +291,5 @@ function Playground() {
     </Box>
   );
 }
-
-import { useState } from 'react';
 
 export default Playground;

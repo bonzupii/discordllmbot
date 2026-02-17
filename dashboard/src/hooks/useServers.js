@@ -13,8 +13,8 @@ export function useServers() {
       const response = await serversApi.getServers();
       setServers(response.data);
       setError(null);
-    } catch (err) {
-      setError(err);
+    } catch {
+      setError(new Error('Failed to fetch servers'));
     } finally {
       setLoading(false);
     }
@@ -24,7 +24,7 @@ export function useServers() {
     try {
       const response = await botInfoApi.getBotInfo();
       setBotInfo(response.data);
-    } catch (err) {
+    } catch {
       // Silently fail - bot info is not critical
     }
   }, []);
@@ -35,8 +35,8 @@ export function useServers() {
   }, [fetchServers]);
 
   useEffect(() => {
-    Promise.all([fetchServers(), fetchBotInfo()]).catch((err) => {
-      setError(err);
+    Promise.all([fetchServers(), fetchBotInfo()]).catch(() => {
+      setError(new Error('Failed to fetch data'));
     });
   }, [fetchServers, fetchBotInfo]);
 

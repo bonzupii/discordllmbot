@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Box,
-  Typography,
   Table,
   TableBody,
   TableHead,
@@ -19,7 +18,7 @@ import { useServers } from '../../hooks/useServers';
 import { useSocket } from '../../hooks/useSocket';
 import { serversApi, configApi } from '../../services/api';
 import { isChannelIgnored } from '../../utils/helpers';
-import { EmptyState, ErrorBoundary } from '../common';
+import { EmptyState, ErrorBoundary } from '../../components/common';
 import { ServerRow, EditRelationshipDialog } from './index';
 
 function Servers() {
@@ -68,7 +67,7 @@ function Servers() {
     try {
       const response = await configApi.getConfig();
       setConfig(response.data);
-    } catch (err) {
+    } catch {
       // Silently fail - will use defaults
     }
   }, []);
@@ -95,7 +94,7 @@ function Servers() {
     ) {
       try {
         await leaveServer(serverId);
-      } catch (err) {
+      } catch {
         setMessage({
           open: true,
           text: 'Failed to remove bot from server',
@@ -125,7 +124,7 @@ function Servers() {
         },
       }));
       setEditingUser(null);
-    } catch (err) {
+    } catch {
       setMessage({
         open: true,
         text: 'Failed to save relationship changes',
@@ -145,7 +144,7 @@ function Servers() {
           [userId]: newData,
         },
       }));
-    } catch (err) {
+    } catch {
       // Silently fail
     }
   };
@@ -208,7 +207,7 @@ function Servers() {
         text: 'Channel settings updated',
         severity: 'success',
       });
-    } catch (err) {
+    } catch {
       setMessage({
         open: true,
         text: 'Failed to update channel monitoring settings',
@@ -234,7 +233,7 @@ function Servers() {
           text: 'Settings saved automatically',
           severity: 'success',
         });
-      } catch (err) {
+      } catch {
         setSavingConfigs((prev) => ({ ...prev, [guildId]: false }));
         setMessage({
           open: true,
@@ -256,7 +255,7 @@ function Servers() {
           text: 'Configuration reset to default',
           severity: 'info',
         });
-      } catch (err) {
+      } catch {
         // Handle error
       }
     }
@@ -273,7 +272,7 @@ function Servers() {
         try {
           const response = await serversApi.getServerConfig(expandedServerId);
           setServerConfigs((prev) => ({ ...prev, [expandedServerId]: response.data }));
-        } catch (err) {
+        } catch {
           // Handle error
         } finally {
           setLoadingConfigs((prev) => ({ ...prev, [expandedServerId]: false }));
@@ -286,7 +285,7 @@ function Servers() {
         try {
           const response = await serversApi.getRelationships(expandedServerId);
           setRelationships((prev) => ({ ...prev, [expandedServerId]: response.data }));
-        } catch (err) {
+        } catch {
           setRelationships((prev) => ({ ...prev, [expandedServerId]: {} }));
         } finally {
           setLoadingRelationships((prev) => ({ ...prev, [expandedServerId]: false }));
@@ -299,7 +298,7 @@ function Servers() {
         try {
           const response = await serversApi.getChannels(expandedServerId);
           setChannels((prev) => ({ ...prev, [expandedServerId]: response.data }));
-        } catch (err) {
+        } catch {
           setChannels((prev) => ({ ...prev, [expandedServerId]: [] }));
         } finally {
           setLoadingChannels((prev) => ({ ...prev, [expandedServerId]: false }));
@@ -308,7 +307,7 @@ function Servers() {
     };
 
     fetchServerData();
-  }, [expandedServerId]);
+  }, [expandedServerId, serverConfigs, loadingConfigs, relationships, loadingRelationships, channels, loadingChannels]);
 
   const closeMessage = () => {
     setMessage({ ...message, open: false });
@@ -419,6 +418,7 @@ function Servers() {
         {/* Edit Dialog */}
         {editingUser && expandedServerId && (
           <EditRelationshipDialog
+            key={editingUser}
             open={!!editingUser}
             userId={editingUser}
             data={editData}

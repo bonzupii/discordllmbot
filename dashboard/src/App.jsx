@@ -26,11 +26,11 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 
 import theme from './theme';
-import Settings from './components/Settings';
-import Logs from './components/Logs';
-import Servers from './components/Servers';
-import Dashboard from './components/Dashboard';
-import Playground from './components/Playground';
+import Settings from './pages/Settings';
+import Logs from './pages/Logs';
+import Servers from './pages/Servers';
+import Dashboard from './pages/Dashboard';
+import Playground from './pages/Playground';
 import { useHealth } from './hooks/useHealth';
 import { ErrorBoundary } from './components/common';
 
