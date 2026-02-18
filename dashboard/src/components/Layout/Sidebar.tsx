@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
-  Box,
   Toolbar,
   IconButton,
   Divider,
@@ -74,50 +73,36 @@ export default function Sidebar({ open, onToggle, items }: SidebarProps) {
       <Divider />
       <List component="nav" role="navigation" aria-label="main navigation">
         {items.map((item) => (
-          <NavItem key={item.to} {...item} />
+          <ListItemButton
+            key={item.to}
+            component={Link}
+            to={item.to}
+            selected={location.pathname === item.to}
+            sx={{
+              '&.Mui-selected': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                },
+                '& .MuiListItemIcon-root': {
+                  color: 'primary.contrastText',
+                },
+              },
+              mb: 0.5,
+              mx: 1,
+              borderRadius: 1,
+            }}
+            aria-current={location.pathname === item.to ? 'page' : undefined}
+          >
+            <ListItemIcon sx={{ color: 'text.secondary' }}>{item.icon}</ListItemIcon>
+            <ListItemText
+              primary={item.label}
+              primaryTypographyProps={{ fontWeight: location.pathname === item.to ? 'bold' : 'medium' }}
+            />
+          </ListItemButton>
         ))}
       </List>
     </Drawer>
-  );
-}
-
-interface NavItemProps {
-  to: string;
-  label: string;
-  icon: ReactNode;
-}
-
-function NavItem({ to, label, icon }: NavItemProps) {
-  const location = useLocation();
-  const isActive = location.pathname === to;
-
-  return (
-    <ListItemButton
-      component={Link}
-      to={to}
-      selected={isActive}
-      sx={{
-        '&.Mui-selected': {
-          bgcolor: 'primary.main',
-          color: 'primary.contrastText',
-          '&:hover': {
-            bgcolor: 'primary.dark',
-          },
-          '& .MuiListItemIcon-root': {
-            color: 'primary.contrastText',
-          },
-        },
-        mb: 0.5,
-        mx: 1,
-        borderRadius: 1,
-      }}
-      aria-current={isActive ? 'page' : undefined}
-    >
-      <ListItemIcon sx={{ color: 'text.secondary' }}>{icon}</ListItemIcon>
-      <ListItemText
-        primary={label}
-        primaryTypographyProps={{ fontWeight: isActive ? 'bold' : 'medium' }}
-      />
-    </ListItemButton>
   );
 }

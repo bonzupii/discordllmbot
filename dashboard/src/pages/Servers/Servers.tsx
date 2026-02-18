@@ -19,7 +19,7 @@ import { serversApi, configApi } from '@services';
 import { isChannelIgnored } from '@utils';
 import { EmptyState, ErrorBoundary } from '@components/common';
 import { ServerRow, EditRelationshipDialog } from './index';
-import type { BotConfig, Relationship } from '@types';
+import type { BotConfig } from '@types';
 
 function Servers() {
   const { servers, botInfo, loading, error, leaveServer } = useServers();
@@ -331,7 +331,7 @@ function Servers() {
 
   return (
     <ErrorBoundary>
-      <Box sx={{ width: '100%', p: 2 }}>
+      <Box sx={{ width: '100%', p: { xs: 1, sm: 2 } }}>
         {servers.length === 0 ? (
           <EmptyState
             title="No Servers"
@@ -339,16 +339,16 @@ function Servers() {
           />
         ) : (
           <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            <Table aria-label="collapsible table">
+            <Table aria-label="collapsible table" sx={{ tableLayout: 'fixed' }}>
               <TableHead>
-                <TableRow>
-                  <TableCell />
+                <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
+                  <TableCell sx={{ width: 40, minWidth: 40, maxWidth: 40, padding: '4px 8px' }} />
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       Server Name
                     </Box>
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="right" sx={{ display: { xs: 'none', sm: 'none', md: 'table-cell' } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
                       Join Date
                     </Box>
@@ -360,7 +360,7 @@ function Servers() {
                   </TableCell>
                 </TableRow>
               </TableHead>
-              <TableBody>
+              <TableBody sx={{ '& > *': { borderBottom: 'unset' } }}>
                 {servers.map((server) => (
                   <ServerRow
                     key={server.id}

@@ -1,3 +1,5 @@
+import { useCallback } from 'react';
+import type { Relationship } from '@types';
 import {
   Box,
   Typography,
@@ -69,6 +71,14 @@ function ServerRow({
     onTabChange(server.id, newValue);
   };
 
+  const handleRelationshipEdit = useCallback((userId: string, data: Relationship & { avatarUrl?: string; displayName?: string; username?: string }) => {
+    onEditUser(userId, data);
+  }, [onEditUser]);
+
+  const handleRelationshipIgnoreToggle = useCallback((userId: string, data: Relationship & { avatarUrl?: string; displayName?: string; username?: string }) => {
+    onIgnoreToggle(server.id, userId, data);
+  }, [onIgnoreToggle, server.id]);
+
   const handleRelationshipsPageChange = (event, newPage) => {
     setRelationshipPages((prev) => ({ ...prev, [server.id]: newPage }));
   };
@@ -99,13 +109,12 @@ function ServerRow({
     <>
       <TableRow
         sx={{
-          '& > *': { borderBottom: 'unset' },
           cursor: 'pointer',
           '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.05)' },
         }}
         onClick={() => onExpand(server.id)}
       >
-        <TableCell>
+        <TableCell sx={{ width: 40, minWidth: 40, maxWidth: 40, padding: '4px 8px', borderBottom: 'none' }}>
           <IconButton
             aria-label="expand row"
             size="small"
@@ -117,7 +126,7 @@ function ServerRow({
             {isOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell component="th" scope="row">
+        <TableCell component="th" scope="row" sx={{ borderBottom: 'none' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Avatar
               src={server.iconURL}
@@ -126,9 +135,18 @@ function ServerRow({
               imgProps={{ loading: 'lazy' }}
             />
             <Box>
-              <Typography variant="subtitle2" fontWeight="bold">
+              <Typography variant="subtitle2" fontWeight="bold" noWrap sx={{ maxWidth: 150 }}>
                 {server.name}
               </Typography>
+              {server.joinedAt && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: { xs: 'block', sm: 'block', md: 'none' } }}
+                >
+                  Joined {new Date(server.joinedAt).toLocaleDateString()}
+                </Typography>
+              )}
               {server.memberCount && (
                 <Typography
                   variant="caption"
@@ -143,7 +161,7 @@ function ServerRow({
             </Box>
           </Box>
         </TableCell>
-        <TableCell align="right">
+        <TableCell align="right" sx={{ display: { xs: 'none', sm: 'none', md: 'table-cell' } }}>
           {server.joinedAt
             ? new Date(server.joinedAt).toLocaleDateString()
             : 'Unknown'}
@@ -156,22 +174,26 @@ function ServerRow({
             startIcon={<DeleteIcon />}
             onClick={(e) => { e.stopPropagation(); onLeave(server.id); }}
             aria-label={`Leave ${server.name}`}
+            sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
           >
-            Leave
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Leave</Box>
           </Button>
         </TableCell>
       </TableRow>
-      <TableRow>
-        <TableCell sx={{ paddingBottom: 0, paddingTop: 0, gridColumn: '1 / -1' }}>
+      <TableRow sx={{ '& > *': { borderBottom: 'none' } }}>
+        <TableCell sx={{ width: 40, minWidth: 40, paddingBottom: 0, paddingTop: 0 }} />
+        <td colSpan={3} style={{ paddingBottom: 0, paddingTop: 0 }}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
               <Tabs
                 value={currentTab}
                 onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
                 sx={{
                   mb: 2,
                   minHeight: 32,
-                  '& .MuiTab-root': { minHeight: 32, minWidth: 120 },
+                  '& .MuiTab-root': { minHeight: 32, minWidth: { xs: 80, sm: 120 } },
                 }}
                 aria-label="server tabs"
               >
@@ -183,12 +205,12 @@ function ServerRow({
                 <Tab
                   icon={<PeopleIcon />}
                   iconPosition="start"
-                  label="User Relationships"
+                  label="Relationships"
                 />
                 <Tab
                   icon={<ForumIcon />}
                   iconPosition="start"
-                  label="Channel Monitoring"
+                  label="Channels"
                 />
               </Tabs>
 
@@ -222,16 +244,15 @@ function ServerRow({
               {/* User Relationships Tab Panel */}
               <Box sx={{ display: currentTab !== 1 ? 'none' : 'block' }}>
                 <Relationships
-                  guildId={server.id}
-                  relationships={relationships[server.id]}
+                  relationships={relationships[server.id] || {}}
                   loading={loadingRelationships[server.id]}
                   error={null}
                   page={currentRelationshipPage}
                   rowsPerPage={currentRelationshipRowsPerPage}
                   onPageChange={handleRelationshipsPageChange}
                   onRowsPerPageChange={handleRelationshipsRowsPerPageChange}
-                  onEdit={onEditUser}
-                  onIgnoreToggle={onIgnoreToggle}
+                  onEdit={handleRelationshipEdit}
+                  onIgnoreToggle={handleRelationshipIgnoreToggle}
                 />
               </Box>
 
@@ -253,7 +274,7 @@ function ServerRow({
               </Box>
             </Box>
           </Collapse>
-        </TableCell>
+        </td>
       </TableRow>
     </>
   );

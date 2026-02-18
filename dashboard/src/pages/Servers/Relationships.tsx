@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Box,
   Typography,
@@ -12,33 +13,33 @@ import {
   Chip,
   Tooltip,
   Avatar,
-  Switch,
   Alert,
   CircularProgress,
+  Switch,
 } from '@mui/material';
 import { Edit as EditIcon } from '@mui/icons-material';
 import type { Relationship } from '@types';
 
+type RelationshipWithAvatar = Relationship & { avatarUrl?: string; displayName?: string; username?: string };
+
 interface RelationshipsProps {
-  guildId: string;
-  relationships: Record<string, Relationship & { avatarUrl?: string; displayName?: string; username?: string }>;
+  relationships: Record<string, RelationshipWithAvatar>;
   loading: boolean;
   error: Error | null;
-  page?: number;
-  rowsPerPage?: number;
-  onPageChange: (event: unknown, newPage: number) => void;
-  onRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onEdit: (userId: string, data: Relationship & { avatarUrl?: string; displayName?: string; username?: string }) => void;
-  onIgnoreToggle: (guildId: string, userId: string, data: Relationship & { avatarUrl?: string; displayName?: string; username?: string }) => void;
+  page: number;
+  rowsPerPage: number;
+  onPageChange: (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
+  onRowsPerPageChange: (_event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onEdit: (userId: string, data: RelationshipWithAvatar) => void;
+  onIgnoreToggle: (userId: string, data: RelationshipWithAvatar) => void;
 }
 
 function Relationships({
-  guildId,
   relationships,
   loading,
   error,
-  page = 0,
-  rowsPerPage = 10,
+  page,
+  rowsPerPage,
   onPageChange,
   onRowsPerPageChange,
   onEdit,
@@ -130,7 +131,7 @@ function Relationships({
                   <TableCell align="center">
                     <Switch
                       checked={data.ignored || false}
-                      onChange={() => onIgnoreToggle(guildId, userId, data)}
+                      onChange={() => onIgnoreToggle(userId, data)}
                       size="small"
                     />
                   </TableCell>

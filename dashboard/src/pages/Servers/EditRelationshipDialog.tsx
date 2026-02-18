@@ -27,7 +27,7 @@ interface EditRelationshipDialogProps {
   onSave: (userId: string, data: Relationship) => void;
 }
 
-function EditRelationshipDialog({ open, userId, data, onClose, onSave }: EditRelationshipDialogProps) {
+function EditRelationshipDialog({ userId, data, open, onClose, onSave }: EditRelationshipDialogProps) {
   const [editData, setEditData] = useState<Relationship>(data || { attitude: '', behavior: [], ignored: false });
 
   const handleSave = () => {

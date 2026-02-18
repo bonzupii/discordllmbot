@@ -15,7 +15,7 @@ export function useGlobalConfig() {
     severity: 'success'
   });
 
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchConfig = useCallback(async (): Promise<BotConfig | null> => {
     try {
