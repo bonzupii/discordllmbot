@@ -27,15 +27,15 @@ export interface AnalyticsResponse {
     active_users: number;
     total_tokens: number;
   };
-  volume: Array<{
+  volume: {
     date: string;
     count: number;
-  }>;
-  topServers: Array<{
+  }[];
+  topServers: {
     guildname: string;
     reply_count: number;
     icon_url?: string;
-  }>;
+  }[];
 }
 
 /**

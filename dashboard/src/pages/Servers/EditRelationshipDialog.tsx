@@ -50,7 +50,7 @@ function EditRelationshipDialog({ userId, data, open, onClose, onSave }: EditRel
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
+      slotProps={{ paper: { sx: { borderRadius: 3 } } }}
     >
       <DialogTitle>Edit Relationship</DialogTitle>
       <DialogContent dividers>

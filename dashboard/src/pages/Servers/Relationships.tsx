@@ -113,7 +113,7 @@ function Relationships({
                         src={data.avatarUrl}
                         alt={data.displayName || data.username}
                         sx={{ width: 32, height: 32 }}
-                        imgProps={{ loading: 'lazy' }}
+                        slotProps={{ img: { loading: 'lazy' } }}
                       />
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="body2" fontWeight="medium">

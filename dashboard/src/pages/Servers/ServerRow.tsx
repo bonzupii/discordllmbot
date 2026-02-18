@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 
 import ServerConfig from './ServerConfig';
+import { formatDate } from '@utils';
 import Relationships from './Relationships';
 import Channels from './Channels';
 
@@ -141,7 +142,7 @@ function ServerRow({
               src={server.iconURL}
               alt={server.name}
               variant="rounded"
-              imgProps={{ loading: 'lazy' }}
+              slotProps={{ img: { loading: 'lazy' } }}
             />
             <Box>
               <Typography variant="subtitle2" fontWeight="bold" noWrap sx={{ maxWidth: 150 }}>
@@ -153,7 +154,7 @@ function ServerRow({
                   color="text.secondary"
                   sx={{ display: { xs: 'block', sm: 'block', md: 'none' } }}
                 >
-                  Joined {new Date(server.joinedAt).toLocaleDateString()}
+                  Joined {formatDate(server.joinedAt)}
                 </Typography>
               )}
               {server.memberCount && (
@@ -171,9 +172,7 @@ function ServerRow({
           </Box>
         </TableCell>
         <TableCell align="right" sx={{ display: { xs: 'none', sm: 'none', md: 'table-cell' } }}>
-          {server.joinedAt
-            ? new Date(server.joinedAt).toLocaleDateString()
-            : 'Unknown'}
+          {formatDate(server.joinedAt) || 'Unknown'}
         </TableCell>
         <TableCell align="right">
           <Button

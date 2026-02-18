@@ -3,6 +3,7 @@
  * @module pages/Dashboard/Dashboard
  */
 import React from 'react';
+import { useMediaQuery } from '@mui/material';
 import {
   Box,
   Paper,
@@ -39,6 +40,7 @@ import {
 import type { SxProps } from '@mui/material';
 
 import { useAnalytics } from '@hooks';
+import { formatTime, limitArray, formatUptime } from '@utils';
 import type { AnalyticsResponse, Reply, HealthResponse } from '@types';
 
 /** Props for the StatusItem component. */
@@ -48,15 +50,6 @@ interface StatusItemProps {
   value: number | string;
   color: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
 }
-
-/** Formats uptime in seconds to human-readable string. */
-const formatUptime = (seconds?: number): string => {
-  if (!seconds) return 'N/A';
-  const d = Math.floor(seconds / (3600 * 24));
-  const h = Math.floor((seconds % (3600 * 24)) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${d}d ${h}h ${m}m`;
-};
 
 /** Status item component displaying an icon, label, and value. */
 const StatusItem = ({ icon, label, value, color }: StatusItemProps) => (
@@ -127,9 +120,13 @@ interface DashboardProps {
 /** Main dashboard page displaying analytics, activity feed, and system health. */
 function Dashboard({ health }: DashboardProps) {
   const { stats, replies, loading } = useAnalytics();
+  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
+  
+  // Limit replies to 5 on mobile
+  const displayedReplies = isMobile ? limitArray(replies as Reply[], 5) : replies as Reply[];
 
   const renderLoadingSkeleton = () =>
-    [...Array(10)].map((_, i) => (
+    [...Array(isMobile ? 5 : 10)].map((_, i) => (
       <Box key={i} sx={{ p: 2 }}>
         <Skeleton variant="text" width="60%" />
         <Skeleton variant="text" width="40%" />
@@ -137,7 +134,7 @@ function Dashboard({ health }: DashboardProps) {
     ));
 
   const renderRepliesList = () =>
-    (replies as Reply[]).map((reply) => (
+    displayedReplies.map((reply) => (
       <React.Fragment key={reply.id}>
         <ListItem alignItems="flex-start" sx={{ py: 1 }}>
           <ListItemAvatar sx={{ minWidth: 40, mt: 0.5 }}>
@@ -166,14 +163,13 @@ function Dashboard({ health }: DashboardProps) {
                   {reply.displayname || reply.username}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {new Date(reply.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                  {formatTime(reply.timestamp)}
                 </Typography>
               </Box>
             }
-            secondaryTypographyProps={{ component: 'div' }}
+            slotProps={{
+                secondary: { component: 'div' }
+              }}
             secondary={
               <Box component="div" sx={{ mt: 0.5 }}>
                 <Typography
