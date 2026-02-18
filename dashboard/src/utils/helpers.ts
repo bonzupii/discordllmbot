@@ -141,3 +141,52 @@ export const updateArrayItemByIndex = <T extends Record<string, unknown>>(obj: T
 
   return newConfig as T;
 };
+
+// ===========================================================================
+// Date/Time Formatting
+// ===========================================================================
+
+/**
+ * Format a date string to locale date (e.g., "1/15/2024")
+ * @param dateString - ISO date string
+ * @returns Formatted date string
+ */
+export const formatDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return 'Unknown';
+  return new Date(dateString).toLocaleDateString();
+};
+
+/**
+ * Format a date string to locale time (e.g., "3:45 PM")
+ * @param dateString - ISO date string
+ * @returns Formatted time string
+ */
+export const formatTime = (dateString: string | null | undefined): string => {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+/**
+ * Get current ISO timestamp
+ * @returns ISO date string
+ */
+export const getCurrentTimestamp = (): string => {
+  return new Date().toISOString();
+};
+
+// ===========================================================================
+// Array Helpers
+// ===========================================================================
+
+/**
+ * Limit an array to a maximum number of items
+ * @param arr - Array to limit
+ * @param maxItems - Maximum number of items
+ * @returns New array with max items
+ */
+export const limitArray = <T>(arr: T[], maxItems: number): T[] => {
+  return arr.slice(0, maxItems);
+};
