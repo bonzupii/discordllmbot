@@ -3,7 +3,7 @@
  * @module components/Layout/Sidebar
  */
 import { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Toolbar,
   IconButton,
@@ -13,6 +13,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  useMediaQuery,
 } from '@mui/material';
 import { ChevronLeft as ChevronLeftIcon } from '@mui/icons-material';
 import type { Theme } from '@mui/material/styles';
@@ -39,65 +40,64 @@ interface SidebarProps {
   onToggle: () => void;
   /** Array of navigation items to display */
   items: NavItem[];
+  /** Width of the drawer */
+  drawerWidth: number;
+  /** Whether the mobile drawer is open */
+  mobileOpen?: boolean;
+  /** Callback when navigation item is clicked */
+  onNavClick?: () => void;
 }
-
-const drawerWidth = 240;
 
 /**
  * Sidebar component with navigation links.
+ * Responsive - uses temporary drawer on mobile, permanent on desktop.
  * @param props - Component props
  * @returns Rendered sidebar component
  */
-export default function Sidebar({ open, onToggle, items }: SidebarProps) {
-  return (
-    <Drawer
-      variant="permanent"
-      open={open}
-      sx={{
-        '& .MuiDrawer-paper': {
-          position: 'relative',
-          whiteSpace: 'nowrap',
-          width: drawerWidth,
-          transition: (theme: Theme) =>
-            theme.transitions.create('width', {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
-          boxSizing: 'border-box',
-          ...(!open && {
-            overflowX: 'hidden',
-            transition: (theme: Theme) =>
-              theme.transitions.create('width', {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.leavingScreen,
-              }),
-            width: (theme: Theme) =>
-              theme.breakpoints.up('sm')
-                ? theme.spacing(9)
-                : theme.spacing(7),
-          }),
-        },
-      }}
-    >
+export default function Sidebar({ 
+  open, 
+  onToggle, 
+  items, 
+  drawerWidth, 
+  mobileOpen = false,
+  onNavClick 
+}: SidebarProps) {
+  const location = useLocation();
+  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
+
+  const drawerContent = (
+    <>
       <Toolbar
         sx={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-end',
+          justifyContent: isMobile ? 'flex-end' : 'flex-end',
           px: [1],
         }}
       >
-        <IconButton onClick={onToggle} aria-label="collapse drawer">
-          <ChevronLeftIcon />
-        </IconButton>
+        {isMobile ? (
+          <IconButton onClick={onToggle} aria-label="close drawer">
+            <ChevronLeftIcon />
+          </IconButton>
+        ) : (
+          <IconButton onClick={onToggle} aria-label="collapse drawer">
+            <ChevronLeftIcon />
+          </IconButton>
+        )}
       </Toolbar>
       <Divider />
-      <List component="nav" role="navigation" aria-label="main navigation">
+      <List 
+        component="nav" 
+        role="navigation" 
+        aria-label="main navigation"
+        sx={{ px: { xs: 0.5, sm: 1 } }}
+      >
         {items.map((item) => (
           <ListItemButton
             key={item.to}
             component={Link}
             to={item.to}
+            onClick={onNavClick}
             selected={location.pathname === item.to}
             sx={{
               '&.Mui-selected': {
@@ -111,19 +111,81 @@ export default function Sidebar({ open, onToggle, items }: SidebarProps) {
                 },
               },
               mb: 0.5,
-              mx: 1,
+              mx: { xs: 0.5, sm: 1 },
               borderRadius: 1,
+              minHeight: 44,
             }}
             aria-current={location.pathname === item.to ? 'page' : undefined}
           >
-            <ListItemIcon sx={{ color: 'text.secondary' }}>{item.icon}</ListItemIcon>
+            <ListItemIcon sx={{ color: 'text.secondary', minWidth: { xs: 36, sm: 40 } }}>
+              {item.icon}
+            </ListItemIcon>
             <ListItemText
               primary={item.label}
-              primaryTypographyProps={{ fontWeight: location.pathname === item.to ? 'bold' : 'medium' }}
+              slotProps={{
+                primary: {
+                  fontWeight: location.pathname === item.to ? 'bold' : 'medium',
+                  fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                  noWrap: true,
+                }
+              }}
             />
           </ListItemButton>
         ))}
       </List>
+    </>
+  );
+
+  // Mobile: use temporary drawer
+  if (isMobile) {
+    return (
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerWidth,
+            bgcolor: 'background.default',
+          },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+    );
+  }
+
+  // Desktop: use permanent drawer
+  return (
+    <Drawer
+      variant="permanent"
+      open={open}
+      sx={{
+        '& .MuiDrawer-paper': {
+          position: 'relative',
+          whiteSpace: 'nowrap',
+          width: open ? drawerWidth : 72,
+          transition: (theme: Theme) =>
+            theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+          boxSizing: 'border-box',
+          ...(!open && {
+            overflowX: 'hidden',
+            transition: (theme: Theme) =>
+              theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.leavingScreen,
+              }),
+            width: 72,
+          }),
+        },
+      }}
+    >
+      {drawerContent}
     </Drawer>
   );
 }

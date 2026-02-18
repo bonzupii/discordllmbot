@@ -2,10 +2,11 @@
  * Top application header with branding and health status.
  * @module components/Layout/Header
  */
-import { AppBar, IconButton, Toolbar, Typography, Chip, Box } from '@mui/material';
+import { AppBar, IconButton, Toolbar, Typography, Chip, Box, useMediaQuery } from '@mui/material';
 import { Menu as MenuIcon, GitHub as GitHubIcon } from '@mui/icons-material';
 import type { HealthResponse } from '@types';
 import type { Theme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 
 /**
  * Props for the Header component.
@@ -17,30 +18,33 @@ interface HeaderProps {
   onMenuClick: () => void;
   /** Current health status from the API */
   health?: HealthResponse | null;
+  /** Width of the drawer */
+  drawerWidth: number;
 }
-
-const drawerWidth = 240;
 
 /**
  * Header component displaying app title, health status, and GitHub link.
  * @param props - Component props
  * @returns Rendered header component
  */
-export default function Header({ open, onMenuClick, health }: HeaderProps) {
+export default function Header({ open, onMenuClick, health, drawerWidth }: HeaderProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <AppBar
-      position="absolute"
+      position="fixed"
       open={open}
       sx={{
         zIndex: (theme: Theme) => theme.zIndex.drawer + 1,
+        width: isMobile ? '100%' : (open ? `calc(100% - ${drawerWidth}px)` : '100%'),
+        marginLeft: isMobile ? 0 : (open ? drawerWidth : 0),
         transition: (theme: Theme) =>
           theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
-        ...(open && {
-          marginLeft: drawerWidth,
-          width: `calc(100% - ${drawerWidth}px)`,
+        ...(open && !isMobile && {
           transition: (theme: Theme) =>
             theme.transitions.create(['width', 'margin'], {
               easing: theme.transitions.easing.sharp,
@@ -55,7 +59,7 @@ export default function Header({ open, onMenuClick, health }: HeaderProps) {
           color="inherit"
           aria-label="open drawer"
           onClick={onMenuClick}
-          sx={{ marginRight: '36px', ...(open && { display: 'none' }) }}
+          sx={{ marginRight: '36px' }}
         >
           <MenuIcon />
         </IconButton>
@@ -64,9 +68,9 @@ export default function Header({ open, onMenuClick, health }: HeaderProps) {
           variant="h6"
           color="inherit"
           noWrap
-          sx={{ flexGrow: 1 }}
+          sx={{ flexGrow: 1, fontSize: { xs: '0.9rem', sm: '1rem' } }}
         >
-          DiscordLLMBot Dashboard
+          DiscordLLMBot
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {health ? (
@@ -79,10 +83,11 @@ export default function Header({ open, onMenuClick, health }: HeaderProps) {
                 height: 24,
                 bgcolor: health.status === 'ok' ? 'success.main' : 'error.main',
                 color: 'white',
+                display: { xs: 'none', sm: 'flex' },
               }}
             />
           ) : (
-            <Typography variant="caption" color="inherit">
+            <Typography variant="caption" color="inherit" sx={{ display: { xs: 'none', sm: 'block' } }}>
               Connecting...
             </Typography>
           )}

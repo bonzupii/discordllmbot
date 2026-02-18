@@ -2,9 +2,9 @@
  * Main application component with routing and layout.
  * @module App
  */
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, Box } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, useMediaQuery } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   Dns as DnsIcon,
@@ -27,20 +27,51 @@ const NAV_ITEMS = [
   { to: '/logs', label: 'Logs', icon: <ListAltIcon /> },
 ];
 
+const DRAWER_WIDTH = 240;
+
+/**
+ * Main app content with layout management.
+ * Handles responsive drawer state for mobile.
+ */
 function AppContent() {
-  const [open, setOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { health } = useHealth();
 
-  const toggleDrawer = () => {
-    setOpen(!open);
-  };
+  /**
+   * Toggle mobile drawer open/close
+   */
+  const handleDrawerToggle = useCallback(() => {
+    setMobileOpen((prev) => !prev);
+  }, []);
+
+  /**
+   * Close drawer when navigating (mobile)
+   */
+  const handleNavClick = useCallback(() => {
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  }, [isMobile]);
 
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <Header open={open} onMenuClick={toggleDrawer} health={health} />
-      <Sidebar open={open} onToggle={toggleDrawer} items={NAV_ITEMS} />
-      <MainContent>
+      <Header 
+        open={!mobileOpen} 
+        onMenuClick={handleDrawerToggle} 
+        health={health} 
+        drawerWidth={DRAWER_WIDTH}
+      />
+      <Sidebar
+        open={!mobileOpen}
+        onToggle={handleDrawerToggle}
+        items={NAV_ITEMS}
+        drawerWidth={DRAWER_WIDTH}
+        mobileOpen={mobileOpen}
+        onNavClick={handleNavClick}
+      />
+      <MainContent drawerWidth={DRAWER_WIDTH} isMobile={isMobile}>
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<Dashboard health={health} />} />
