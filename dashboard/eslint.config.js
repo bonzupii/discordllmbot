@@ -4,11 +4,13 @@ import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import pluginReactRefresh from "eslint-plugin-react-refresh";
 import pluginVitest from "eslint-plugin-vitest";
+import tseslint from "typescript-eslint";
 
 export default [
   { ignores: ["dist"] },
+  ...tseslint.configs.recommended,
   {
-    files: ["**/*.{js,jsx}"],
+    files: ["**/*.{js,jsx,ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2020,
       globals: {
@@ -40,6 +42,8 @@ export default [
         { allowConstantExport: true },
       ],
       "react/prop-types": "off",
+      "no-unused-vars": "off",  // Use TypeScript version instead
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ];
