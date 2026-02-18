@@ -187,16 +187,24 @@ function Logs() {
   };
 
   return (
-    <Box sx={{ width: '100%', p: 2 }}>
+    <Box sx={{ width: '100%', height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', pb: 2 }}>
       <Box
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          mb: 3,
+          mb: 2,
+          flexWrap: 'wrap',
+          gap: 1,
+          flexShrink: 0,
         }}
       >
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack 
+          direction="row" 
+          spacing={1} 
+          alignItems="center"
+          sx={{ flexWrap: 'wrap', gap: 0.5 }}
+        >
           <Chip
             label="ERROR"
             size="small"
@@ -239,7 +247,11 @@ function Logs() {
           />
         </Stack>
 
-        <Stack direction="row" spacing={1}>
+        <Stack 
+          direction="row" 
+          spacing={1}
+          sx={{ flexShrink: 0 }}
+        >
           <FormControlLabel
             control={
               <Switch
@@ -251,7 +263,7 @@ function Logs() {
             }
             label={
               <Typography variant="caption" color="text.secondary">
-                Auto-scroll
+                Auto
               </Typography>
             }
           />
@@ -281,8 +293,8 @@ function Logs() {
           bgcolor: '#0a0a0a',
           color: '#f8fafc',
           fontFamily: "'Fira Code', 'Courier New', monospace",
-          fontSize: '0.75rem',
-          height: '70vh',
+          fontSize: '0.7rem',
+          height: { xs: 'calc(100vh - 185px)', sm: 'calc(100vh - 140px)' },
           overflowY: 'auto',
         }}
       >

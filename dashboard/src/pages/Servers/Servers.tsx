@@ -20,7 +20,7 @@ import { AddLink as AddLinkIcon } from '@mui/icons-material';
 
 import { useServers, useSocket } from '@hooks';
 import { serversApi, configApi } from '@services';
-import { isChannelIgnored } from '@utils';
+import { isChannelIgnored, deepClone } from '@utils';
 import { EmptyState, ErrorBoundary } from '@components/common';
 import { ServerRow, EditRelationshipDialog } from './index';
 import type { BotConfig } from '@types';
@@ -202,7 +202,7 @@ function Servers() {
       }
     }
 
-    const updatedServerConfig = JSON.parse(JSON.stringify(currentServerConfig));
+    const updatedServerConfig = deepClone(currentServerConfig);
 
     if (!updatedServerConfig.replyBehavior.guildSpecificChannels) {
       updatedServerConfig.replyBehavior.guildSpecificChannels = {};
@@ -384,29 +384,35 @@ function Servers() {
   // ===========================================================================
   return (
     <ErrorBoundary>
-      <Box sx={{ width: '100%', p: { xs: 1, sm: 2 } }}>
+      <Box sx={{ width: '100%', pb: 2 }}>
         {servers.length === 0 ? (
           <EmptyState
             title="No Servers"
             message="The bot is not in any servers yet."
           />
         ) : (
-          <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-            <Table aria-label="collapsible table" sx={{ tableLayout: 'fixed' }}>
+          <Paper elevation={2} sx={{ borderRadius: 2, overflowX: 'auto' }}>
+            <Table 
+              aria-label="collapsible table" 
+              sx={{ 
+                tableLayout: 'fixed',
+                minWidth: 600,
+              }}
+            >
               <TableHead>
                 <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
                   <TableCell sx={{ width: 40, minWidth: 40, maxWidth: 40, padding: '4px 8px' }} />
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      Server Name
+                      Server
                     </Box>
                   </TableCell>
-                  <TableCell align="right" sx={{ display: { xs: 'none', sm: 'none', md: 'table-cell' } }}>
+                  <TableCell align="right" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
-                      Join Date
+                      Joined
                     </Box>
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="right" sx={{ minWidth: 80 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
                       Actions
                     </Box>

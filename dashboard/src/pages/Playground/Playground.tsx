@@ -87,8 +87,8 @@ function Playground() {
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 110px)',
-        p: 2,
+        height: { xs: 'calc(100vh - 80px)', sm: 'calc(100vh - 110px)' },
+        pb: 2,
       }}
     >
       <Box
@@ -96,7 +96,7 @@ function Playground() {
           display: 'flex',
           justifyContent: 'flex-end',
           alignItems: 'center',
-          mb: 3,
+          mb: 2,
         }}
       >
         <Tooltip title="Clear Chat">
@@ -106,8 +106,9 @@ function Playground() {
             startIcon={<RefreshIcon />}
             onClick={clearChat}
             aria-label="Clear chat"
+            size="small"
           >
-            Clear Chat
+            Clear
           </Button>
         </Tooltip>
       </Box>

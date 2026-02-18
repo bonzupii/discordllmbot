@@ -5,6 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { chatApi, botInfoApi } from '@services';
+import { getCurrentTimestamp } from '@utils';
 import type { ChatMessage } from '@types';
 
 /**
@@ -52,7 +53,7 @@ export function useChat(initialMessages: ChatMessage[] = []) {
       id: Date.now(),
       role: 'user',
       content: message,
-      timestamp: new Date().toISOString(),
+      timestamp: getCurrentTimestamp(),
       username,
     };
 
@@ -81,7 +82,7 @@ export function useChat(initialMessages: ChatMessage[] = []) {
         id: Date.now() + 1,
         role: 'system',
         content: 'Error: Failed to get response from bot.',
-        timestamp: new Date().toISOString(),
+        timestamp: getCurrentTimestamp(),
         username: 'System',
       };
       setMessages((prev) => [...prev, errorMsg]);
