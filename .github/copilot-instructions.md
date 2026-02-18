@@ -2,6 +2,12 @@
 
 ## 1. Architecture Overview
 
+This is a monorepo containing:
+- **bot/** - Discord bot with Express API (Node.js, ES modules)
+- **dashboard/** - React dashboard with TypeScript, Vite, MUI
+- **shared/** - Common utilities (database, config, logging)
+- **docs/** - Documentation site
+
 This is a Discord bot that generates contextual replies using LLM APIs (Google Gemini or Ollama). The bot maintains a human personality and can customize behavior per user and per server. The entire environment is containerized using Docker Compose.
 
 **Data Flow:**
@@ -16,7 +22,135 @@ This is a Discord bot that generates contextual replies using LLM APIs (Google G
 
 ---
 
-## 2. File Organization
+## 2. Build, Lint, and Test Commands
+
+### Root (Monorepo)
+```bash
+npm run dev           # Start bot, db, dashboard with Docker
+npm run dev:build     # Rebuild and start
+npm run dev:down      # Stop containers
+npm run build         # Build Docker images
+npm run docs          # Run docs dev server
+```
+
+### Bot (Node.js)
+```bash
+cd bot
+npm run lint          # ESLint
+npm run start         # Start bot: node src/index.js
+npm run dev:container # Dev with nodemon + debug port 9229
+```
+
+### Dashboard (React + TypeScript)
+```bash
+cd dashboard
+npm run dev           # Start Vite dev server (port 5173)
+npm run build         # Production build
+npm run lint          # ESLint (TypeScript + React)
+npm run type-check    # TypeScript: tsc --noEmit
+npm run preview       # Preview production build
+```
+
+---
+
+## 3. Code Style Guidelines
+
+### Bot (JavaScript/ES Modules)
+
+**Formatting & Linting**
+- 4-space indentation (not tabs)
+- Single quotes for strings
+- Semicolons always
+- Use ESLint rules from `bot/eslint.config.js`
+
+**Key ESLint Rules**
+- `prefer-const` - Use const by default, let only when reassigning
+- `no-unused-vars` - Allow variables starting with `_` or `client`
+- `no-console` - Off (use the logger utility instead)
+
+**Imports**
+- Use `.js` extensions for local imports
+- Absolute paths from workspace root: `../../shared/utils/logger.js`
+
+```javascript
+// Good
+import { logger } from '../../shared/utils/logger.js';
+import { loadConfig } from '../../shared/config/configLoader.js';
+
+// Bad
+import("./foo.js");
+```
+
+**Naming Conventions**
+- Files: camelCase (e.g., `replyDecider.js`, `messageCreate.js`)
+- Functions: verbFirst (e.g., `buildPrompt`, `getRelationship`, `saveRelationships`)
+- Constants: SCREAMING_SNAKE_CASE for config values
+- Variables: camelCase
+
+**Null Handling**
+- Use **nullish coalescing (`??`)** for defaults, NOT `||`
+```javascript
+// Good
+const mode = replyBehavior.mode ?? 'mention-only';
+const prob = typeof replyBehavior.replyProbability === 'number' 
+    ? replyBehavior.replyProbability 
+    : 1.0;
+
+// Bad
+const mode = replyBehavior.mode || 'mention-only';
+```
+
+**Error Handling**
+- Wrap async operations in try/catch
+- Log errors with the logger utility
+- Let errors propagate when appropriate
+
+```javascript
+try {
+    await someAsyncOperation();
+} catch (err) {
+    logger.error('Operation failed', err);
+    throw err;
+}
+```
+
+**Logging**
+- Use the logger from `shared/utils/logger.js`
+- Log levels: `logger.error`, `logger.warn`, `logger.info`, `logger.api`, `logger.message`
+
+---
+
+### Dashboard (TypeScript + React)
+
+**TypeScript Configuration**
+- Strict mode enabled via `typescript-eslint`
+- Use types from `@/types` when available
+- Avoid `any` - disable `@typescript-eslint/no-explicit-any` rule
+
+**Components**
+- Use MUI components (`@mui/material`)
+- Follow existing component patterns in `src/pages/` and `src/components/`
+- Use path aliases: `@theme`, `@pages`, `@components`, `@hooks`, `@services`, `@types`
+
+```typescript
+import theme from '@theme';
+import { Dashboard, Settings } from '@pages';
+import { useHealth } from '@hooks';
+```
+
+**React Patterns**
+- Functional components with hooks
+- Use `ErrorBoundary` for error handling
+- Custom hooks in `src/hooks/`
+- Debounced auto-save for settings (1-second delay)
+
+**Styling**
+- MUI `sx` prop for inline styles
+- Dark theme from `src/theme.ts`
+
+---
+
+## 4. File Organization
 
 ```
 bot/
@@ -62,26 +196,18 @@ shared/
     logger.js                          # 5-level structured logging (file + console)
 dashboard/
   src/
-    components/
-      Dashboard.jsx                    # Main dashboard with stats and activity
-      Settings.jsx                     # Global config with auto-save debouncing
-      Servers.jsx                      # Per-server config, relationships, channels
-      Logs.jsx                         # Real-time log viewing via Socket.io
-      Playground.jsx                   # Chat interface to test bot responses
-    App.jsx                            # Main app with routing
-    theme.js                           # Material-UI dark theme
-docs/
-  sessions/                            # Session notes (auto-tracked)
-  plans/                               # Project plan documents
-  adr/                                 # Architecture decision records
-  WORKLOG.md                           # Work history and accomplishments
+    pages/                            # Route pages (Dashboard, Settings, Servers, etc.)
+    components/                        # Reusable UI components
+    hooks/                            # Custom React hooks
+    services/                          # API calls to bot
+    theme.ts                           # MUI dark theme
 
 docker-compose.yml                     # Container orchestration (bot, db, pgadmin, docs, dashboard)
 ```
 
 ---
 
-## 3. Module Responsibilities
+## 5. Module Responsibilities
 
 - **`bot/src/index.js`**: Discord client setup, event registration, graceful shutdown (SIGINT/SIGTERM)
 - **`bot/src/api/server.js`**: Express + Socket.io API serving the dashboard (health, config, relationships, logs, analytics, playground)
@@ -100,7 +226,7 @@ docker-compose.yml                     # Container orchestration (bot, db, pgadm
 
 ---
 
-## 4. Configuration System
+## 6. Configuration System
 
 All configuration is stored in PostgreSQL database tables:
 - **`global_config`** — System-wide settings (bot persona, API, memory, logger)
@@ -144,7 +270,7 @@ All configuration is stored in PostgreSQL database tables:
 
 ---
 
-## 5. Reply Decision Logic
+## 7. Reply Decision Logic
 
 The `shouldReply()` function in `replyDecider.js` performs these checks in order:
 
@@ -158,7 +284,7 @@ The `shouldReply()` function in `replyDecider.js` performs these checks in order
 
 ---
 
-## 6. Environment Variables
+## 8. Environment Variables
 
 Required environment variables (via `.env`):
 
@@ -190,7 +316,7 @@ DOCS_PORT=5174              # Documentation port
 
 ---
 
-## 7. Key Implementation Patterns
+## 9. Key Implementation Patterns
 
 - **Nullish Coalescing:** Always use `??` for default values, not `||`
 - **Verb-first Function Names:** `buildPrompt`, `getRelationship`, `saveRelationships`
@@ -204,7 +330,7 @@ DOCS_PORT=5174              # Documentation port
 
 ---
 
-## 8. Dashboard Features
+## 10. Dashboard Features
 
 | Page | Features |
 |------|----------|
@@ -216,7 +342,7 @@ DOCS_PORT=5174              # Documentation port
 
 ---
 
-## 9. Database Schema
+## 11. Database Schema
 
 ```sql
 guilds (guildId PK, guildName)
@@ -231,7 +357,7 @@ global_config (id PK DEFAULT 'global', config JSONB, createdAt, updatedAt)
 
 ---
 
-## 10. Log Analysis
+## 12. Log Analysis
 
 - When diagnosing issues, check the `discordllmbot.log` file at the project root.
 - This log is recreated on each bot startup (truncated to `logger.maxLogLines`).
@@ -240,7 +366,7 @@ global_config (id PK DEFAULT 'global', config JSONB, createdAt, updatedAt)
 
 ---
 
-## 11. Common Tasks
+## 13. Common Tasks
 
 ### Adding a New Feature
 1. Determine location (which module: `memory`, `llm`, `personality`, `core`, `api`)
@@ -254,7 +380,8 @@ global_config (id PK DEFAULT 'global', config JSONB, createdAt, updatedAt)
 1. Check `discordllmbot.log` for errors and API traces
 2. Review `bot/src/events/messageCreate.js` for message flow
 3. Check `bot/src/core/replyDecider.js` for reply decision logic
-4. Verify configuration in database (use pgAdmin or queries)
+4. Use dashboard Logs page for real-time logs
+5. Verify configuration in database (use pgAdmin or queries)
 
 ### Configuration Changes
 - Use the dashboard Settings page for global config
