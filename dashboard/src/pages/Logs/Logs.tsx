@@ -16,7 +16,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Tooltip,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -187,13 +186,13 @@ function Logs() {
   };
 
   return (
-    <Box sx={{ width: '100%', height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', pb: 2 }}>
+    <Box sx={{ width: '100%', height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', pb: 2 }}>
       <Box
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          mb: 2,
+          mb: 1,
           flexWrap: 'wrap',
           gap: 1,
           flexShrink: 0,
@@ -282,7 +281,7 @@ function Logs() {
 
       <Paper
         ref={scrollRef}
-        elevation={2}
+        elevation={0}
         sx={{
           borderRadius: 2,
           overflow: 'hidden',
@@ -290,11 +289,12 @@ function Logs() {
           flexDirection: 'column',
           flex: 1,
           minHeight: 0,
-          bgcolor: '#0a0a0a',
-          color: '#f8fafc',
+          bgcolor: 'background.default',
+          border: '1px solid',
+          borderColor: 'divider',
           fontFamily: "'Fira Code', 'Courier New', monospace",
-          fontSize: '0.7rem',
-          height: { xs: 'calc(100vh - 185px)', sm: 'calc(100vh - 140px)' },
+          fontSize: '0.75rem',
+          height: '100%',
           overflowY: 'auto',
         }}
       >
@@ -309,156 +309,137 @@ function Logs() {
             const parsedLog: ParsedLog = parseLogLine(line);
             const type = parsedLog.level;
             const hasJson = !!parsedLog.json;
+            const hasMultiline = parsedLog.text.includes('\n');
+            const isExpandable = hasJson || hasMultiline;
 
-            return (
-              <Accordion
-                key={index}
+            const logContent = (
+              <Box
                 sx={{
-                  bgcolor: 'transparent',
-                  boxShadow: 'none',
-                  border: 'none',
-                  '&:before': { display: 'none' },
-                  '&.Mui-expanded': { margin: 0 },
-                  mb: 0.5,
-                  borderRadius: '4px !important',
-                  '&:not(:last-child)': {
-                    borderBottomLeftRadius: 0,
-                    borderBottomRightRadius: 0,
-                  },
-                  '&:first-of-type': {
-                    borderTopLeftRadius: '4px',
-                    borderTopRightRadius: '4px',
-                  },
+                  display: 'grid',
+                  gridTemplateColumns: 'auto auto auto 1fr',
+                  width: '100%',
+                  gap: 1,
+                  alignItems: 'center',
+                  px: 1,
+                  py: 0.5,
                 }}
               >
-                <AccordionSummary
-                  expandIcon={
-                    hasJson ? (
-                      <ExpandMoreIcon sx={{ color: 'text.secondary' }} />
-                    ) : null
-                  }
+                <Box
                   sx={{
-                    padding: '6px 8px',
-                    minHeight: 'auto',
-                    '& .MuiAccordionSummary-content': {
-                      margin: 0,
-                    },
-                    '&:hover': {
-                      bgcolor: 'rgba(255,255,255,0.1)',
-                    },
-                    borderRadius: '4px',
-                    margin: '2px 0',
-                    backgroundColor: 'rgba(30, 30, 30, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 24,
+                    color: getLevelColor(type),
                   }}
                 >
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      width: '100%',
-                    }}
-                  >
-                    <Tooltip title={type} placement="top">
-                      <Box
-                        sx={{
-                          mr: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          height: '100%',
-                        }}
-                      >
-                        {getLogIcon(type)}
-                      </Box>
-                    </Tooltip>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        width: '100%',
-                      }}
-                    >
-                      <Typography
-                        component="span"
-                        sx={{
-                          color: getLevelColor(type),
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-all',
-                          lineHeight: 1.4,
-                          display: 'inline',
-                          fontFamily: "'Fira Code', 'Courier New', monospace",
-                          fontSize: '0.75rem',
-                          backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                          padding: '2px 4px',
-                          borderRadius: '3px',
-                          borderLeft: `2px solid ${getLevelColor(type)}`,
-                        }}
-                      >
-                        {parsedLog.text}
-                      </Typography>
-                      {hasJson && (
-                        <Box
-                          component="div"
-                          sx={{
-                            mt: 0.5,
-                            ml: 3,
-                            pl: 1,
-                            borderLeft: '2px solid',
-                            borderLeftColor: 'divider',
-                            fontSize: '0.75rem',
-                            color: 'text.secondary',
-                          }}
-                        >
-                          {Object.entries(parsedLog.json as Record<string, unknown>)
-                            .slice(0, 3)
-                            .map(([key, value]) => (
-                              <Typography
-                                key={key}
-                                component="span"
-                                sx={{ display: 'block', mb: 0.5 }}
-                              >
-                                <strong>{key}:</strong>{' '}
-                                {typeof value === 'object'
-                                  ? JSON.stringify(value)
-                                  : String(value)}
-                              </Typography>
-                            ))}
-                          {Object.keys(parsedLog.json as Record<string, unknown>).length > 3 && (
-                            <Typography
-                              component="span"
-                              sx={{ fontStyle: 'italic' }}
-                            >
-                              ... and {Object.keys(parsedLog.json as Record<string, unknown>).length - 3}{' '}
-                              more fields
-                            </Typography>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-                </AccordionSummary>
+                  {getLogIcon(type)}
+                </Box>
+                <Box
+                  sx={{
+                    fontFamily: "'Fira Code', 'Courier New', monospace",
+                    fontSize: '0.75rem',
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1.4,
+                    color: 'text.secondary',
+                  }}
+                >
+                  {parsedLog.timestamp}
+                </Box>
+                <Box
+                  sx={{
+                    fontFamily: "'Fira Code', 'Courier New', monospace",
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1.4,
+                    color: getLevelColor(type),
+                  }}
+                >
+                  {type}
+                </Box>
+                <Box
+                  sx={{
+                    fontFamily: "'Fira Code', 'Courier New', monospace",
+                    fontSize: '0.75rem',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                    lineHeight: 1.4,
+                    textAlign: 'right',
+                  }}
+                >
+                  {parsedLog.text.split(/\[([A-Z]+)\]/).map((part, i, arr) => {
+                    if (i % 2 === 1) return null;
+                    if (i === arr.length - 1) return part;
+                    return null;
+                  })}
+                </Box>
+              </Box>
+            );
 
-                {hasJson && (
-                  <AccordionDetails
+            if (isExpandable) {
+              return (
+                <Accordion
+                  key={index}
+                  sx={{
+                    bgcolor: 'transparent',
+                    boxShadow: 'none',
+                    border: 'none',
+                    '&:before': { display: 'none' },
+                    '&.Mui-expanded': { margin: 0 },
+                    borderBottom: '1px solid',
+                    borderBottomColor: 'divider',
+                  }}
+                >
+                  <AccordionSummary
+                    expandIcon={
+                      <ExpandMoreIcon sx={{ color: 'text.secondary' }} />
+                    }
                     sx={{
-                      padding: '8px 0 0 24px',
-                      bgcolor: 'rgba(0,0,0,0.1)',
-                      borderTop: '1px solid rgba(255,255,255,0.05)',
+                      padding: 0,
+                      minHeight: 'auto',
+                      '& .MuiAccordionSummary-content': {
+                        margin: 0,
+                      },
                     }}
                   >
-                    <Box
-                      component="div"
+                    {logContent}
+                  </AccordionSummary>
+                  {hasJson && (
+                    <AccordionDetails
                       sx={{
-                        color: '#cbd5e1',
-                        fontFamily: 'monospace',
-                        fontSize: '0.8rem',
-                        lineHeight: 1.4,
+                        px: 2,
+                        py: 1,
+                        bgcolor: 'rgba(0,0,0,0.2)',
                       }}
                     >
-                      {formatJsonForDisplay(parsedLog.json)}
-                    </Box>
-                  </AccordionDetails>
-                )}
-              </Accordion>
+                      <Box
+                        component="div"
+                        sx={{
+                          fontFamily: "'Fira Code', 'Courier New', monospace",
+                          fontSize: '0.8rem',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {formatJsonForDisplay(parsedLog.json)}
+                      </Box>
+                    </AccordionDetails>
+                  )}
+                </Accordion>
+              );
+            }
+
+            return (
+              <Box
+                key={index}
+                sx={{
+                  py: 0.5,
+                  borderBottom: '1px solid',
+                  borderBottomColor: 'divider',
+                }}
+              >
+                {logContent}
+              </Box>
             );
           })
         )}

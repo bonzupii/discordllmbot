@@ -26,7 +26,7 @@ const theme = createTheme({
       contrastText: '#0f172a',
     },
     background: {
-      default: '#111827', // Darker slate-900 (navigation background kept)
+      default: '#1a1a1a', // Dark grey
       paper: '#333333',   // Lighter neutral gray-700 (better contrast)
     },
     text: {
@@ -53,9 +53,9 @@ const theme = createTheme({
       contrastText: '#020617',
     },
     info: {
-      main: '#a3a3a3', // Gray-400 (completely neutral)
-      light: '#d4d4d4',
-      dark: '#525252',
+      main: '#60a5fa', // Blue-400 (vibrant blue for API logs)
+      light: '#93c5fd',
+      dark: '#2563eb',
       contrastText: '#020617',
     },
   },
