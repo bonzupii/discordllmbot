@@ -1,10 +1,23 @@
+/**
+ * Main content area wrapper with styling.
+ * @module components/Layout/MainContent
+ */
 import { ReactNode } from 'react';
 import { Box, Toolbar, Container } from '@mui/material';
 
+/**
+ * Props for the MainContent component.
+ */
 interface MainContentProps {
+  /** Child elements to render */
   children: ReactNode;
 }
 
+/**
+ * Main content container with padding and scroll handling.
+ * @param props - Component props
+ * @returns Rendered main content component
+ */
 export default function MainContent({ children }: MainContentProps) {
   return (
     <Box

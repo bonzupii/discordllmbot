@@ -1,3 +1,7 @@
+/**
+ * Vite type definitions for environment variables.
+ * @module vite-env
+ */
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {

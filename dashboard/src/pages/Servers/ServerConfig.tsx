@@ -1,3 +1,7 @@
+/**
+ * Server-specific configuration component.
+ * @module pages/Servers/ServerConfig
+ */
 import { useState, useEffect } from 'react';
 import {
   Box,
@@ -32,6 +36,32 @@ import {
   updateArrayItemByIndex,
 } from '@utils';
 
+/**
+ * Props for ServerConfig component.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ServerConfigProps {
+  /** Guild ID of the server */
+  guildId: string;
+  /** Server-specific configuration */
+  config: Record<string, unknown>;
+  /** Whether config is loading */
+  loading: boolean;
+  /** Whether config is being saved */
+  saving: boolean;
+  /** Whether bot is restarting */
+  isRestarting: boolean;
+  /** Callback when config is updated */
+  onUpdate: (guildId: string, config: Record<string, unknown>) => void;
+  /** Callback when config is reset to default */
+  onReset: (guildId: string) => void;
+}
+
+/**
+ * Server configuration form with persona and reply behavior settings.
+ * @param props - Component props
+ * @returns Rendered server config form
+ */
 function ServerConfig({
   guildId,
   config,

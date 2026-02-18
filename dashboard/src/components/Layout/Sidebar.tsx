@@ -1,3 +1,7 @@
+/**
+ * Navigation sidebar with collapsible menu.
+ * @module components/Layout/Sidebar
+ */
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -13,20 +17,37 @@ import {
 import { ChevronLeft as ChevronLeftIcon } from '@mui/icons-material';
 import type { Theme } from '@mui/material/styles';
 
+/**
+ * Navigation item structure for sidebar links.
+ */
 interface NavItem {
+  /** Route path */
   to: string;
+  /** Display label */
   label: string;
+  /** Icon component */
   icon: ReactNode;
 }
 
+/**
+ * Props for the Sidebar component.
+ */
 interface SidebarProps {
+  /** Whether the sidebar is expanded */
   open: boolean;
+  /** Callback when toggle button is clicked */
   onToggle: () => void;
+  /** Array of navigation items to display */
   items: NavItem[];
 }
 
 const drawerWidth = 240;
 
+/**
+ * Sidebar component with navigation links.
+ * @param props - Component props
+ * @returns Rendered sidebar component
+ */
 export default function Sidebar({ open, onToggle, items }: SidebarProps) {
   return (
     <Drawer

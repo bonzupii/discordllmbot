@@ -1,20 +1,36 @@
+/**
+ * Error Boundary Component
+ * Catches React errors and displays a fallback UI
+ * @module components/common/ErrorBoundary
+ */
+
 import { Component, ReactNode } from 'react';
 import { Box, Typography, Button, Paper } from '@mui/material';
 import { Error as ErrorIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 
+/** State maintained when an error is caught */
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
   errorInfo: { componentStack?: string } | null;
 }
 
+/** Props for ErrorBoundary component */
 interface ErrorBoundaryProps {
+  /** Child components to render */
   children: ReactNode;
+  /** Custom fallback UI when error occurs */
   fallback?: ReactNode;
+  /** Show error details to user */
   showDetails?: boolean;
+  /** Callback when error is reset */
   onReset?: () => void;
 }
 
+/**
+ * Error Boundary - catches JavaScript errors in child components
+ * Prevents entire app from crashing due to component errors
+ */
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -25,15 +41,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     };
   }
 
+  /** Called when an error is thrown - updates state to show fallback */
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error, errorInfo: null };
   }
 
+  /** Called after error is caught - logs error details */
   componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
     this.setState({ errorInfo });
     console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
+  /** Reset error state and optionally call onReset callback */
   handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
     if (this.props.onReset) {
@@ -43,10 +62,12 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   render() {
     if (this.state.hasError) {
+      // Render custom fallback if provided
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
+      // Default error UI
       return (
         <Box
           sx={{

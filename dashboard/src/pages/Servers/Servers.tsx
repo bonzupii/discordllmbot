@@ -1,3 +1,7 @@
+/**
+ * Servers page for managing Discord servers the bot is in.
+ * @module pages/Servers/Servers
+ */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Box,
@@ -21,48 +25,71 @@ import { EmptyState, ErrorBoundary } from '@components/common';
 import { ServerRow, EditRelationshipDialog } from './index';
 import type { BotConfig } from '@types';
 
+/**
+ * Servers page component displaying all Discord servers the bot has joined.
+ * Allows configuration, relationship management, and channel monitoring per server.
+ * @returns Rendered servers page
+ */
 function Servers() {
+  // ===========================================================================
+  // HOOKS: Get server list and socket state
+  // ===========================================================================
   const { servers, botInfo, loading, error, leaveServer } = useServers();
   const { isRestarting } = useSocket();
 
-  // Global config
+  // ===========================================================================
+  // STATE: Server list and configuration
+  // ===========================================================================
+  // Global config - shared across all servers, used as fallback
   const [config, setConfig] = useState<BotConfig | null>(null);
   
-  // Expanded server state
+  // Currently expanded server (for collapsible row)
   const [expandedServerId, setExpandedServerId] = useState(null);
   
-  // Tab state per server
+  // Tab selection per server (0=Config, 1=Relationships, 2=Channels)
   const [serverTabs, setServerTabs] = useState({});
   
-  // Pagination state per server
+  // Pagination state for relationships table (per server)
   const [relationshipPages, setRelationshipPages] = useState({});
   const [relationshipRowsPerPage, setRelationshipRowsPerPage] = useState({});
+  // Pagination state for channels table (per server)
   const [channelPages, setChannelPages] = useState({});
   const [channelRowsPerPage, setChannelRowsPerPage] = useState({});
   
-  // Edit dialog state
+  // Edit dialog state for relationship editing
   const [editingUser, setEditingUser] = useState(null);
   const [editData, setEditData] = useState(null);
   
-  // Message state
+  // Snackbar message state for user feedback
   const [message, setMessage] = useState({
     open: false,
     text: '',
     severity: 'success',
   });
 
-  // Server-specific data storage
+  // ===========================================================================
+  // STATE: Server-specific data (lazy-loaded when expanded)
+  // ===========================================================================
+  // Per-server configuration overrides
   const [serverConfigs, setServerConfigs] = useState({});
   const [loadingConfigs, setLoadingConfigs] = useState({});
   const [savingConfigs, setSavingConfigs] = useState({});
+  
+  // Per-server user relationships (username, attitude, behavior, etc.)
   const [relationships, setRelationships] = useState({});
   const [loadingRelationships, setLoadingRelationships] = useState({});
+  
+  // Per-server channel list for monitoring toggle
   const [channels, setChannels] = useState({});
   const [loadingChannels, setLoadingChannels] = useState({});
 
+  // Debounce timers for auto-save (per server)
   const debounceTimers = useRef({});
 
-  // Fetch global config
+  // ===========================================================================
+  // EFFECT: Fetch global config on mount
+  // ===========================================================================
+  // Global config serves as defaults when server-specific config doesn't exist
   const fetchConfig = useCallback(async () => {
     try {
       const response = await configApi.getConfig();
@@ -76,6 +103,10 @@ function Servers() {
     fetchConfig();
   }, [fetchConfig]);
 
+  // ===========================================================================
+  // HANDLERS: Server row expansion
+  // ===========================================================================
+  // Toggles expanded state, resets to first tab when opening
   const toggleExpand = useCallback((guildId) => {
     if (expandedServerId === guildId) {
       setExpandedServerId(null);
@@ -85,6 +116,10 @@ function Servers() {
     }
   }, [expandedServerId]);
 
+  // ===========================================================================
+  // HANDLERS: Server actions
+  // ===========================================================================
+  // Remove bot from server
   const handleLeaveServer = async (serverId) => {
     const server = servers.find((s) => s.id === serverId);
     if (
@@ -104,15 +139,18 @@ function Servers() {
     }
   };
 
+  // Switch between Config/Relationships/Channels tabs
   const handleTabChange = useCallback((guildId, tabIndex) => {
     setServerTabs((prev) => ({ ...prev, [guildId]: tabIndex }));
   }, []);
 
+  // Open edit dialog for a user relationship
   const startEdit = useCallback((userId, data) => {
     setEditingUser(userId);
     setEditData({ ...data });
   }, []);
 
+  // Save relationship changes to API and update local state
   const handleSaveRelationship = async (guildId, userId, data) => {
     try {
       await serversApi.updateRelationship(guildId, userId, data);
@@ -133,6 +171,7 @@ function Servers() {
     }
   };
 
+  // Toggle user's ignore flag (prevents bot from responding to them)
   const handleIgnoreToggle = async (guildId, userId, currentData) => {
     const newData = { ...currentData, ignored: !currentData.ignored };
     try {
@@ -149,6 +188,7 @@ function Servers() {
     }
   };
 
+  // Toggle channel monitoring: add/remove from allowed or ignored list
   const handleChannelToggle = async (guildId, channelId) => {
     let currentServerConfig = serverConfigs[guildId];
     
@@ -216,6 +256,7 @@ function Servers() {
     }
   };
 
+  // Auto-save server config with 1.5s debounce to prevent API spam
   const handleConfigUpdate = useCallback((guildId, newConfig) => {
     if (isRestarting) return;
 
@@ -244,6 +285,7 @@ function Servers() {
     }, 1500);
   }, [isRestarting]);
 
+  // Reset server config to global defaults
   const handleResetToDefault = async (guildId) => {
     if (window.confirm('Reset this server\'s configuration to default?')) {
       try {
@@ -261,7 +303,11 @@ function Servers() {
     }
   };
 
-  // Fetch server-specific data when expanded
+  // ===========================================================================
+  // EFFECT: Lazy-load server data when expanded
+  // ===========================================================================
+  // Fetches config, relationships, and channels only when user expands a server row
+  // This avoids loading unnecessary data for servers the user isn't interacting with
   useEffect(() => {
     if (!expandedServerId) return;
 
@@ -309,10 +355,14 @@ function Servers() {
     fetchServerData();
   }, [expandedServerId, serverConfigs, loadingConfigs, relationships, loadingRelationships, channels, loadingChannels]);
 
+  // Close the snackbar notification
   const closeMessage = () => {
     setMessage({ ...message, open: false });
   };
 
+  // ===========================================================================
+  // RENDER: Loading and error states
+  // ===========================================================================
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -329,6 +379,9 @@ function Servers() {
     );
   }
 
+  // ===========================================================================
+  // RENDER: Main table
+  // ===========================================================================
   return (
     <ErrorBoundary>
       <Box sx={{ width: '100%', p: { xs: 1, sm: 2 } }}>

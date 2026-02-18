@@ -1,3 +1,7 @@
+/**
+ * Application entry point that renders the React app into the DOM.
+ * @module main
+ */
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

@@ -1,3 +1,7 @@
+/**
+ * Dialog for editing user relationship data.
+ * @module pages/Servers/EditRelationshipDialog
+ */
 import { useState } from 'react';
 import {
   Dialog,
@@ -13,20 +17,26 @@ import {
 import type { Relationship } from '@types';
 
 /**
- * EditRelationshipDialog component
- *
- * Note: When using this component, pass a `key` prop equal to `userId` to ensure
- * the form resets when editing different users:
- * <EditRelationshipDialog key={userId} userId={userId} ... />
+ * Props for EditRelationshipDialog.
  */
 interface EditRelationshipDialogProps {
+  /** Whether the dialog is open */
   open: boolean;
+  /** User ID to edit */
   userId: string;
+  /** Existing relationship data */
   data?: Relationship;
+  /** Callback when dialog is closed */
   onClose: () => void;
+  /** Callback when relationship is saved */
   onSave: (userId: string, data: Relationship) => void;
 }
 
+/**
+ * Dialog component for editing user relationship data.
+ * @param props - Component props
+ * @returns Rendered dialog component
+ */
 function EditRelationshipDialog({ userId, data, open, onClose, onSave }: EditRelationshipDialogProps) {
   const [editData, setEditData] = useState<Relationship>(data || { attitude: '', behavior: [], ignored: false });
 

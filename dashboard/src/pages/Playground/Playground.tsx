@@ -1,3 +1,7 @@
+/**
+ * Playground page for testing bot chat.
+ * @module pages/Playground/Playground
+ */
 import { useState, useRef, useEffect } from 'react';
 import {
   Box,
@@ -24,6 +28,10 @@ import { useTheme } from '@mui/material/styles';
 
 import { useChat } from '@hooks';
 
+/**
+ * Playground page component for testing bot conversations.
+ * @returns Rendered playground page
+ */
 function Playground() {
   const {
     messages,

@@ -1,10 +1,19 @@
+/**
+ * Log Parsing Utilities
+ * Parses bot log output into structured data for display
+ * @module utils/logParser
+ */
+
 import type { LogType as LogTypeType, ParsedLog as ParsedLogType } from '@types';
 
 export type LogType = LogTypeType;
 export type ParsedLog = ParsedLogType;
 
 /**
- * Parse a log line into structured data
+ * Parse a raw log line into structured data
+ * Extracts timestamp, log level, text, and optional JSON object
+ * @param line - Raw log line from bot
+ * @returns Parsed log entry with level, timestamp, text, and json
  */
 export const parseLogLine = (line: string): ParsedLog => {
   try {
@@ -70,7 +79,10 @@ export const parseLogLine = (line: string): ParsedLog => {
 };
 
 /**
- * Get the log type from a log line
+ * Determine log level from raw log line text
+ * Uses simple string matching to find level indicators
+ * @param line - Raw log line
+ * @returns Log level type
  */
 export const getLogType = (line: string): LogType => {
   if (line.includes('[ERROR]')) return 'ERROR';
@@ -82,7 +94,10 @@ export const getLogType = (line: string): LogType => {
 };
 
 /**
- * Get the color for a log level
+ * Get MUI color for a log level
+ * Used for colored log output in the UI
+ * @param type - Log level
+ * @returns MUI theme color string
  */
 export const getLevelColor = (type: LogType): string => {
   switch (type) {
@@ -102,7 +117,10 @@ export const getLevelColor = (type: LogType): string => {
 };
 
 /**
- * Get the icon for a log level
+ * Get icon name for a log level
+ * Returns MUI icon component names for display
+ * @param type - Log level
+ * @returns Icon component name
  */
 export const getLogIcon = (type: LogType): string => {
   switch (type) {

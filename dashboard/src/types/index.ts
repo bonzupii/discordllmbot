@@ -1,4 +1,15 @@
-// API Response Types
+/**
+ * API Response Types for DiscordLLMBot dashboard
+ * @module types
+ */
+
+// ===========================================================================
+// Health & Analytics
+// ===========================================================================
+
+/**
+ * Response from the /health endpoint
+ */
 export interface HealthResponse {
   status: string;
   uptime: number;
@@ -6,6 +17,9 @@ export interface HealthResponse {
   memory_usage: number;
 }
 
+/**
+ * Response from the /analytics endpoint
+ */
 export interface AnalyticsResponse {
   stats24h: {
     total_replies: number;
@@ -24,6 +38,9 @@ export interface AnalyticsResponse {
   }>;
 }
 
+/**
+ * A bot reply stored in the database
+ */
 export interface Reply {
   id: number;
   username: string;
@@ -35,7 +52,13 @@ export interface Reply {
   timestamp: string;
 }
 
-// Server Types
+// ===========================================================================
+// Server Management
+// ===========================================================================
+
+/**
+ * Discord server the bot is connected to
+ */
 export interface Server {
   id: string;
   name: string;
@@ -44,6 +67,9 @@ export interface Server {
   joinedAt?: string;
 }
 
+/**
+ * Server-specific configuration overrides
+ */
 export interface ServerConfig {
   replyBehavior: {
     guildSpecificChannels?: Record<string, {
@@ -54,19 +80,32 @@ export interface ServerConfig {
   [key: string]: unknown;
 }
 
+/**
+ * User relationship data - defines how the bot interacts with a user
+ */
 export interface Relationship {
   attitude: string;
   behavior: string[];
   ignored: boolean;
 }
 
+/**
+ * Discord channel information
+ */
 export interface Channel {
   id: string;
   name: string;
   type: number;
 }
 
-// Bot Config Types
+// ===========================================================================
+// Bot Configuration
+// ===========================================================================
+
+/**
+ * Complete bot configuration structure
+ * Used for both global config and server-specific overrides
+ */
 export interface BotConfig {
   bot: {
     name: string;
@@ -98,7 +137,13 @@ export interface BotConfig {
   };
 }
 
-// Chat Types
+// ===========================================================================
+// Chat / Playground
+// ===========================================================================
+
+/**
+ * A message in the chat playground
+ */
 export interface ChatMessage {
   id: number;
   role: 'user' | 'assistant' | 'system';
@@ -111,12 +156,18 @@ export interface ChatMessage {
   };
 }
 
+/**
+ * Request body for sending a chat message
+ */
 export interface ChatRequest {
   message: string;
   username: string;
   guildName: string;
 }
 
+/**
+ * Response from the chat endpoint
+ */
 export interface ChatResponse {
   reply: string;
   timestamp: string;
@@ -126,15 +177,30 @@ export interface ChatResponse {
   };
 }
 
-// Bot Info Types
+// ===========================================================================
+// Bot Info
+// ===========================================================================
+
+/**
+ * Bot information from the API
+ */
 export interface BotInfo {
   clientId?: string;
   inviteUrl?: string;
 }
 
-// Utility Types
+// ===========================================================================
+// Logging
+// ===========================================================================
+
+/**
+ * Log level types
+ */
 export type LogType = 'ERROR' | 'WARN' | 'INFO' | 'API' | 'MESSAGE' | 'OTHER';
 
+/**
+ * A parsed log entry
+ */
 export interface ParsedLog {
   timestamp: string | null;
   level: LogType;

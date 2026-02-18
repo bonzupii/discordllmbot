@@ -1,3 +1,7 @@
+/**
+ * Servers page exports.
+ * @module pages/Servers
+ */
 export { default as Servers } from './Servers';
 export { default as ServerRow } from './ServerRow';
 export { default as ServerConfig } from './ServerConfig';

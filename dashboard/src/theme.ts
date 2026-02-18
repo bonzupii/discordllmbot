@@ -1,5 +1,15 @@
+/**
+ * MUI Theme Configuration
+ * Dark theme with violet/pink accent colors
+ * @module theme
+ */
+
 import { createTheme } from '@mui/material/styles';
 
+/**
+ * Custom dark theme for DiscordLLMBot dashboard
+ * Uses violet as primary color and pink as secondary
+ */
 const theme = createTheme({
   palette: {
     mode: 'dark',

@@ -1,3 +1,7 @@
+/**
+ * Relationships table component for managing user relationships.
+ * @module pages/Servers/Relationships
+ */
 import React from 'react';
 import {
   Box,
@@ -20,20 +24,38 @@ import {
 import { Edit as EditIcon } from '@mui/icons-material';
 import type { Relationship } from '@types';
 
+/** Relationship type with optional avatar and display info. */
 type RelationshipWithAvatar = Relationship & { avatarUrl?: string; displayName?: string; username?: string };
 
+/**
+ * Props for the Relationships component.
+ */
 interface RelationshipsProps {
+  /** Record of user relationships keyed by user ID */
   relationships: Record<string, RelationshipWithAvatar>;
+  /** Whether relationships are loading */
   loading: boolean;
+  /** Error if loading failed */
   error: Error | null;
+  /** Current page number */
   page: number;
+  /** Rows per page */
   rowsPerPage: number;
+  /** Page change handler */
   onPageChange: (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
+  /** Rows per page change handler */
   onRowsPerPageChange: (_event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  /** Edit relationship handler */
   onEdit: (userId: string, data: RelationshipWithAvatar) => void;
+  /** Toggle ignore status handler */
   onIgnoreToggle: (userId: string, data: RelationshipWithAvatar) => void;
 }
 
+/**
+ * Table displaying user relationships with pagination and editing.
+ * @param props - Component props
+ * @returns Rendered relationships table
+ */
 function Relationships({
   relationships,
   loading,

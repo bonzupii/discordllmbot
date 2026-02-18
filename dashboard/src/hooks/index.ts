@@ -1,3 +1,7 @@
+/**
+ * Custom React hooks for state management and API communication.
+ * @module hooks
+ */
 export { useAnalytics } from './useAnalytics';
 export { useChat } from './useChat';
 export { useGlobalConfig } from './useGlobalConfig';

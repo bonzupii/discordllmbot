@@ -1,3 +1,7 @@
+/**
+ * Settings page for configuring bot persona, LLM, memory, and logging.
+ * @module pages/Settings/Settings
+ */
 import { useState } from 'react';
 import {
   Box,
@@ -35,6 +39,10 @@ import {
 
 import { useGlobalConfig, useSocket } from '@hooks';
 
+/**
+ * Settings page component for global bot configuration.
+ * @returns Rendered settings page
+ */
 function Settings() {
   const {
     config,
@@ -66,14 +74,27 @@ function Settings() {
   if (!config)
     return <Alert severity="error">Failed to load configuration.</Alert>;
 
+  /**
+   * Handles tab selection change.
+   * @param event - Tab change event
+   * @param newValue - New tab index
+   */
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
+  /**
+   * Handles accordion section expansion change.
+   * @param section - Section identifier
+   */
   const handleSpeakingSectionChange = (section) => {
     setActiveSpeakingSection(section);
   };
 
+  /**
+   * Handles provider change and fetches models for the selected provider.
+   * @param event - Select change event
+   */
   const handleProviderChange = async (e) => {
     const newProvider = e.target.value;
     updateNested('api.provider', newProvider, isRestarting);

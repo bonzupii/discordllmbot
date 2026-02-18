@@ -144,7 +144,6 @@ import { useHealth } from '@hooks';
 
 **Styling**
 - MUI `sx` prop for inline styles
-- Tailwind CSS available for custom styles
 - Dark theme from `src/theme.ts`
 
 ---

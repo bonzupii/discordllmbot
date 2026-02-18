@@ -1,3 +1,7 @@
+/**
+ * Dashboard page showing analytics, activity, and system health.
+ * @module pages/Dashboard/Dashboard
+ */
 import React from 'react';
 import {
   Box,
@@ -37,6 +41,7 @@ import type { SxProps } from '@mui/material';
 import { useAnalytics } from '@hooks';
 import type { AnalyticsResponse, Reply, HealthResponse } from '@types';
 
+/** Props for the StatusItem component. */
 interface StatusItemProps {
   icon: React.ReactNode;
   label: string;
@@ -44,6 +49,7 @@ interface StatusItemProps {
   color: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
 }
 
+/** Formats uptime in seconds to human-readable string. */
 const formatUptime = (seconds?: number): string => {
   if (!seconds) return 'N/A';
   const d = Math.floor(seconds / (3600 * 24));
@@ -52,6 +58,7 @@ const formatUptime = (seconds?: number): string => {
   return `${d}d ${h}h ${m}m`;
 };
 
+/** Status item component displaying an icon, label, and value. */
 const StatusItem = ({ icon, label, value, color }: StatusItemProps) => (
   <Box
     sx={{
@@ -112,10 +119,12 @@ const StatusItem = ({ icon, label, value, color }: StatusItemProps) => (
   </Box>
 );
 
+/** Props for the Dashboard component. */
 interface DashboardProps {
   health?: HealthResponse | null;
 }
 
+/** Main dashboard page displaying analytics, activity feed, and system health. */
 function Dashboard({ health }: DashboardProps) {
   const { stats, replies, loading } = useAnalytics();
 

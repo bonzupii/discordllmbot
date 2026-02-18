@@ -1,13 +1,29 @@
+/**
+ * Empty state placeholder component.
+ * @module components/common/EmptyState
+ */
 import { ReactNode } from 'react';
 import { Box, Typography, Paper } from '@mui/material';
 
+/**
+ * Props for the EmptyState component.
+ */
 interface EmptyStateProps {
+  /** Optional icon to display */
   icon?: ReactNode;
+  /** Title text */
   title?: string;
+  /** Description message */
   message?: string;
+  /** Optional action button or element */
   action?: ReactNode;
 }
 
+/**
+ * Displays a placeholder when no content is available.
+ * @param props - Component props
+ * @returns Rendered empty state component
+ */
 export function EmptyState({ icon, title, message, action }: EmptyStateProps) {
   return (
     <Paper

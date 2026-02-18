@@ -1,9 +1,22 @@
+/**
+ * Loading state indicator component.
+ * @module components/common/LoadingState
+ */
 import { Box, CircularProgress, Typography } from '@mui/material';
 
+/**
+ * Props for the LoadingState component.
+ */
 interface LoadingStateProps {
+  /** Optional loading message to display */
   message?: string;
 }
 
+/**
+ * Displays a loading spinner with optional message.
+ * @param props - Component props
+ * @returns Rendered loading state component
+ */
 export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
   return (
     <Box

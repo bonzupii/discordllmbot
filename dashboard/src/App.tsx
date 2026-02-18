@@ -1,3 +1,7 @@
+/**
+ * Main application component with routing and layout.
+ * @module App
+ */
 import { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';

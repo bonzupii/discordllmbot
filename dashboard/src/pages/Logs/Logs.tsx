@@ -1,3 +1,7 @@
+/**
+ * Logs page showing real-time bot logs with filtering.
+ * @module pages/Logs/Logs
+ */
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import {
@@ -29,6 +33,18 @@ import type { SvgIconProps } from '@mui/material';
 import { parseLogLine, getLogType, getLevelColor } from '@utils';
 import type { LogType, ParsedLog } from '@types';
 
+/**
+ * Filter state for log types.
+ */
+interface Filters {
+  ERROR: boolean;
+  WARN: boolean;
+  INFO: boolean;
+  API: boolean;
+  MESSAGE: boolean;
+  OTHER: boolean;
+}
+
 // Map icon names to components
 const iconMap: Record<LogType, React.ComponentType<SvgIconProps>> = {
   ERROR: ErrorIcon,
@@ -39,15 +55,10 @@ const iconMap: Record<LogType, React.ComponentType<SvgIconProps>> = {
   OTHER: VisibilityIcon,
 };
 
-interface Filters {
-  ERROR: boolean;
-  WARN: boolean;
-  INFO: boolean;
-  API: boolean;
-  MESSAGE: boolean;
-  OTHER: boolean;
-}
-
+/**
+ * Logs page component displaying real-time log stream.
+ * @returns Rendered logs page
+ */
 function Logs() {
   const [logs, setLogs] = useState<string[]>([]);
   const [filters, setFilters] = useState<Filters>({

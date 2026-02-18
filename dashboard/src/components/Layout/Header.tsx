@@ -1,16 +1,31 @@
+/**
+ * Top application header with branding and health status.
+ * @module components/Layout/Header
+ */
 import { AppBar, IconButton, Toolbar, Typography, Chip, Box } from '@mui/material';
 import { Menu as MenuIcon, GitHub as GitHubIcon } from '@mui/icons-material';
 import type { HealthResponse } from '@types';
 import type { Theme } from '@mui/material/styles';
 
+/**
+ * Props for the Header component.
+ */
 interface HeaderProps {
+  /** Whether the sidebar is open */
   open: boolean;
+  /** Callback when menu button is clicked */
   onMenuClick: () => void;
+  /** Current health status from the API */
   health?: HealthResponse | null;
 }
 
 const drawerWidth = 240;
 
+/**
+ * Header component displaying app title, health status, and GitHub link.
+ * @param props - Component props
+ * @returns Rendered header component
+ */
 export default function Header({ open, onMenuClick, health }: HeaderProps) {
   return (
     <AppBar

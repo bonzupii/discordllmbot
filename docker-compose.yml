@@ -14,6 +14,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  db-mcp:
+    image: crystaldba/postgres-mcp:latest
+    container_name: db-mcp
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URI: postgresql://admin:password@db:5432/discordllmbot
 
   bot:
     container_name: discordllmbot-bot

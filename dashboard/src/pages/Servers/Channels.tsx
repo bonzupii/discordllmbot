@@ -1,3 +1,7 @@
+/**
+ * Channel monitoring component for server channels.
+ * @module pages/Servers/Channels
+ */
 import {
   Box,
   Typography,
@@ -13,6 +17,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 
+/** Channel monitoring table component with pagination. */
 function Channels({
   guildId,
   channels,

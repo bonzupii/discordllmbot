@@ -1,7 +1,17 @@
+/**
+ * Hook for managing global bot configuration
+ * Provides config fetching, saving, and nested property updates
+ * @module hooks/useGlobalConfig
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { configApi, modelsApi } from '@services';
 import type { BotConfig } from '@types';
 
+/**
+ * Hook for fetching and updating global bot configuration
+ * Includes auto-save with debounce and model fetching for LLM providers
+ */
 export function useGlobalConfig() {
   const [config, setConfig] = useState<BotConfig | null>(null);
   const [models, setModels] = useState<string[]>([]);
@@ -15,8 +25,13 @@ export function useGlobalConfig() {
     severity: 'success'
   });
 
+  /** Debounce timer for auto-save */
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /**
+   * Fetch global configuration from API
+   * @returns The config object or null on failure
+   */
   const fetchConfig = useCallback(async (): Promise<BotConfig | null> => {
     try {
       const response = await configApi.getConfig();
@@ -32,6 +47,11 @@ export function useGlobalConfig() {
     }
   }, []);
 
+  /**
+   * Fetch available models for a provider
+   * @param provider - LLM provider ('gemini' or 'ollama')
+   * @returns Array of model names
+   */
   const fetchModels = useCallback(async (provider: string): Promise<string[]> => {
     if (!provider) return [];
 
@@ -53,6 +73,11 @@ export function useGlobalConfig() {
     }
   }, []);
 
+  /**
+   * Save configuration to API
+   * @param newConfig - Configuration object to save
+   * @returns True if save succeeded
+   */
   const saveConfig = useCallback(async (newConfig: BotConfig): Promise<boolean> => {
     setSaving(true);
     try {
@@ -67,6 +92,11 @@ export function useGlobalConfig() {
     }
   }, []);
 
+  /**
+   * Save config after delay (debounced)
+   * @param newConfig - Configuration to save
+   * @param isRestarting - Whether bot is restarting (skip save if true)
+   */
   const debouncedSave = useCallback((newConfig: BotConfig, isRestarting: boolean) => {
     if (isRestarting) return;
 
@@ -79,6 +109,12 @@ export function useGlobalConfig() {
     }, 1000);
   }, [saveConfig]);
 
+  /**
+   * Update a nested config property and trigger save
+   * @param path - Dot-notation path (e.g., 'api.geminiModel')
+   * @param value - New value
+   * @param isRestarting - Whether to skip saving
+   */
   const updateNested = useCallback((path: string, value: unknown, isRestarting: boolean) => {
     setConfig((prev: BotConfig | null) => {
       if (!prev) return prev;
@@ -101,6 +137,11 @@ export function useGlobalConfig() {
     });
   }, [debouncedSave]);
 
+  /**
+   * Add item to a nested array property
+   * @param path - Dot-notation path to array
+   * @param item - Item to add (default empty string)
+   */
   const addArrayItem = useCallback((path: string, item = '') => {
     setConfig((prev: BotConfig | null) => {
       if (!prev) return prev;
@@ -122,6 +163,11 @@ export function useGlobalConfig() {
     });
   }, []);
 
+  /**
+   * Remove item from nested array property
+   * @param path - Dot-notation path to array
+   * @param itemToRemove - Item to remove
+   */
   const removeArrayItem = useCallback((path: string, itemToRemove: unknown) => {
     setConfig((prev: BotConfig | null) => {
       if (!prev) return prev;
@@ -139,6 +185,13 @@ export function useGlobalConfig() {
     });
   }, []);
 
+  /**
+   * Update item in nested array by index
+   * @param path - Dot-notation path to array
+   * @param index - Array index to update
+   * @param value - New value
+   * @param isRestarting - Whether to skip saving
+   */
   const updateArrayItem = useCallback((path: string, index: number, value: unknown, isRestarting: boolean) => {
     setConfig((prev: BotConfig | null) => {
       if (!prev) return prev;
@@ -161,6 +214,7 @@ export function useGlobalConfig() {
     });
   }, [debouncedSave]);
 
+  // Fetch config and models on mount
   useEffect(() => {
     const init = async () => {
       const initialConfig = await fetchConfig();
@@ -170,6 +224,7 @@ export function useGlobalConfig() {
     };
     init();
 
+    // Cleanup debounce timer on unmount
     return () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
@@ -177,6 +232,9 @@ export function useGlobalConfig() {
     };
   }, [fetchConfig, fetchModels]);
 
+  /**
+   * Close the notification message
+   */
   const clearMessage = useCallback(() => {
     setMessage({ ...message, open: false });
   }, [message]);

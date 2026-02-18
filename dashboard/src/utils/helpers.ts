@@ -1,3 +1,8 @@
+/**
+ * Helper utility functions for the dashboard
+ * @module utils/helpers
+ */
+
 import type { BotConfig } from '@types';
 
 /**

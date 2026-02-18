@@ -1,3 +1,7 @@
+/**
+ * Server row component with expandable configuration panels.
+ * @module pages/Servers/ServerRow
+ */
 import { useCallback } from 'react';
 import type { Relationship } from '@types';
 import {
@@ -27,6 +31,11 @@ import ServerConfig from './ServerConfig';
 import Relationships from './Relationships';
 import Channels from './Channels';
 
+/**
+ * ServerRow component displaying a server with expandable configuration.
+ * @param props - Component props
+ * @returns Rendered server row
+ */
 function ServerRow({
   server,
   expanded,
@@ -181,7 +190,6 @@ function ServerRow({
         </TableCell>
       </TableRow>
       <TableRow sx={{ '& > *': { borderBottom: 'none' } }}>
-        <TableCell sx={{ width: 40, minWidth: 40, paddingBottom: 0, paddingTop: 0 }} />
         <td colSpan={3} style={{ paddingBottom: 0, paddingTop: 0 }}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
