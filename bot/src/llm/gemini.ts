@@ -1,18 +1,38 @@
+/**
+ * Gemini LLM Provider
+ * 
+ * Implementation for Google's Gemini API with retry logic
+ * and exponential backoff for rate limiting.
+ * 
+ * @module bot/src/llm/gemini
+ */
+
 import { logger } from '../../../shared/utils/logger.js';
 import { getApiConfig } from '../../../shared/config/configLoader.js';
 
+/**
+ * API configuration for Gemini.
+ */
 interface ApiConfig {
     geminiModel?: string;
     retryAttempts?: number;
     retryBackoffMs?: number;
 }
 
+/**
+ * Gets the Gemini API URL for the configured model.
+ * 
+ * @returns Promise resolving to the API URL
+ */
 async function getGeminiUrl(): Promise<string> {
     const config: ApiConfig = await getApiConfig();
     const geminiModel = config.geminiModel || 'gemini-2.0-flash';
     return `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
 }
 
+/**
+ * Error class for Gemini API errors with retry support.
+ */
 export class GeminiAPIError extends Error {
     statusCode: number;
     retryable: boolean;
@@ -27,6 +47,12 @@ export class GeminiAPIError extends Error {
     }
 }
 
+/**
+ * Determines if an error is retryable.
+ * 
+ * @param error - The error to check
+ * @returns True if the error should trigger a retry
+ */
 function isRetryable(error: Error): boolean {
     if (error instanceof GeminiAPIError) {
         return error.retryable;
@@ -34,6 +60,14 @@ function isRetryable(error: Error): boolean {
     return error.message?.includes('timeout') || error.message?.includes('ECONNRESET');
 }
 
+/**
+ * Retries a function with exponential backoff.
+ * 
+ * @param fn - The function to retry
+ * @param maxRetries - Maximum number of retry attempts
+ * @param baseBackoffMs - Base backoff time in milliseconds
+ * @returns Promise resolving to the function result
+ */
 async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 1000): Promise<T> {
     let lastError: Error;
 
@@ -79,6 +113,13 @@ interface GeminiResponse {
     usageMetadata: UsageMetadata | null;
 }
 
+/**
+ * Generates a reply using the Gemini API.
+ * Includes automatic retry with exponential backoff for rate limits.
+ * 
+ * @param prompt - The prompt string to send to Gemini
+ * @returns Promise resolving to the Gemini response with text and token counts
+ */
 export async function generateReply(prompt: string): Promise<GeminiResponse> {
     const apiCfg: ApiConfig = await getApiConfig();
     const { geminiModel, retryAttempts = 3, retryBackoffMs = 1000 } = apiCfg;
@@ -150,6 +191,11 @@ export async function generateReply(prompt: string): Promise<GeminiResponse> {
     }, retryAttempts, retryBackoffMs);
 }
 
+/**
+ * Gets available models from Gemini API.
+ * 
+ * @returns Promise resolving to array of available model names
+ */
 export async function getAvailableModels(): Promise<string[]> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {

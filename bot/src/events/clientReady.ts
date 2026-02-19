@@ -1,15 +1,33 @@
+/**
+ * Client Ready Event Handler
+ * 
+ * Handles the Discord clientReady event.
+ * Updates bot profile and loads guild data on startup.
+ * 
+ * @module bot/src/events/clientReady
+ */
+
 import { Client, Guild } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { updateDiscordProfile } from '../utils/profileUpdater.js';
 import { loadGuildRelationships, initializeGuildRelationships } from '../personality/relationships.js';
 import { loadGuildContexts } from '../memory/context.js';
 
+/**
+ * Bot configuration interface.
+ */
 interface BotConfig {
     name: string;
     description: string;
     persona: string;
 }
 
+/**
+ * Handles the clientReady event.
+ * 
+ * @param client - The Discord client instance
+ * @param botConfig - The bot configuration
+ */
 export async function handleClientReady(client: Client, botConfig: BotConfig): Promise<void> {
     logger.info(`✓ Logged in as ${client.user?.tag}`);
     

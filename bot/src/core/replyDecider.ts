@@ -1,8 +1,20 @@
+/**
+ * Reply Decision Module
+ * 
+ * Determines whether the bot should reply to a message based on
+ * configuration, relationship data, and various filters.
+ * 
+ * @module bot/src/core/replyDecider
+ */
+
 import { MentionOnlyStrategy, PassiveStrategy, ActiveStrategy, DisabledStrategy } from '../strategies/replyStrategies.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { loadConfig } from '../../../shared/config/configLoader.js';
 import { Message } from 'discord.js';
 
+/**
+ * User relationship data structure.
+ */
 interface Relationship {
     ignored?: boolean;
     attitude?: string;
@@ -10,12 +22,18 @@ interface Relationship {
     boundaries?: string[];
 }
 
+/**
+ * Message context for reply decisions.
+ */
 interface MessageContext {
     authorId: string;
     author: string;
     content: string;
 }
 
+/**
+ * Parameters for shouldReply function.
+ */
 interface ShouldReplyParams {
     message: Message;
     isMentioned: boolean;
@@ -25,6 +43,9 @@ interface ShouldReplyParams {
     botName?: string;
 }
 
+/**
+ * Result of a single check in the reply decision process.
+ */
 interface CheckResult {
     check: string;
     result?: boolean;
@@ -35,6 +56,12 @@ interface CheckResult {
     threshold?: number;
 }
 
+/**
+ * Decides whether the bot should reply to a message.
+ * 
+ * @param params - The parameters for the reply decision
+ * @returns Promise resolving to the decision result with reason and check details
+ */
 export async function shouldReply({ message, isMentioned, replyBehavior = {}, relationship = {}, context = [], botName = '' }: ShouldReplyParams): Promise<{ result: boolean; reason: string; checks: CheckResult[] }> {
     const config = await loadConfig() as Record<string, unknown>;
     const loggerConfig = config.logger as Record<string, unknown> | undefined;

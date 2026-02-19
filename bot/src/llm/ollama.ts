@@ -1,12 +1,27 @@
+/**
+ * Ollama LLM Provider
+ * 
+ * Implementation for local Ollama API with retry logic
+ * and exponential backoff for connection errors.
+ * 
+ * @module bot/src/llm/ollama
+ */
+
 import { logger } from '../../../shared/utils/logger.js';
 import { getApiConfig } from '../../../shared/config/configLoader.js';
 
+/**
+ * API configuration for Ollama.
+ */
 interface ApiConfig {
     ollamaModel?: string;
     retryAttempts?: number;
     retryBackoffMs?: number;
 }
 
+/**
+ * Error class for Ollama API errors with retry support.
+ */
 export class OllamaAPIError extends Error {
     statusCode: number;
     retryable: boolean;
@@ -21,6 +36,12 @@ export class OllamaAPIError extends Error {
     }
 }
 
+/**
+ * Determines if an error is retryable.
+ * 
+ * @param error - The error to check
+ * @returns True if the error should trigger a retry
+ */
 function isRetryable(error: Error): boolean {
     if (error instanceof OllamaAPIError) {
         return error.retryable;
@@ -28,6 +49,14 @@ function isRetryable(error: Error): boolean {
     return error.message?.includes('timeout') || error.message?.includes('ECONNRESET') || error.message?.includes('ECONNREFUSED');
 }
 
+/**
+ * Retries a function with exponential backoff.
+ * 
+ * @param fn - The function to retry
+ * @param maxRetries - Maximum number of retry attempts
+ * @param baseBackoffMs - Base backoff time in milliseconds
+ * @returns Promise resolving to the function result
+ */
 async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 1000): Promise<T> {
     let lastError: Error;
 
@@ -74,6 +103,13 @@ interface OllamaResponse {
     usageMetadata: UsageMetadata | null;
 }
 
+/**
+ * Generates a reply using the Ollama API.
+ * Includes automatic retry with exponential backoff for connection errors.
+ * 
+ * @param prompt - The prompt string to send to Ollama
+ * @returns Promise resolving to the Ollama response with text and token counts
+ */
 export async function generateReply(prompt: string): Promise<OllamaResponse> {
     const apiCfg: ApiConfig = await getApiConfig();
     const { ollamaModel = 'llama2', retryAttempts = 3, retryBackoffMs = 1000 } = apiCfg;
@@ -135,6 +171,11 @@ export async function generateReply(prompt: string): Promise<OllamaResponse> {
     }, retryAttempts, retryBackoffMs);
 }
 
+/**
+ * Gets available models from Ollama API.
+ * 
+ * @returns Promise resolving to array of available model names
+ */
 export async function getAvailableModels(): Promise<string[]> {
     const url = `${getOllamaUrl()}/api/tags`;
 

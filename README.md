@@ -8,20 +8,21 @@ DiscordLLMBot is a lightweight Discord bot that uses Google's Gemini (Generative
 
 This is a monorepo containing:
 
-- `bot/` — Discord bot application (Node.js, ES modules)
-  - `src/` — application source
+- `bot/` — Discord bot application (Node.js, TypeScript)
+  - `src/` — application source (TypeScript)
   - `Dockerfile.bot` — Docker configuration for the bot
   
 - `dashboard/` — Vite + React + TypeScript frontend dashboard (MUI)
   - `Dockerfile.dashboard` — Docker configuration for the dashboard
   
-- `shared/` — common logic and configuration used by bot and dashboard
+- `shared/` — common logic and configuration used by bot and dashboard (TypeScript)
   - `storage/` — PostgreSQL connection and persistence
   - `config/` — Configuration loading and validation
   - `utils/` — Logger and shared utilities
   
 - `docs/` — Documentation (VitePress)
   - `src/` — VitePress source files
+  - `scripts/` — Documentation generation scripts
   - `Dockerfile.docs` — Docker configuration for the documentation server
 
 - `data/` — runtime persisted data (mounted Docker volumes)
@@ -42,7 +43,7 @@ This is a monorepo containing:
 
 - **Reply decision logic**:
   - `replyBehavior` controls how the bot decides whether to reply (modes: `mention-only`, `active`, `passive`, `disabled`), `replyProbability`, delay window, ignore lists, and keywords.
-  - Strategy pattern (`bot/src/strategies/replyStrategies.js`) provides `MentionOnly`, `Passive`, `Active`, and `Disabled` strategies.
+  - Strategy pattern (`bot/src/strategies/replyStrategies.ts`) provides `MentionOnly`, `Passive`, `Active`, and `Disabled` strategies.
 
 - **Web Dashboard**: A React-based dashboard (running on port 5173) allows you to view logs, manage relationships, and configure the bot:
   - **Dashboard Page**: Stats (24h replies, active servers/users, tokens), 7-day activity volume, top servers, system health (CPU/memory/uptime)
@@ -50,6 +51,7 @@ This is a monorepo containing:
   - **Servers Page**: Server list with expandable rows, 3 tabs per server (Server Config, User Relationships, Channel Monitoring)
   - **Logs Page**: Real-time Socket.io streaming, filter by level, auto-scroll toggle, JSON parsing
   - **Playground Page**: Test bot responses in a chat interface without affecting Discord servers
+  - **Database Page**: Browse database tables, view schemas, and query data directly
 
 - **Multi-provider LLM support**: Unified interface for both Google's Gemini API and local Ollama models.
 
@@ -201,15 +203,17 @@ Note: When using Docker on Windows/Mac, `host.docker.internal` is the special DN
 
 - **Configuration persistence**: All configuration (global and per-server) is stored in PostgreSQL (`global_config` and `server_configs` tables). The dashboard provides real-time editing with auto-save (1-second debounce).
 
-- **Relationship persistence**: `bot/src/personality/relationships.js` maintains in-memory caches per guild (`guildRelationships[guildId]`) and persists to PostgreSQL.
+- **Relationship persistence**: `bot/src/personality/relationships.ts` maintains in-memory caches per guild (`guildRelationships[guildId]`) and persists to PostgreSQL.
 
-- **Conversation context**: `bot/src/memory/context.js` maintains per-channel message history in memory and persists to the database.
+- **Conversation context**: `bot/src/memory/context.ts` maintains per-channel message history in memory and persists to the database.
 
 - **Event handling**: `bot/src/events/` contains all Discord event handlers separated from main application logic.
 
 - **Member enumeration**: the bot requests the `Guild Members` intent and fetches members on startup/guild join.
 
 - **Logging**: Use `logger.api()` for external API calls, `logger.message()` for message-level events, and `logger.info()/warn()/error()` for operational logs.
+
+- **Language**: The bot is written in TypeScript for type safety and better developer experience.
 
 ---
 
@@ -236,12 +240,12 @@ Suggested next steps:
 
 ## Files to Inspect When Debugging
 
-- [bot/src/index.js](bot/src/index.js) — Main entry point
+- [bot/src/index.ts](bot/src/index.ts) — Main entry point
 - [bot/src/events/](bot/src/events/) — Discord event handlers
-- [bot/src/api/server.js](bot/src/api/server.js) — Express + Socket.io API for dashboard
+- [bot/src/api/server.ts](bot/src/api/server.ts) — Express + Socket.io API for dashboard
 - [bot/src/core/](bot/src/core/) — Business logic (prompt, reply decision, delay)
 - [bot/src/llm/](bot/src/llm/) — LLM provider implementations (Gemini, Ollama)
-- [shared/utils/logger.js](shared/utils/logger.js) — Structured logging
-- [bot/src/personality/relationships.js](bot/src/personality/relationships.js) — Per-user relationship management
-- [shared/config/configLoader.js](shared/config/configLoader.js) — Configuration loading
+- [shared/utils/logger.ts](shared/utils/logger.ts) — Structured logging
+- [bot/src/personality/relationships.ts](bot/src/personality/relationships.ts) — Per-user relationship management
+- [shared/config/configLoader.ts](shared/config/configLoader.ts) — Configuration loading
 - `discordllmbot.log` — Application log file at project root

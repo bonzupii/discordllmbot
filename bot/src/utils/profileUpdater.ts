@@ -1,11 +1,28 @@
+/**
+ * Profile Updater Module
+ * 
+ * Handles updating the Discord bot's username and avatar.
+ * 
+ * @module bot/src/utils/profileUpdater
+ */
+
 import { Client } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 
+/**
+ * Bot profile configuration.
+ */
 interface BotConfig {
     username?: string;
     avatarUrl?: string;
 }
 
+/**
+ * Updates the bot's Discord profile (username and avatar).
+ * 
+ * @param client - The Discord client instance
+ * @param botConfig - The bot configuration with username/avatar
+ */
 export async function updateDiscordProfile(client: Client, botConfig: BotConfig): Promise<void> {
     const updates: string[] = [];
 

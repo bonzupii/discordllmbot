@@ -1,5 +1,17 @@
+/**
+ * Prompt Builder Module
+ * 
+ * Constructs prompt strings for LLM generation based on bot persona,
+ * user relationships, and conversation context.
+ * 
+ * @module bot/src/core/prompt
+ */
+
 import { getBotPersona } from '../personality/botPersona.js';
 
+/**
+ * Represents the relationship data for a user.
+ */
 interface Relationship {
     attitude: string;
     behavior: string[];
@@ -8,12 +20,18 @@ interface Relationship {
     displayName?: string;
 }
 
+/**
+ * Represents a message in the conversation context.
+ */
 interface MessageContext {
     authorId: string;
     author: string;
     content: string;
 }
 
+/**
+ * Bot persona configuration.
+ */
 interface BotPersonaConfig {
     name: string;
     description: string;
@@ -21,6 +39,9 @@ interface BotPersonaConfig {
     globalRules: string[];
 }
 
+/**
+ * Parameters for building a prompt.
+ */
 interface BuildPromptParams {
     relationship: Relationship;
     context: MessageContext[];
@@ -32,6 +53,12 @@ interface BuildPromptParams {
     guildId: string;
 }
 
+/**
+ * Builds the prompt string to send to the LLM.
+ * 
+ * @param params - The parameters for building the prompt
+ * @returns Promise resolving to the constructed prompt string
+ */
 export async function buildPrompt({
     relationship,
     context,

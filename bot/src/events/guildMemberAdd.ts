@@ -1,14 +1,31 @@
+/**
+ * Guild Member Add Event Handler
+ * 
+ * Handles when a new member joins a guild.
+ * Creates a default relationship entry for the new member.
+ * 
+ * @module bot/src/events/guildMemberAdd
+ */
+
 import { GuildMember } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { setRelationship } from '../personality/relationships.js';
 import { getBotConfig } from '../../../shared/config/configLoader.js';
 
+/**
+ * Default relationship configuration.
+ */
 interface DefaultRelationship {
     attitude?: string;
     behavior?: string[];
     boundaries?: string[];
 }
 
+/**
+ * Handles the guildMemberAdd event.
+ * 
+ * @param member - The Discord guild member that joined
+ */
 export async function handleGuildMemberAdd(member: GuildMember): Promise<void> {
     if (member.user.bot) return;
     const guildId = member.guild.id;

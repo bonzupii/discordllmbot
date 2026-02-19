@@ -1,3 +1,18 @@
+/**
+ * DiscordLLMBot - Main Entry Point
+ * 
+ * A lightweight, persona-driven Discord bot using Google's Gemini API or Ollama.
+ * This module initializes the Discord client, database, and API server.
+ * 
+ * @module bot/src/index
+ * @requires dotenv
+ * @requires discord.js
+ * @requires shared/config
+ * @requires shared/storage
+ * @requires ./events
+ * @requires ./api/server
+ */
+
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
@@ -9,8 +24,21 @@ import { initializeDatabase } from '../../shared/storage/database.js';
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 import { startApi } from './api/server.js';
 
+/**
+ * Initializes the logger with default settings before full config is loaded.
+ */
 initializeLogger(undefined);
 
+/**
+ * Main async function to start the Discord bot.
+ * Sets up Discord client, database connection, event handlers, and API server.
+ * Handles graceful shutdown on SIGINT/SIGTERM signals.
+ * 
+ * @async
+ * @function startBot
+ * @returns {Promise<void>} Resolves when bot starts successfully
+ * @throws {Error} Exits with code 1 if startup fails
+ */
 async function startBot(): Promise<void> {
     let cleanupInterval: NodeJS.Timeout | null = null;
 

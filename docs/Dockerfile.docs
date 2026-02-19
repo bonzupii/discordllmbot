@@ -3,7 +3,17 @@ FROM node:25-alpine
 WORKDIR /usr/src/docs
 
 COPY docs/package*.json ./
+COPY docs/scripts ./scripts
+COPY docs/src ./src
+COPY bot/src ../bot/src
+COPY shared ../shared
+COPY README.md ../
+COPY package*.json ../
 
 RUN npm install
+
+RUN npm run generate
+
+EXPOSE 5174
 
 CMD ["npm", "run", "dev"]

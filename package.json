@@ -23,6 +23,6 @@
     "dev:down": "docker-compose down",
     "build": "docker-compose build",
     "docs": "npm --prefix ./docs run dev",
-    "generate-docs": "npm --prefix ./docs run generate"
+    "docs:generate": "npm --prefix ./docs run generate"
   }
 }

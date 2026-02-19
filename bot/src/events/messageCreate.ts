@@ -1,3 +1,12 @@
+/**
+ * Message Create Event Handler
+ * 
+ * Handles incoming Discord messages and decides whether to reply.
+ * Manages context, relationships, and LLM interaction.
+ * 
+ * @module bot/src/events/messageCreate
+ */
+
 import { Message, Client } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { generateReply } from '../llm/index.js';
@@ -9,6 +18,13 @@ import { shouldReply } from '../core/replyDecider.js';
 import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '../../../shared/config/configLoader.js';
 import { getAllRelationships } from '../personality/relationships.js';
 
+/**
+ * Handles the messageCreate Discord event.
+ * Processes messages and generates replies when appropriate.
+ * 
+ * @param message - The Discord message object
+ * @param client - The Discord client instance
+ */
 export async function handleMessageCreate(message: Message, client: Client): Promise<void> {
     if (message.author.bot) return;
     if (!message.guild) return;

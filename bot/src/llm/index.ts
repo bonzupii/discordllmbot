@@ -1,8 +1,20 @@
+/**
+ * LLM Provider Abstraction Layer
+ * 
+ * Unified interface for multiple LLM providers (Gemini, Ollama).
+ * Handles provider selection based on configuration.
+ * 
+ * @module bot/src/llm
+ */
+
 import { generateReply as geminiGenerateReply, getAvailableModels as geminiGetAvailableModels } from './gemini.js';
 import { generateReply as ollamaGenerateReply, getAvailableModels as ollamaGetAvailableModels } from './ollama.js';
 import { getApiConfig } from '../../../shared/config/configLoader.js';
 import { logger } from '../../../shared/utils/logger.js';
 
+/**
+ * Response from LLM generation.
+ */
 export interface LLMResponse {
     text: string | null;
     usageMetadata: {
@@ -12,6 +24,12 @@ export interface LLMResponse {
     } | null;
 }
 
+/**
+ * Generates a reply using the configured LLM provider.
+ * 
+ * @param prompt - The prompt string to send to the LLM
+ * @returns Promise resolving to the LLM response
+ */
 export async function generateReply(prompt: string): Promise<LLMResponse> {
     const apiConfig = await getApiConfig();
     console.log(`DEBUG: generateReply using apiConfig:`, apiConfig);
