@@ -372,7 +372,7 @@ function Logs() {
                 </Box>
                 <Box
                   sx={{
-                    fontFamily: "'Google Sans Code', 'Fira Code', 'Courier New', monospace",
+                    fontFamily: "'Google Sans', 'Fira Code', 'Courier New', monospace",
                     fontSize: '0.75rem',
                     fontWeight: 600,
                     whiteSpace: 'nowrap',
@@ -380,7 +380,7 @@ function Logs() {
                     color: getLevelColor(type),
                   }}
                 >
-                  {type}
+                  [{type}]
                 </Box>
                 <Box
                   sx={{

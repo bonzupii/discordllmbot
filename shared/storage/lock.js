@@ -1,9 +1,22 @@
-import { logger } from '../utils/logger.js'; // Import logger
+/**
+ * Lock Module
+ * 
+ * Simple in-memory lock mechanism for coordinating database schema initialization.
+ * Prevents race conditions during startup.
+ * 
+ * @module shared/storage/lock
+ */
+
+import { logger } from '../utils/logger.js';
 
 let isLocked = false;
 let resolveLock = null;
 let lockPromise = null;
 
+/**
+ * Attempts to acquire the lock
+ * @returns {boolean} True if lock acquired, false if already locked
+ */
 export function acquireLock() {
   if (isLocked) {
     logger.info('Lock: Failed to acquire (already locked)');

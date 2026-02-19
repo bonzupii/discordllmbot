@@ -302,6 +302,12 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
         io.emit('log', fullLogLine);
     });
 
+    logger.onLog((logEntry: { timestamp: string; level: string; message: string; formatted: string }) => {
+        if (io) {
+            io.emit('log', logEntry.formatted);
+        }
+    });
+
     app.get('/api/servers', async (req: Request, res: Response) => {
         try {
             const servers = client.guilds.cache.map(guild => ({

@@ -1,3 +1,13 @@
+/**
+ * Database Module
+ * 
+ * PostgreSQL connection management and schema initialization.
+ * Handles connection pooling and database setup.
+ * 
+ * @module shared/storage/database
+ * @requires pg
+ */
+
 import pg from 'pg';
 import { logger } from '../utils/logger.js';
 import { acquireLock, releaseLock, waitForLock } from './lock.js';

@@ -149,13 +149,27 @@ function extractJSDoc(content) {
           if (returnMatch) {
             returns = returnMatch[1];
           }
+        } else if (cleanLine.startsWith('@example')) {
+          // Skip - will be handled separately
         } else if (!cleanLine.startsWith('@')) {
           description += (description ? '\n' : '') + cleanLine;
         }
       }
+      
+      const fnExamples = [];
+      const exampleLines = jsdoc.jsdoc.split('\n');
+      for (const line of exampleLines) {
+        const cleanLine = line.replace(/^\s*\*\s?/, '').trim();
+        if (cleanLine.startsWith('@example')) {
+          const exampleContent = cleanLine.replace('@example', '').replace(/^\s+/, '').trim();
+          if (exampleContent) fnExamples.push(exampleContent);
+        }
+      }
+      
+      functions.push({ name: func.name, description: description.trim(), params: paramsWithDesc, returns, examples: fnExamples });
+    } else {
+      functions.push({ name: func.name, description: '', params: [], returns: null, examples: [] });
     }
-    
-    functions.push({ name: func.name, description: description.trim(), params: paramsWithDesc, returns });
   }
   
   const classRegexGlobal = /export\s+class\s+(\w+)/g;
@@ -186,7 +200,28 @@ function extractJSDoc(content) {
     classes.push({ name: cls.name, description: description.trim() });
   }
   
-  return { functions, classes };
+  const interfaces = [];
+  const interfaceRegexGlobal = /export\s+interface\s+(\w+)/g;
+  let interfaceMatch;
+  
+  while ((interfaceMatch = interfaceRegexGlobal.exec(content)) !== null) {
+    const start = interfaceMatch.index;
+    const jsdoc = jsdocPositions.find(j => j.end === start - 1 || (j.end < start && start - j.end < 20));
+    
+    let description = '';
+    if (jsdoc) {
+      const lines = jsdoc.jsdoc.split('\n');
+      for (const line of lines) {
+        const cleanLine = line.replace(/^\s*\*\s?/, '').trim();
+        if (!cleanLine || cleanLine.startsWith('@')) continue;
+        description += (description ? '\n' : '') + cleanLine;
+      }
+    }
+    
+    interfaces.push({ name: interfaceMatch[1], description: description.trim() });
+  }
+  
+  return { functions, classes, interfaces };
 }
 
 async function generateApiDocs() {
@@ -217,11 +252,19 @@ async function generateApiDocs() {
     const displayName = relativePath.replace('.ts', '');
     
     const content = await fs.readFile(filePath, 'utf-8');
-    const { functions, classes } = extractJSDoc(content);
+    const { functions, classes, interfaces } = extractJSDoc(content);
     
-    if (functions.length > 0 || classes.length > 0) {
+    if (functions.length > 0 || classes.length > 0 || interfaces.length > 0) {
       let md = `# ${displayName}\n\n`;
       md += `**Source:** \`${relativePath}\`\n\n`;
+      
+      if (interfaces.length > 0) {
+        md += `## Interfaces\n\n`;
+        for (const iface of interfaces) {
+          md += `### ${iface.name}\n\n`;
+          if (iface.description) md += `${iface.description}\n\n`;
+        }
+      }
       
       if (classes.length > 0) {
         md += `## Classes\n\n`;
@@ -236,7 +279,7 @@ async function generateApiDocs() {
         for (const fn of functions) {
           md += `### ${fn.name}\n\n`;
           if (fn.description) md += `${fn.description}\n\n`;
-          if (fn.params.length > 0) {
+          if (fn.params && fn.params.length > 0) {
             md += `**Parameters:**\n\n`;
             for (const param of fn.params) {
               const typeStr = param.type && param.type !== 'any' ? `(\`${param.type}\`) ` : '';
@@ -246,6 +289,12 @@ async function generateApiDocs() {
           }
           if (fn.returns) {
             md += `**Returns:** \`${fn.returns}\`\n\n`;
+          }
+          if (fn.examples && fn.examples.length > 0) {
+            md += `**Examples:**\n\n`;
+            for (const ex of fn.examples) {
+              md += `\`\`\`\n${ex}\n\`\`\`\n\n`;
+            }
           }
         }
       }

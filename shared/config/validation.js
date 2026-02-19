@@ -1,3 +1,11 @@
+/**
+ * Environment Validation Module
+ * 
+ * Validates that required environment variables are set before starting the bot.
+ * 
+ * @module shared/config/validation
+ */
+
 import { logger } from '../utils/logger.js'
 
 const REQUIRED_ENV_VARS = [

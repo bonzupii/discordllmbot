@@ -1,6 +1,15 @@
 /**
- * Simple structured logging utility
- * Logs to console AND to file with timestamp and severity level
+ * Logger Module
+ * 
+ * Structured logging utility that logs to console AND file with timestamp and severity level.
+ * Supports different log levels: api, sql, message, info, warn, error.
+ * 
+ * @module shared/utils/logger
+ * @example
+ * import { logger } from './shared/utils/logger.js';
+ * 
+ * logger.info('Server started', { port: 3000 });
+ * logger.error('Failed to connect', { error: err.message });
  */
 
 import fs from 'fs'
@@ -13,6 +22,16 @@ const LOG_FILE = path.join(__dirname, '../../logs/discordllmbot.log')
 
 const logEmitter = new EventEmitter()
 
+/**
+ * Log levels available
+ * @typedef {Object} LOG_LEVELS
+ * @property {string} api - External API calls
+ * @property {string} sql - Database queries
+ * @property {string} message - Discord message events
+ * @property {string} info - General information
+ * @property {string} warn - Warnings
+ * @property {string} error - Errors
+ */
 const LOG_LEVELS = {
     api: 'API',
     sql: 'SQL',

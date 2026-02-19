@@ -39,6 +39,15 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
     const memoryConfig = await getMemoryConfig(guildId);
     const replyBehavior = await getReplyBehavior(guildId);
 
+    const guildSpecificChannels = (replyBehavior.guildSpecificChannels as Record<string, { ignored?: string[] }>) || {};
+    const guildIgnoredChannels = guildSpecificChannels[guildId]?.ignored ?? [];
+    const isChannelIgnored = guildIgnoredChannels.includes(message.channel.id);
+
+    if (isChannelIgnored) {
+        console.log(`DEBUG: Channel #${channelName} (${message.channel.id}) is ignored, skipping message storage`);
+        return;
+    }
+
     console.log(`DEBUG: Retrieved configs for guild ${guildId}. Bot name: ${botConfig.name}, Mode: ${replyBehavior.mode}, Reply Probability: ${replyBehavior.replyProbability}`);
 
     logger.message(`@mention from ${message.author.username} in #${channelName}: "${cleanMessage}"`);

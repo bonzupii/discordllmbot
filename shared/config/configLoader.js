@@ -1,3 +1,12 @@
+/**
+ * Configuration Loader Module
+ * 
+ * Loads and caches configuration from database and files.
+ * Provides server-specific and global configuration management.
+ * 
+ * @module shared/config/configLoader
+ */
+
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'

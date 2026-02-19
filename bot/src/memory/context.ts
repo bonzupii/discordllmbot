@@ -46,6 +46,9 @@ const guildContexts: GuildContext = {};
  * @param authorId - The message author ID
  * @param authorName - The message author name
  * @param content - The message content
+ * @returns {Promise<void>}
+ * @example
+ * const result = await addMessage('123456789', '987654321', '111222333', 'UserName', 'Hello world!');
  */
 export async function addMessage(guildId: string, channelId: string, authorId: string, authorName: string, content: string): Promise<void> {
     guildContexts[guildId] ??= {};

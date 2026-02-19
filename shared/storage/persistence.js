@@ -1,3 +1,12 @@
+/**
+ * Persistence Module
+ * 
+ * Database persistence layer for messages, relationships, guilds, and configuration.
+ * Provides caching wrappers and SQL query logging.
+ * 
+ * @module shared/storage/persistence
+ */
+
 import { getPool } from './database.js';
 import { isSqlLoggingEnabled } from '../config/configLoader.js';
 import { logger } from '../utils/logger.js';
@@ -6,14 +15,25 @@ import { EventEmitter } from 'events';
 const sqlLogEmitter = new EventEmitter();
 let isPoolWrapped = false;
 
+/**
+ * Gets the SQL log emitter for real-time query logging.
+ * @returns {EventEmitter} The event emitter for SQL logs
+ */
 export function getSqlLogEmitter() {
     return sqlLogEmitter;
 }
 
+/**
+ * Resets the pool wrapper flag to re-enable SQL logging wrapper.
+ */
 export function resetPoolWrapper() {
     isPoolWrapped = false;
 }
 
+/**
+ * Gets the database pool, optionally wrapped with query logging.
+ * @returns {Promise<object>} The database pool
+ */
 export async function getDb() {
     const pool = await getPool();
     
