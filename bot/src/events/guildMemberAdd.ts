@@ -1,8 +1,15 @@
+import { GuildMember } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { setRelationship } from '../personality/relationships.js';
 import { getBotConfig } from '../../../shared/config/configLoader.js';
 
-export async function handleGuildMemberAdd(member) {
+interface DefaultRelationship {
+    attitude?: string;
+    behavior?: string[];
+    boundaries?: string[];
+}
+
+export async function handleGuildMemberAdd(member: GuildMember): Promise<void> {
     if (member.user.bot) return;
     const guildId = member.guild.id;
     const guildName = member.guild.name;
@@ -11,13 +18,13 @@ export async function handleGuildMemberAdd(member) {
     try {
         const displayName = member.displayName ?? member.user.username ?? userId;
         const username = member.user.username ?? userId;
-        const botConfig = await getBotConfig();
-        const defaultRel = botConfig.defaultRelationship ?? { attitude: 'neutral', behavior: [], boundaries: [] };
+        const botConfig = await getBotConfig(guildId) as Record<string, unknown>;
+        const defaultRel = (botConfig.defaultRelationship as DefaultRelationship) ?? { attitude: 'neutral', behavior: [], boundaries: [] };
 
         setRelationship(guildId, guildName, userId, {
             username,
             displayName,
-            attitude: defaultRel.attitude,
+            attitude: defaultRel.attitude || 'neutral',
             behavior: Array.isArray(defaultRel.behavior) ? [...defaultRel.behavior] : [],
             boundaries: Array.isArray(defaultRel.boundaries) ? [...defaultRel.boundaries] : []
         });

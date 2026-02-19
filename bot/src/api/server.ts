@@ -1,10 +1,11 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
+import { createServer, Server as HttpServer } from 'http';
+import { Server as SocketIOServer, Socket } from 'socket.io';
+import { Client } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { loadConfig, reloadConfig, getServerConfig, updateServerConfig, clearServerConfigCache } from '../../../shared/config/configLoader.js';
 import { loadGuildRelationships } from '../personality/relationships.js';
@@ -14,7 +15,17 @@ import os from 'os';
 
 const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
 
-function logDbQuery(tableName, query, duration) {
+interface CpuTimes {
+    idle: number;
+    total: number;
+}
+
+let prevCpuTimes: CpuTimes | null = null;
+let prevTimestamp: number | null = null;
+let isRestarting = false;
+let io: SocketIOServer;
+
+function logDbQuery(tableName: string, query: string, duration: number): void {
     const timestamp = new Date().toISOString();
     const logLine = `[DB] ${timestamp} - ${tableName}: ${query} (${duration}ms)`;
     if (io) {
@@ -22,22 +33,12 @@ function logDbQuery(tableName, query, duration) {
     }
 }
 
-// Variables to track CPU usage over time
-let prevCpuTimes = null;
-let prevTimestamp = null;
-
-// Track bot restart state
-let isRestarting = false;
-
-// Socket.io instance (exported for use in other modules)
-let io;
-
-export function startApi(client) {
-    const app = express();
-    const httpServer = createServer(app);
-    io = new Server(httpServer, {
+export function startApi(client: Client): { app: Express; io: SocketIOServer } {
+    const app: Express = express();
+    const httpServer: HttpServer = createServer(app);
+    io = new SocketIOServer(httpServer, {
         cors: {
-            origin: '*', // Allow all origins for now (dev)
+            origin: '*',
             methods: ['GET', 'POST']
         }
     });
@@ -47,15 +48,12 @@ export function startApi(client) {
     app.use(cors());
     app.use(express.json());
 
-    // Basic health check
-    app.get('/api/health', (req, res) => {
-
+    app.get('/api/health', (req: Request, res: Response) => {
         const totalMemory = os.totalmem();
         const freeMemory = os.freemem();
         const usedMemory = totalMemory - freeMemory;
         const memoryUsagePercent = (usedMemory / totalMemory) * 100;
 
-        // Calculate CPU usage by comparing with previous measurement
         const currentTimestamp = Date.now();
         const currentCpus = os.cpus();
 
@@ -80,13 +78,10 @@ export function startApi(client) {
             if (elapsedMs > 0 && totalDiff > 0) {
                 const idlePercentage = (idleDiff / totalDiff) * 100;
                 cpuUsagePercent = 100 - idlePercentage;
-
-                // Ensure the value is within reasonable bounds
                 cpuUsagePercent = Math.max(0, Math.min(100, cpuUsagePercent));
             }
         }
 
-        // Store current values for next comparison
         prevCpuTimes = {
             idle: currentTotalIdle,
             total: currentTotalTick
@@ -102,8 +97,7 @@ export function startApi(client) {
         });
     });
 
-    // Config endpoint
-    app.get('/api/config', async (req, res) => {
+    app.get('/api/config', async (req: Request, res: Response) => {
         try {
             const config = await loadConfig();
             console.log('Loaded Global Config:', JSON.stringify(config, null, 2));
@@ -114,35 +108,33 @@ export function startApi(client) {
         }
     });
 
-    // Server-specific config endpoints
-    app.get('/api/servers/:guildId/config', async (req, res) => {
+    app.get('/api/servers/:guildId/config', async (req: Request, res: Response) => {
         try {
-            const { guildId } = req.params;
+            const guildId = req.params.guildId as string;
             const config = await getServerConfig(guildId);
             
-            // Get guild name for logging
             const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
             
             console.log('Loaded Server Config for guild', `${guildName} (${guildId}):`, JSON.stringify(config, null, 2));
             res.json(config);
         } catch (err) {
-            const guild = client.guilds.cache.get(req.params.guildId);
+            const guildId = req.params.guildId as string;
+            const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
-            logger.error(`Failed to get config for guild ${guildName} (${req.params.guildId})`, err);
+            logger.error(`Failed to get config for guild ${guildName} (${guildId})`, err);
             res.status(500).json({ error: 'Failed to get server config' });
         }
     });
 
-    app.post('/api/servers/:guildId/config', async (req, res) => {
+    app.post('/api/servers/:guildId/config', async (req: Request, res: Response) => {
         try {
-            const { guildId } = req.params;
+            const guildId = req.params.guildId as string;
             const newConfig = req.body;
             if (!newConfig || typeof newConfig !== 'object') {
                 return res.status(400).json({ error: 'Invalid config format' });
             }
             
-            // Get guild name for logging
             const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
             
@@ -150,18 +142,18 @@ export function startApi(client) {
             console.log('Updated Server Config for guild', `${guildName} (${guildId}):`, JSON.stringify(newConfig, null, 2));
             res.json({ message: 'Server config updated successfully' });
         } catch (err) {
-            const guild = client.guilds.cache.get(req.params.guildId);
+            const guildId = req.params.guildId as string;
+            const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
-            logger.error(`Failed to update config for guild ${guildName} (${req.params.guildId})`, err);
+            logger.error(`Failed to update config for guild ${guildName} (${guildId})`, err);
             res.status(500).json({ error: 'Failed to update server config' });
         }
     });
 
-    app.delete('/api/servers/:guildId/config', async (req, res) => {
+    app.delete('/api/servers/:guildId/config', async (req: Request, res: Response) => {
         try {
-            const { guildId } = req.params;
+            const guildId = req.params.guildId as string;
             
-            // Get guild name for logging
             const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
             
@@ -170,30 +162,27 @@ export function startApi(client) {
             console.log('Server config reset to default for guild', `${guildName} (${guildId})`);
             res.json({ message: 'Server config reset to default' });
         } catch (err) {
-            const guild = client.guilds.cache.get(req.params.guildId);
+            const guildId = req.params.guildId as string;
+            const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
-            logger.error(`Failed to reset config for guild ${guildName} (${req.params.guildId})`, err);
+            logger.error(`Failed to reset config for guild ${guildName} (${guildId})`, err);
             res.status(500).json({ error: 'Failed to reset server config' });
         }
     });
 
-    app.post('/api/config', async (req, res) => {
+    app.post('/api/config', async (req: Request, res: Response) => {
         try {
             const newConfig = req.body;
-            // Basic validation: ensure it's an object
             if (!newConfig || typeof newConfig !== 'object') {
                 return res.status(400).json({ error: 'Invalid config format' });
             }
 
-            // Save to database instead of JSON file
             await saveGlobalConfig(newConfig);
             logger.info('Global config updated via API and saved to database');
 
-            // Notify dashboard that bot is restarting
             isRestarting = true;
             io.emit('bot:status', { isRestarting });
 
-            // Reload config in memory
             try {
                 await reloadConfig();
                 logger.info('Global configuration reloaded from database.');
@@ -201,7 +190,6 @@ export function startApi(client) {
             } catch (reloadErr) {
                 logger.error('Failed to reload global config in memory', reloadErr);
             } finally {
-                // Notify dashboard that restart is complete
                 isRestarting = false;
                 io.emit('bot:status', { isRestarting });
             }
@@ -213,10 +201,8 @@ export function startApi(client) {
         }
     });
 
-    // Relationships endpoints
-    app.get('/api/guilds', async (req, res) => {
+    app.get('/api/guilds', async (req: Request, res: Response) => {
         try {
-            // Use client cache directly
             const guilds = client.guilds.cache.map(guild => ({ id: guild.id, name: guild.name }));
             res.json(guilds);
         } catch (err) {
@@ -225,9 +211,9 @@ export function startApi(client) {
         }
     });
 
-    app.get('/api/guilds/:guildId/relationships', async (req, res) => {
+    app.get('/api/guilds/:guildId/relationships', async (req: Request, res: Response) => {
         try {
-            const { guildId } = req.params;
+            const guildId = req.params.guildId as string;
             const relationships = await loadRelationships(guildId);
             res.json(relationships);
         } catch (err) {
@@ -236,21 +222,16 @@ export function startApi(client) {
         }
     });
 
-    app.post('/api/guilds/:guildId/relationships/:userId', async (req, res) => {
+    app.post('/api/guilds/:guildId/relationships/:userId', async (req: Request, res: Response) => {
         try {
-            const { guildId, userId } = req.params;
+            const guildId = req.params.guildId as string; const userId = req.params.userId as string;
             const newRel = req.body;
 
-            // Load current relationships for the guild
             const currentRels = await loadRelationships(guildId);
-
-            // Update the specific user's relationship
             currentRels[userId] = newRel;
 
-            // Save back to DB
             await saveRelationships(guildId, currentRels);
 
-            // Reload relationships in bot memory
             try {
                 await loadGuildRelationships(guildId);
                 logger.info(`Reloaded relationships for guild ${guildId} via API.`);
@@ -265,14 +246,11 @@ export function startApi(client) {
         }
     });
 
-    // Socket.io connection
-    io.on('connection', (socket) => {
+    io.on('connection', (socket: Socket) => {
         logger.info('Dashboard client connected');
 
-        // Send current restart state on connection
         socket.emit('bot:status', { isRestarting });
 
-        // Send last 50 lines of logs on connection
         try {
             if (fs.existsSync(LOG_FILE_PATH)) {
                 const logs = fs.readFileSync(LOG_FILE_PATH, 'utf-8').split('\n').slice(-50);
@@ -287,14 +265,12 @@ export function startApi(client) {
         });
     });
 
-    // Listen to SQL query logs from persistence layer
     const sqlLogEmitter = getSqlLogEmitter();
-    sqlLogEmitter.on('query', (logLine) => {
+    sqlLogEmitter.on('query', (logLine: string) => {
         io.emit('db:log', logLine);
     });
 
-    // Servers endpoints
-    app.get('/api/servers', async (req, res) => {
+    app.get('/api/servers', async (req: Request, res: Response) => {
         try {
             const servers = client.guilds.cache.map(guild => ({
                 id: guild.id,
@@ -311,9 +287,9 @@ export function startApi(client) {
         }
     });
 
-    app.delete('/api/servers/:serverId', async (req, res) => {
+    app.delete('/api/servers/:serverId', async (req: Request, res: Response) => {
         try {
-            const { serverId } = req.params;
+            const serverId = req.params.serverId as string;
             const guild = client.guilds.cache.get(serverId);
             if (guild) {
                 await guild.leave();
@@ -327,8 +303,7 @@ export function startApi(client) {
         }
     });
 
-    // Endpoint to get bot invite URL
-    app.get('/api/bot-info', async (req, res) => {
+    app.get('/api/bot-info', async (req: Request, res: Response) => {
         try {
             const botInviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&permissions=274878229568&scope=bot%20applications.commands`;
 
@@ -342,10 +317,10 @@ export function startApi(client) {
         }
     });
 
-    app.get('/api/models', async (req, res) => {
+    app.get('/api/models', async (req: Request, res: Response) => {
         try {
             const config = await loadConfig();
-            const requestedProvider = req.query.provider || config.api?.provider || 'gemini';
+            const requestedProvider = req.query.provider as string || config.api?.provider || 'gemini';
 
             if (requestedProvider === 'gemini') {
                 const apiKey = process.env.GEMINI_API_KEY;
@@ -362,10 +337,9 @@ export function startApi(client) {
         }
     });
 
-    // Endpoint to get channels for a specific guild
-    app.get('/api/guilds/:guildId/channels', async (req, res) => {
+    app.get('/api/guilds/:guildId/channels', async (req: Request, res: Response) => {
         try {
-            const { guildId } = req.params;
+            const guildId = req.params.guildId as string;
             const guild = client.guilds.cache.get(guildId);
 
             if (!guild) {
@@ -374,7 +348,7 @@ export function startApi(client) {
 
             const channels = await guild.channels.fetch();
             const channelList = channels
-                .filter(channel => channel.type === 0) // Filter for text channels only
+                .filter(channel => channel.type === 0)
                 .map(channel => ({
                     id: channel.id,
                     name: channel.name,
@@ -390,10 +364,9 @@ export function startApi(client) {
         }
     });
 
-    // Endpoint to get latest bot replies
-    app.get('/api/replies', async (req, res) => {
+    app.get('/api/replies', async (req: Request, res: Response) => {
         try {
-            const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+            const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
             const replies = await getLatestReplies(limit);
             res.json(replies);
         } catch (err) {
@@ -402,8 +375,7 @@ export function startApi(client) {
         }
     });
 
-    // Endpoint to get analytics data
-    app.get('/api/analytics', async (req, res) => {
+    app.get('/api/analytics', async (req: Request, res: Response) => {
         try {
             const data = await getAnalyticsData();
             res.json(data);
@@ -413,8 +385,7 @@ export function startApi(client) {
         }
     });
 
-    // Endpoint for playground chat
-    app.post('/api/chat', async (req, res) => {
+    app.post('/api/chat', async (req: Request, res: Response) => {
         try {
             const { content } = req.body;
             const reply = await generateReply(content);
@@ -425,11 +396,10 @@ export function startApi(client) {
         }
     });
 
-    // Database viewer endpoints
-    app.get('/api/db/tables', async (req, res) => {
+    app.get('/api/db/tables', async (req: Request, res: Response) => {
         const startTime = Date.now();
         try {
-            const db = await getDb();
+            const db = await getDb() as any;
             const result = await db.query(`
                 SELECT 
                     t.table_name,
@@ -447,13 +417,12 @@ export function startApi(client) {
         }
     });
 
-    app.get('/api/db/tables/:tableName/schema', async (req, res) => {
+    app.get('/api/db/tables/:tableName/schema', async (req: Request, res: Response) => {
         const startTime = Date.now();
         try {
-            const { tableName } = req.params;
-            const db = await getDb();
+            const tableName = req.params.tableName as string;
+            const db = await getDb() as any;
             
-            // Get columns
             const columnsResult = await db.query(`
                 SELECT 
                     c.column_name,
@@ -480,7 +449,6 @@ export function startApi(client) {
                 ORDER BY c.ordinal_position
             `, [tableName]);
 
-            // Get foreign key relationships
             const fkResult = await db.query(`
                 SELECT
                     kcu.column_name as column_name,
@@ -495,8 +463,8 @@ export function startApi(client) {
                 AND tc.table_name = $1
             `, [tableName]);
 
-            const foreignKeys = {};
-            fkResult.rows.forEach(fk => {
+            const foreignKeys: Record<string, { table: string; column: string }> = {};
+            fkResult.rows.forEach((fk: Record<string, string>) => {
                 foreignKeys[fk.column_name] = {
                     table: fk.foreign_table,
                     column: fk.foreign_column
@@ -514,15 +482,14 @@ export function startApi(client) {
         }
     });
 
-    app.get('/api/db/tables/:tableName/data', async (req, res) => {
+    app.get('/api/db/tables/:tableName/data', async (req: Request, res: Response) => {
         const startTime = Date.now();
         try {
-            const { tableName } = req.params;
-            const page = parseInt(req.query.page) || 1;
-            const pageSize = parseInt(req.query.pageSize) || 20;
+            const tableName = req.params.tableName as string;
+            const page = parseInt(req.query.page as string) || 1;
+            const pageSize = parseInt(req.query.pageSize as string) || 20;
             const offset = (page - 1) * pageSize;
 
-            // Validate table name to prevent SQL injection
             const validTables = ['bot_replies', 'global_config', 'guilds', 'messages',
                 'relationship_behaviors', 'relationship_boundaries',
                 'relationships', 'server_configs'];
@@ -530,13 +497,11 @@ export function startApi(client) {
                 return res.status(400).json({ error: 'Invalid table name' });
             }
 
-            const db = await getDb();
+            const db = await getDb() as any;
             
-            // Get total count
             const countResult = await db.query(`SELECT COUNT(*) as total FROM ${tableName}`);
-            const total = parseInt(countResult.rows[0].total);
+            const total = parseInt((countResult.rows[0] as Record<string, string>).total);
 
-            // Get data with pagination
             const dataResult = await db.query(
                 `SELECT * FROM ${tableName} ORDER BY 1 LIMIT $1 OFFSET $2`,
                 [pageSize, offset]
@@ -558,10 +523,10 @@ export function startApi(client) {
         }
     });
 
-    app.get('/api/db/relationships', async (req, res) => {
+    app.get('/api/db/relationships', async (req: Request, res: Response) => {
         const startTime = Date.now();
         try {
-            const db = await getDb();
+            const db = await getDb() as any;
             const result = await db.query(`
                 SELECT
                     tc.table_name AS from_table,
@@ -585,7 +550,6 @@ export function startApi(client) {
         }
     });
 
-    // Watch log file for changes
     if (fs.existsSync(LOG_FILE_PATH)) {
         let fileSize = fs.statSync(LOG_FILE_PATH).size;
         fs.watch(LOG_FILE_PATH, (event) => {
@@ -596,13 +560,12 @@ export function startApi(client) {
                         start: fileSize,
                         end: stats.size
                     });
-                    stream.on('data', (chunk) => {
+                    stream.on('data', (chunk: Buffer) => {
                         const lines = chunk.toString().split('\n').filter(l => l.trim());
                         lines.forEach(line => io.emit('log', line));
                     });
                     fileSize = stats.size;
                 } else if (stats.size < fileSize) {
-                    // File was truncated
                     fileSize = stats.size;
                 }
             }
@@ -616,5 +579,4 @@ export function startApi(client) {
     return { app, io };
 }
 
-// Export io for external use
 export { io };

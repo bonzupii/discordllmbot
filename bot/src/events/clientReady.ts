@@ -1,15 +1,23 @@
+import { Client, Guild } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { updateDiscordProfile } from '../utils/profileUpdater.js';
 import { loadGuildRelationships, initializeGuildRelationships } from '../personality/relationships.js';
 import { loadGuildContexts } from '../memory/context.js';
 
-export async function handleClientReady(client, botConfig) {
-    logger.info(`✓ Logged in as ${client.user.tag}`);
-    
-    // Update Discord profile if config differs from current state
-    await updateDiscordProfile(client, botConfig);
+interface BotConfig {
+    name: string;
+    description: string;
+    persona: string;
+}
 
-    // Log server count
+export async function handleClientReady(client: Client, botConfig: BotConfig): Promise<void> {
+    logger.info(`✓ Logged in as ${client.user?.tag}`);
+    
+    await updateDiscordProfile(client, {
+        username: botConfig.name,
+        avatarUrl: undefined
+    });
+
     const guildCount = client.guilds.cache.size;
     if (guildCount === 0) {
         logger.info('Not connected to any servers');
@@ -17,7 +25,6 @@ export async function handleClientReady(client, botConfig) {
         logger.info(`✓ Connected to ${guildCount} server${guildCount > 1 ? 's' : ''}`);
     }
 
-    // Initialize relationships and contexts for existing guilds
     try {
         for (const [, guild] of client.guilds.cache) {
             try {

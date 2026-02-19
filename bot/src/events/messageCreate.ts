@@ -1,3 +1,4 @@
+import { Message, Client } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { generateReply } from '../llm/index.js';
 import { getRelationship } from '../personality/relationships.js';
@@ -8,27 +9,25 @@ import { shouldReply } from '../core/replyDecider.js';
 import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '../../../shared/config/configLoader.js';
 import { getAllRelationships } from '../personality/relationships.js';
 
-export async function handleMessageCreate(message, client) {
+export async function handleMessageCreate(message: Message, client: Client): Promise<void> {
     if (message.author.bot) return;
     if (!message.guild) return;
 
     const guildId = message.guild.id;
     const cleanMessage = message.content.replace(/<@!?\d+>/g, '').trim();
+    const channelName = (message.channel as { name?: string }).name || 'unknown';
 
-    console.log(`DEBUG: Processing message from guild: ${message.guild.name} (${guildId}), channel: #${message.channel.name}, user: ${message.author.username}`);
+    console.log(`DEBUG: Processing message from guild: ${message.guild.name} (${guildId}), channel: #${channelName}, user: ${message.author.username}`);
 
-    // Get server-specific configs
     const botConfig = await getBotConfig(guildId);
     const memoryConfig = await getMemoryConfig(guildId);
     const replyBehavior = await getReplyBehavior(guildId);
 
     console.log(`DEBUG: Retrieved configs for guild ${guildId}. Bot name: ${botConfig.name}, Mode: ${replyBehavior.mode}, Reply Probability: ${replyBehavior.replyProbability}`);
 
-    // Log that bot was mentioned
-    logger.message(`@mention from ${message.author.username} in #${message.channel.name}: "${cleanMessage}"`);
+    logger.message(`@mention from ${message.author.username} in #${channelName}: "${cleanMessage}"`);
 
     try {
-        // Get the mentioned user's relationship and recent context
         const relationship = getRelationship(
             guildId,
             message.author.id
@@ -36,7 +35,6 @@ export async function handleMessageCreate(message, client) {
 
         console.log(`DEBUG: Retrieved relationship for user ${message.author.id} in guild ${guildId}:`, relationship);
 
-        // Add this message to context BEFORE building prompt
         await addMessage(
             guildId,
             message.channel.id,
@@ -45,7 +43,6 @@ export async function handleMessageCreate(message, client) {
             message.content
         );
 
-        // Build prompt with context
         const { maxMessages } = memoryConfig;
         const context = (await loadContexts(guildId, message.channel.id, maxMessages)).slice(0, -1);
         const guildRelationships = getAllRelationships()[guildId] ?? {};
@@ -59,11 +56,10 @@ export async function handleMessageCreate(message, client) {
             guildName: message.guild.name,
             userMessage: cleanMessage,
             username: message.author.username,
-            botConfig, // Pass server-specific bot config to prompt builder
+            botConfig,
             guildId
         });
 
-        // Check if we should reply
         const isMentioned = message.mentions.has(client.user);
         console.log(`DEBUG: Checking if should reply. Is mentioned: ${isMentioned}, Reply behavior:`, replyBehavior);
         
@@ -77,7 +73,6 @@ export async function handleMessageCreate(message, client) {
 
         console.log(`DEBUG: Bot decided to reply in guild ${message.guild.name} (${guildId})`);
 
-
         const startTime = Date.now();
         const { text: reply, usageMetadata } = await generateReply(prompt);
         const processingTimeMs = Date.now() - startTime;
@@ -85,7 +80,6 @@ export async function handleMessageCreate(message, client) {
         console.log(`DEBUG: Generated reply from LLM for guild ${message.guild.name} (${guildId}), length: ${reply?.length || 0} chars`);
 
         if (reply) {
-            // Validate message length (Discord limit: 2000 chars)
             let finalReply = reply;
             if (reply.length > 2000) {
                 finalReply = reply.substring(0, 1997) + '...';
@@ -94,13 +88,11 @@ export async function handleMessageCreate(message, client) {
 
             console.log(`DEBUG: Sending reply to guild ${message.guild.name} (${guildId}), final length: ${finalReply.length}`);
 
-            // Show typing indicator while generating reply
-            await message.channel.sendTyping();
+            const textChannel = message.channel as { sendTyping: () => Promise<void> };
+            await textChannel.sendTyping();
 
-            // Send reply
             await message.reply(finalReply);
 
-            // Log bot reply to database
             await logBotReply(
                 message.guild.id,
                 message.channel.id,
@@ -111,11 +103,10 @@ export async function handleMessageCreate(message, client) {
                 cleanMessage,
                 finalReply,
                 processingTimeMs,
-                usageMetadata?.promptTokenCount,
-                usageMetadata?.candidatesTokenCount
+                usageMetadata?.promptTokenCount ?? undefined,
+                usageMetadata?.candidatesTokenCount ?? undefined
             );
 
-            // Add the bot's reply to the context
             await addMessage(
                 guildId,
                 message.channel.id,
@@ -124,12 +115,10 @@ export async function handleMessageCreate(message, client) {
                 finalReply
             );
 
-            // Single combined API-level log: Gemini model -> Discord send
             const apiConfig = await getApiConfig();
-            const { geminiModel } = apiConfig;
+            const geminiModel = apiConfig.geminiModel || 'gemini-2.0-flash';
             logger.api(`→ Gemini(${geminiModel}):generateReply() -> Discord API: message.reply()`);
 
-            // Log successful reply with a short preview for readability
             const replyPreview = finalReply.substring(0, 80).replace(/\n/g, ' ');
             logger.message(`✓ Replied to ${message.author.username}: "${replyPreview}"`);
         } else {

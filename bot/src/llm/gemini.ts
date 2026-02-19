@@ -1,19 +1,25 @@
 import { logger } from '../../../shared/utils/logger.js';
 import { getApiConfig } from '../../../shared/config/configLoader.js';
 
-/**
- * Get Gemini API URL for the configured model
- */
-async function getGeminiUrl() {
-    const { geminiModel } = await getApiConfig();
+interface ApiConfig {
+    geminiModel?: string;
+    retryAttempts?: number;
+    retryBackoffMs?: number;
+}
+
+async function getGeminiUrl(): Promise<string> {
+    const config: ApiConfig = await getApiConfig();
+    const geminiModel = config.geminiModel || 'gemini-2.0-flash';
     return `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`;
 }
 
-/**
- * Custom error class for Gemini API errors
- */
 export class GeminiAPIError extends Error {
-    constructor(message, statusCode, retryable = false) {
+    statusCode: number;
+    retryable: boolean;
+    retryAfterMs?: number;
+    retryAfter?: string;
+
+    constructor(message: string, statusCode: number, retryable = false) {
         super(message);
         this.name = 'GeminiAPIError';
         this.statusCode = statusCode;
@@ -21,68 +27,60 @@ export class GeminiAPIError extends Error {
     }
 }
 
-/**
- * Check if an error is retryable (rate limit, timeout, server error)
- */
-function isRetryable(error) {
+function isRetryable(error: Error): boolean {
     if (error instanceof GeminiAPIError) {
         return error.retryable;
     }
     return error.message?.includes('timeout') || error.message?.includes('ECONNRESET');
 }
 
-/**
- * Exponential backoff retry logic
- * @param {Function} fn - Async function to retry
- * @param {number} maxRetries - Maximum number of retries (so total attempts = maxRetries + 1)
- * @returns {Promise}
- */
-async function retry(fn, maxRetries = 3, baseBackoffMs = 1000) {
-    let lastError;
+async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 1000): Promise<T> {
+    let lastError: Error;
 
-    // Total attempts = initial attempt + number of retries
     const totalAttempts = maxRetries + 1;
     
     for (let i = 0; i < totalAttempts; i++) {
         try {
             return await fn();
         } catch (err) {
-            lastError = err;
+            lastError = err as Error;
 
-            if (!isRetryable(err)) {
-                throw err;
+            if (!isRetryable(lastError)) {
+                throw lastError;
             }
 
-            // If this isn't the last attempt, prepare for retry
             if (i < totalAttempts - 1) {
-                // Prefer honoring server-provided Retry-After when available
-                let backoffMs = null;
-                if (err && typeof err.retryAfterMs === 'number') {
-                    backoffMs = err.retryAfterMs;
+                let backoffMs: number | null = null;
+                if (lastError && typeof (lastError as GeminiAPIError).retryAfterMs === 'number') {
+                    backoffMs = (lastError as GeminiAPIError).retryAfterMs;
                 }
 
-                // Fallback to exponential backoff with jitter using configured base
                 if (!backoffMs) {
-                    // Use (i) for backoff calculation since i=0 for first retry, i=1 for second retry, etc.
                     backoffMs = Math.pow(2, i) * baseBackoffMs + Math.random() * Math.min(1000, baseBackoffMs);
                 }
 
-                logger.warn(`Retrying Gemini API (attempt ${i + 2}/${totalAttempts}) after ${backoffMs}ms: ${err.message}${err.cause ? ` (Cause: ${err.cause.message})` : ''}`);
+                logger.warn(`Retrying Gemini API (attempt ${i + 2}/${totalAttempts}) after ${backoffMs}ms: ${lastError.message}${lastError.cause ? ` (Cause: ${(lastError.cause as Error).message})` : ''}`);
                 await new Promise(r => setTimeout(r, backoffMs));
             }
         }
     }
 
-    throw lastError;
+    throw lastError!;
 }
 
-/**
- * Generate a reply from Gemini API with retry logic
- * @param {string} prompt - The prompt to send to Gemini
- * @returns {Promise<{text: string|null, usageMetadata: Object|null}>} Reply text and usage metadata or null if no content
- */
-export async function generateReply(prompt) {
-    const apiCfg = await getApiConfig();
+interface UsageMetadata {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+}
+
+interface GeminiResponse {
+    text: string | null;
+    usageMetadata: UsageMetadata | null;
+}
+
+export async function generateReply(prompt: string): Promise<GeminiResponse> {
+    const apiCfg: ApiConfig = await getApiConfig();
     const { geminiModel, retryAttempts = 3, retryBackoffMs = 1000 } = apiCfg;
 
     return retry(async () => {
@@ -93,7 +91,6 @@ export async function generateReply(prompt) {
             throw new Error('GEMINI_API_KEY not set in environment');
         }
 
-        // Minimal Gemini request log (no prompt preview or lengths)
         logger.api(`→ Gemini API Request: Model=${geminiModel} Function=generateReply()`);
 
         const res = await fetch(
@@ -117,7 +114,6 @@ export async function generateReply(prompt) {
             const retryAfter = res.headers.get?.('retry-after') ?? null;
 
             const isRetryable = res.status >= 500 || res.status === 429;
-            // Only log the error if it's not going to be retried, to avoid log spam during retries
             if (!isRetryable) {
                 logger.error(`Gemini API error ${res.status}: ${errorText.substring(0, 200)}`);
             }
@@ -128,13 +124,10 @@ export async function generateReply(prompt) {
                 isRetryable
             );
             if (retryAfter) {
-                // Try to interpret Retry-After as seconds when possible
                 const seconds = Number.parseFloat(retryAfter);
                 if (!Number.isNaN(seconds)) {
                     error.retryAfterMs = Math.round(seconds * 1000);
                 } else {
-                    // If header is a HTTP-date, we can't reliably parse it here;
-                    // still attach the raw header so higher-level logic may inspect it.
                     error.retryAfter = retryAfter;
                 }
             }
@@ -142,22 +135,22 @@ export async function generateReply(prompt) {
             throw error;
         }
 
-        const data = await res.json();
+        const data = await res.json() as {
+            candidates?: Array<{
+                content?: {
+                    parts?: Array<{ text?: string }>
+                }
+            }>;
+            usageMetadata?: UsageMetadata;
+        };
         const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
         const usageMetadata = data?.usageMetadata || null;
         
-        // Do not log reply content or lengths here to avoid duplicating
-        // message content in application logs. Caller will decide what to log.
-
         return { text: reply, usageMetadata };
     }, retryAttempts, retryBackoffMs);
 }
 
-/**
- * Fetch available models from Gemini API
- * @returns {Promise<Array<string>>} List of available model names
- */
-export async function getAvailableModels() {
+export async function getAvailableModels(): Promise<string[]> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         throw new Error('GEMINI_API_KEY not set in environment');
@@ -178,12 +171,16 @@ export async function getAvailableModels() {
             );
         }
 
-        const data = await res.json();
+        const data = await res.json() as {
+            models?: Array<{
+                name?: string;
+                supportedGenerationMethods?: string[];
+            }>
+        };
 
-        // Filter for models that support content generation
         const models = data.models
-            .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
-            .map(m => m.name.replace('models/', ''));
+            ?.filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+            .map(m => m.name?.replace('models/', '')) as string[] || [];
 
         logger.api(`→ Gemini API Request: Function=getAvailableModels() - Found ${models.length} models`);
         
@@ -193,4 +190,3 @@ export async function getAvailableModels() {
         throw err;
     }
 }
-

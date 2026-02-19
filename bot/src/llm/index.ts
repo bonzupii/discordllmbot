@@ -3,19 +3,19 @@ import { generateReply as ollamaGenerateReply, getAvailableModels as ollamaGetAv
 import { getApiConfig } from '../../../shared/config/configLoader.js';
 import { logger } from '../../../shared/utils/logger.js';
 
-/**
- * Unified LLM provider interface
- */
+export interface LLMResponse {
+    text: string | null;
+    usageMetadata: {
+        promptTokenCount?: number | null;
+        candidatesTokenCount?: number | null;
+        totalTokenCount?: number;
+    } | null;
+}
 
-/**
- * Generate a reply using the configured LLM provider
- * @param {string} prompt - The prompt to send to the LLM
- * @returns {Promise<{text: string|null, usageMetadata: Object|null}>} Reply text and usage metadata or null if no content
- */
-export async function generateReply(prompt) {
+export async function generateReply(prompt: string): Promise<LLMResponse> {
     const apiConfig = await getApiConfig();
     console.log(`DEBUG: generateReply using apiConfig:`, apiConfig);
-    const provider = apiConfig.provider || 'gemini'; // Default to gemini for backward compatibility
+    const provider = apiConfig.provider || 'gemini';
 
     switch (provider.toLowerCase()) {
         case 'gemini':
@@ -29,14 +29,9 @@ export async function generateReply(prompt) {
     }
 }
 
-/**
- * Get available models from the configured LLM provider
- * @param {string} [overrideProvider] - Optional: override the configured provider
- * @returns {Promise<Array<string>>} List of available model names
- */
-export async function getAvailableModels(overrideProvider) {
+export async function getAvailableModels(overrideProvider?: string): Promise<string[]> {
     const apiConfig = await getApiConfig();
-    const provider = overrideProvider || apiConfig.provider || 'gemini'; // Default to gemini for backward compatibility
+    const provider = overrideProvider || apiConfig.provider || 'gemini';
 
     switch (provider.toLowerCase()) {
         case 'gemini':
@@ -50,20 +45,12 @@ export async function getAvailableModels(overrideProvider) {
     }
 }
 
-/**
- * Get the current provider name
- * @returns {string} Current provider name
- */
-export async function getCurrentProvider() {
+export async function getCurrentProvider(): Promise<string> {
     const apiConfig = await getApiConfig();
-    return apiConfig.provider || 'gemini'; // Default to gemini for backward compatibility
+    return apiConfig.provider || 'gemini';
 }
 
-/**
- * Validate if the current provider configuration is valid
- * @returns {boolean} True if configuration is valid
- */
-export async function validateProviderConfig() {
+export async function validateProviderConfig(): Promise<boolean> {
     const apiConfig = await getApiConfig();
     const provider = apiConfig.provider || 'gemini';
 
@@ -71,7 +58,7 @@ export async function validateProviderConfig() {
         case 'gemini':
             return !!process.env.GEMINI_API_KEY;
         case 'ollama':
-            return true; // Ollama doesn't require an API key, just URL availability
+            return true;
         default:
             return false;
     }

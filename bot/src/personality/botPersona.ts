@@ -1,20 +1,24 @@
-import { getBotConfig, loadConfig } from '../../../shared/config/configLoader.js';
+import { getBotConfig } from '../../../shared/config/configLoader.js';
 
-/**
- * The bot's persona configuration, loaded from the config file.
- * @returns {Promise<Object>} Current bot persona config
- */
-export async function getBotPersona(guildId) {
-    return await getBotConfig(guildId);
+interface BotPersona {
+    name: string;
+    username: string;
+    description: string;
+    avatarUrl: string | null;
+    speakingStyle: string[];
+    globalRules: string[];
+    defaultRelationship: {
+        attitude: string;
+        behavior: string[];
+        boundaries: string[];
+    };
 }
 
-/**
- * Synchronous version that returns a default/fallback config
- * @returns {Object} Default bot persona config
- */
-export function getBotPersonaSync() {
-    // This is a fallback that returns a static default
-    // In practice, async version should be used
+export async function getBotPersona(guildId: string): Promise<BotPersona> {
+    return await getBotConfig(guildId) as BotPersona;
+}
+
+export function getBotPersonaSync(): BotPersona {
     return {
         name: "BotName",
         username: "BotUsername",
