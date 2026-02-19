@@ -11,10 +11,11 @@ import {
   Chat as ChatIcon,
   Settings as SettingsIcon,
   ListAlt as ListAltIcon,
+  Storage as StorageIcon,
 } from '@mui/icons-material';
 
 import theme from '@theme';
-import { Dashboard, Settings, Servers, Playground, Logs } from '@pages';
+import { Dashboard, Settings, Servers, Playground, Logs, Database } from '@pages';
 import { ErrorBoundary } from '@components/common';
 import { Header, Sidebar, MainContent } from '@components/Layout';
 import { useHealth } from '@hooks';
@@ -22,6 +23,7 @@ import { useHealth } from '@hooks';
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
   { to: '/servers', label: 'Servers', icon: <DnsIcon /> },
+  { to: '/database', label: 'Database', icon: <StorageIcon /> },
   { to: '/playground', label: 'Playground', icon: <ChatIcon /> },
   { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
   { to: '/logs', label: 'Logs', icon: <ListAltIcon /> },
@@ -60,7 +62,6 @@ function AppContent() {
       <Header 
         open={!mobileOpen} 
         onMenuClick={handleDrawerToggle} 
-        health={health} 
         drawerWidth={DRAWER_WIDTH}
       />
       <Sidebar
@@ -70,6 +71,7 @@ function AppContent() {
         drawerWidth={DRAWER_WIDTH}
         mobileOpen={mobileOpen}
         onNavClick={handleNavClick}
+        health={health}
       />
       <MainContent drawerWidth={DRAWER_WIDTH} isMobile={isMobile}>
         <ErrorBoundary>
@@ -77,6 +79,7 @@ function AppContent() {
             <Route path="/" element={<Dashboard health={health} />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/servers" element={<Servers />} />
+            <Route path="/database" element={<Database />} />
             <Route path="/playground" element={<Playground />} />
             <Route path="/logs" element={<Logs />} />
           </Routes>

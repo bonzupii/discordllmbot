@@ -87,6 +87,7 @@ export const parseLogLine = (line: string): ParsedLog => {
 export const getLogType = (line: string): LogType => {
   if (line.includes('[ERROR]')) return 'ERROR';
   if (line.includes('[WARN]')) return 'WARN';
+  if (line.includes('[SQL]')) return 'SQL';
   if (line.includes('[API]')) return 'API';
   if (line.includes('[INFO]')) return 'INFO';
   if (line.includes('[MESSAGE]')) return 'MESSAGE';
@@ -105,6 +106,8 @@ export const getLevelColor = (type: LogType): string => {
       return 'error.main';
     case 'WARN':
       return 'warning.main';
+    case 'SQL':
+      return '#ff9800'; // orange
     case 'API':
       return 'info.main';
     case 'INFO':
@@ -128,6 +131,8 @@ export const getLogIcon = (type: LogType): string => {
       return 'ErrorIcon';
     case 'WARN':
       return 'WarningIcon';
+    case 'SQL':
+      return 'StorageIcon';
     case 'API':
       return 'ApiIcon';
     case 'INFO':

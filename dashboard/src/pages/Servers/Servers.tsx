@@ -396,10 +396,10 @@ function Servers() {
               aria-label="collapsible table" 
               sx={{ 
                 tableLayout: 'fixed',
-                minWidth: 600,
+                minWidth: { xs: 0, sm: 600 },
               }}
             >
-              <TableHead>
+              <TableHead sx={{ display: { xs: 'none', sm: 'table-header-group' } }}>
                 <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
                   <TableCell sx={{ width: 40, minWidth: 40, maxWidth: 40, padding: '4px 8px' }} />
                   <TableCell>
@@ -407,12 +407,12 @@ function Servers() {
                       Server
                     </Box>
                   </TableCell>
-                  <TableCell align="right" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                  <TableCell align="right" sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
                       Joined
                     </Box>
                   </TableCell>
-                  <TableCell align="right" sx={{ minWidth: 80 }}>
+                  <TableCell align="right" sx={{ minWidth: 40 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
                       Actions
                     </Box>

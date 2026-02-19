@@ -14,9 +14,12 @@ import {
   ListItemIcon,
   ListItemText,
   useMediaQuery,
+  Chip,
+  Box,
 } from '@mui/material';
-import { ChevronLeft as ChevronLeftIcon } from '@mui/icons-material';
+import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
 import type { Theme } from '@mui/material/styles';
+import type { HealthResponse } from '@types';
 
 /**
  * Navigation item structure for sidebar links.
@@ -46,6 +49,8 @@ interface SidebarProps {
   mobileOpen?: boolean;
   /** Callback when navigation item is clicked */
   onNavClick?: () => void;
+  /** Current health status from the API */
+  health?: HealthResponse | null;
 }
 
 /**
@@ -60,7 +65,8 @@ export default function Sidebar({
   items, 
   drawerWidth, 
   mobileOpen = false,
-  onNavClick 
+  onNavClick,
+  health,
 }: SidebarProps) {
   const location = useLocation();
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
@@ -71,19 +77,13 @@ export default function Sidebar({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: isMobile ? 'flex-end' : 'flex-end',
-          px: [1],
+          justifyContent: (!isMobile && open) ? 'flex-end' : 'center',
+          px: (!isMobile && open) ? [1] : 0,
         }}
       >
-        {isMobile ? (
-          <IconButton onClick={onToggle} aria-label="close drawer">
-            <ChevronLeftIcon />
-          </IconButton>
-        ) : (
-          <IconButton onClick={onToggle} aria-label="collapse drawer">
-            <ChevronLeftIcon />
-          </IconButton>
-        )}
+        <IconButton onClick={onToggle} aria-label={open ? 'collapse drawer' : 'expand drawer'}>
+          {(!isMobile && open) ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+        </IconButton>
       </Toolbar>
       <Divider />
       <List 
@@ -101,38 +101,88 @@ export default function Sidebar({
             selected={location.pathname === item.to}
             sx={{
               '&.Mui-selected': {
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
+                bgcolor: 'secondary.main',
+                color: 'secondary.contrastText',
                 '&:hover': {
-                  bgcolor: 'primary.dark',
+                  bgcolor: 'primary.main',
                 },
                 '& .MuiListItemIcon-root': {
-                  color: 'primary.contrastText',
+                  color: 'secondary.contrastText',
                 },
               },
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
               mb: 0.5,
-              mx: { xs: 0.5, sm: 1 },
+              mx: isMobile ? 0 : (open ? 1 : 0),
               borderRadius: 1,
               minHeight: 44,
+              justifyContent: isMobile ? 'flex-start' : (open ? 'flex-start' : 'center'),
+              px: isMobile ? 2 : (open ? 2 : 1),
+              width: isMobile ? '100%' : (open ? 'auto' : '100%'),
             }}
             aria-current={location.pathname === item.to ? 'page' : undefined}
           >
-            <ListItemIcon sx={{ color: 'text.secondary', minWidth: { xs: 36, sm: 40 } }}>
+            <ListItemIcon sx={{ 
+              color: 'text.secondary', 
+              minWidth: isMobile ? 40 : (open ? 40 : 'auto'),
+              justifyContent: 'center',
+            }}>
               {item.icon}
             </ListItemIcon>
-            <ListItemText
-              primary={item.label}
-              slotProps={{
-                primary: {
-                  fontWeight: location.pathname === item.to ? 'bold' : 'medium',
-                  fontSize: { xs: '0.875rem', sm: '0.9375rem' },
-                  noWrap: true,
-                }
-              }}
-            />
+            {(!isMobile && open) && (
+              <ListItemText
+                primary={item.label}
+                slotProps={{
+                  primary: {
+                    fontWeight: location.pathname === item.to ? 'bold' : 'medium',
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                    noWrap: true,
+                  }
+                }}
+              />
+            )}
+            {isMobile && (
+              <ListItemText
+                primary={item.label}
+                slotProps={{
+                  primary: {
+                    fontWeight: location.pathname === item.to ? 'bold' : 'medium',
+                    fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                    noWrap: true,
+                  }
+                }}
+              />
+            )}
           </ListItemButton>
         ))}
       </List>
+      <Box sx={{ flexGrow: 1 }} />
+      {(isMobile || open) && (
+        <Box sx={{ p: 2 }}>
+          {health ? (
+            <Chip
+              label={`API: ${health.status}`}
+              color={health.status === 'ok' ? 'success' : 'error'}
+              size="small"
+              variant="filled"
+              sx={{
+                width: '100%',
+                bgcolor: health.status === 'ok' ? 'success.main' : 'error.main',
+                color: 'white',
+              }}
+            />
+          ) : (
+            <Chip
+              label="API: Connecting..."
+              color="default"
+              size="small"
+              variant="filled"
+              sx={{ width: '100%' }}
+            />
+          )}
+        </Box>
+      )}
     </>
   );
 
@@ -166,7 +216,7 @@ export default function Sidebar({
         '& .MuiDrawer-paper': {
           position: 'relative',
           whiteSpace: 'nowrap',
-          width: open ? drawerWidth : 72,
+          width: open ? drawerWidth : 56,
           transition: (theme: Theme) =>
             theme.transitions.create('width', {
               easing: theme.transitions.easing.sharp,
@@ -180,7 +230,7 @@ export default function Sidebar({
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.leavingScreen,
               }),
-            width: 72,
+            width: 56,
           }),
         },
       }}

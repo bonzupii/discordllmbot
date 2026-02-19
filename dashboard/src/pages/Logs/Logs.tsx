@@ -26,6 +26,7 @@ import {
   Api as ApiIcon,
   Chat as ChatIcon,
   Visibility as VisibilityIcon,
+  Storage as StorageIcon,
 } from '@mui/icons-material';
 import type { SvgIconProps } from '@mui/material';
 
@@ -39,6 +40,7 @@ interface Filters {
   ERROR: boolean;
   WARN: boolean;
   INFO: boolean;
+  SQL: boolean;
   API: boolean;
   MESSAGE: boolean;
   OTHER: boolean;
@@ -48,6 +50,7 @@ interface Filters {
 const iconMap: Record<LogType, React.ComponentType<SvgIconProps>> = {
   ERROR: ErrorIcon,
   WARN: WarningIcon,
+  SQL: StorageIcon,
   API: ApiIcon,
   INFO: InfoIcon,
   MESSAGE: ChatIcon,
@@ -64,6 +67,7 @@ function Logs() {
     ERROR: true,
     WARN: true,
     INFO: true,
+    SQL: true,
     API: true,
     MESSAGE: true,
     OTHER: true,
@@ -221,6 +225,22 @@ function Logs() {
             icon={getLogIcon('WARN')}
           />
           <Chip
+            label="SQL"
+            size="small"
+            sx={{
+              bgcolor: filters.SQL ? '#ff9800' : 'transparent',
+              color: filters.SQL ? 'black' : '#ff9800',
+              borderColor: '#ff9800',
+              '& .MuiChip-icon': {
+                color: filters.SQL ? 'black' : '#ff9800',
+              },
+              '&:hover': { bgcolor: filters.SQL ? '#f57c00' : 'rgba(255, 152, 0, 0.1)' },
+            }}
+            variant={filters.SQL ? 'filled' : 'outlined'}
+            onClick={() => toggleFilter('SQL')}
+            icon={getLogIcon('SQL')}
+          />
+          <Chip
             label="API"
             size="small"
             color="info"
@@ -262,7 +282,7 @@ function Logs() {
             }
             label={
               <Typography variant="caption" color="text.secondary">
-                Auto
+                Auto Scroll
               </Typography>
             }
           />
@@ -366,6 +386,7 @@ function Logs() {
                     wordBreak: 'break-all',
                     lineHeight: 1.4,
                     textAlign: 'right',
+                    paddingRight: '15px',
                   }}
                 >
                   {parsedLog.text.split(/\[([A-Z]+)\]/).map((part, i, arr) => {

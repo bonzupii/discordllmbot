@@ -218,50 +218,42 @@ function Dashboard({ health }: DashboardProps) {
               sx={{
                 p: 1,
                 px: 2,
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: { xs: 1, sm: 0 },
               }}
             >
-              <StatusItem
-                icon={<MessageIcon />}
-                label="Replies (24h)"
-                value={(stats as AnalyticsResponse)?.stats24h?.total_replies || 0}
-                color="primary"
-              />
-              <Divider
-                orientation="vertical"
-                flexItem
-                sx={{ mx: 2, display: { xs: 'none', sm: 'block' } }}
-              />
-              <StatusItem
-                icon={<DnsIcon />}
-                label="Active Servers"
-                value={(stats as AnalyticsResponse)?.stats24h?.active_servers || 0}
-                color="secondary"
-              />
-              <Divider
-                orientation="vertical"
-                flexItem
-                sx={{ mx: 2, display: { xs: 'none', sm: 'block' } }}
-              />
-              <StatusItem
-                icon={<PeopleIcon />}
-                label="Active Users"
-                value={(stats as AnalyticsResponse)?.stats24h?.active_users || 0}
-                color="success"
-              />
-              <Divider
-                orientation="vertical"
-                flexItem
-                sx={{ mx: 2, display: { xs: 'none', sm: 'block' } }}
-              />
-              <StatusItem
-                icon={<TokenIcon />}
-                label="Tokens Used"
-                value={(stats as AnalyticsResponse)?.stats24h?.total_tokens || 0}
-                color="warning"
-              />
+              <Grid container spacing={1}>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                  <StatusItem
+                    icon={<MessageIcon />}
+                    label="Replies (24h)"
+                    value={(stats as AnalyticsResponse)?.stats24h?.total_replies || 0}
+                    color="primary"
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                  <StatusItem
+                    icon={<DnsIcon />}
+                    label="Active Servers"
+                    value={(stats as AnalyticsResponse)?.stats24h?.active_servers || 0}
+                    color="secondary"
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                  <StatusItem
+                    icon={<PeopleIcon />}
+                    label="Active Users"
+                    value={(stats as AnalyticsResponse)?.stats24h?.active_users || 0}
+                    color="success"
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                  <StatusItem
+                    icon={<TokenIcon />}
+                    label="Tokens Used"
+                    value={(stats as AnalyticsResponse)?.stats24h?.total_tokens || 0}
+                    color="warning"
+                  />
+                </Grid>
+              </Grid>
             </Paper>
 
             {/* Latest Activity */}

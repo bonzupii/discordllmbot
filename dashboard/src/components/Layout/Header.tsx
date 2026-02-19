@@ -1,10 +1,9 @@
 /**
- * Top application header with branding and health status.
+ * Top application header with branding.
  * @module components/Layout/Header
  */
-import { AppBar, IconButton, Toolbar, Typography, Chip, Box, useMediaQuery } from '@mui/material';
+import { AppBar, IconButton, Toolbar, Typography, Box, useMediaQuery } from '@mui/material';
 import { Menu as MenuIcon, GitHub as GitHubIcon } from '@mui/icons-material';
-import type { HealthResponse } from '@types';
 import type { Theme } from '@mui/material/styles';
 import { useTheme } from '@mui/material/styles';
 
@@ -16,18 +15,16 @@ interface HeaderProps {
   open: boolean;
   /** Callback when menu button is clicked */
   onMenuClick: () => void;
-  /** Current health status from the API */
-  health?: HealthResponse | null;
   /** Width of the drawer */
   drawerWidth: number;
 }
 
 /**
- * Header component displaying app title, health status, and GitHub link.
+ * Header component displaying app title and GitHub link.
  * @param props - Component props
  * @returns Rendered header component
  */
-export default function Header({ open, onMenuClick, health, drawerWidth }: HeaderProps) {
+export default function Header({ open, onMenuClick, drawerWidth }: HeaderProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -73,24 +70,6 @@ export default function Header({ open, onMenuClick, health, drawerWidth }: Heade
           DiscordLLMBot
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {health ? (
-            <Chip
-              label={`API: ${health.status}`}
-              color={health.status === 'ok' ? 'success' : 'error'}
-              size="small"
-              variant="filled"
-              sx={{
-                height: 24,
-                bgcolor: health.status === 'ok' ? 'success.main' : 'error.main',
-                color: 'white',
-                display: { xs: 'none', sm: 'flex' },
-              }}
-            />
-          ) : (
-            <Typography variant="caption" color="inherit" sx={{ display: { xs: 'none', sm: 'block' } }}>
-              Connecting...
-            </Typography>
-          )}
           <IconButton
             color="inherit"
             href="https://github.com/lnorton89/discordllmbot"

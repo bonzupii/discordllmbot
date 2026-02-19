@@ -196,7 +196,7 @@ export interface BotInfo {
 /**
  * Log level types
  */
-export type LogType = 'ERROR' | 'WARN' | 'INFO' | 'API' | 'MESSAGE' | 'OTHER';
+export type LogType = 'ERROR' | 'WARN' | 'INFO' | 'API' | 'SQL' | 'MESSAGE' | 'OTHER';
 
 /**
  * A parsed log entry

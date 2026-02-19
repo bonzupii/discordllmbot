@@ -25,6 +25,7 @@ import {
   Settings as SettingsIcon,
   People as PeopleIcon,
   Forum as ForumIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
 import ServerConfig from './ServerConfig';
@@ -136,7 +137,7 @@ function ServerRow({
             {isOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell component="th" scope="row" sx={{ borderBottom: 'none' }}>
+        <TableCell component="th" scope="row" sx={{ borderBottom: 'none', position: 'relative' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Avatar
               src={server.iconURL}
@@ -170,11 +171,26 @@ function ServerRow({
               )}
             </Box>
           </Box>
+          <IconButton
+            size="small"
+            onClick={(e) => { e.stopPropagation(); onLeave(server.id); }}
+            aria-label={`Leave ${server.name}`}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'red',
+              display: { xs: 'inline-flex', sm: 'none' },
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </TableCell>
-        <TableCell align="right" sx={{ display: { xs: 'none', sm: 'none', md: 'table-cell' } }}>
+        <TableCell align="right" sx={{ display: { xs: 'none', md: 'table-cell' } }}>
           {formatDate(server.joinedAt) || 'Unknown'}
         </TableCell>
-        <TableCell align="right">
+        <TableCell align="right" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
           <Button
             variant="outlined"
             color="error"
@@ -182,14 +198,13 @@ function ServerRow({
             startIcon={<DeleteIcon />}
             onClick={(e) => { e.stopPropagation(); onLeave(server.id); }}
             aria-label={`Leave ${server.name}`}
-            sx={{ minWidth: { xs: 'auto', sm: 'auto' } }}
           >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Leave</Box>
+            Leave
           </Button>
         </TableCell>
       </TableRow>
       <TableRow sx={{ '& > *': { borderBottom: 'none' } }}>
-        <td colSpan={3} style={{ paddingBottom: 0, paddingTop: 0 }}>
+        <td colSpan={4} style={{ paddingBottom: 0, paddingTop: 0 }}>
           <Collapse in={isOpen} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
               <Tabs

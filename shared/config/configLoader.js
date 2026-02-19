@@ -215,6 +215,20 @@ export async function getLoggerConfig(guildId) {
     return config.logger ?? {}
 }
 
+let sqlLoggingEnabled = false;
+
+export function setSqlLoggingEnabled(enabled) {
+    sqlLoggingEnabled = enabled;
+}
+
+/**
+ * Check if SQL query logging is enabled globally
+ * @returns {boolean} True if SQL logging is enabled
+ */
+export function isSqlLoggingEnabled() {
+    return sqlLoggingEnabled;
+}
+
 /**
  * Clear cache when configuration is updated
  * @param {string} guildId - Discord guild ID

@@ -9,10 +9,18 @@ import { logger } from '../../../shared/utils/logger.js';
 import { loadConfig, reloadConfig, getServerConfig, updateServerConfig, clearServerConfigCache } from '../../../shared/config/configLoader.js';
 import { loadGuildRelationships } from '../personality/relationships.js';
 import { generateReply, getAvailableModels } from '../llm/index.js';
-import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships, deleteServerConfig, saveGlobalConfig } from '../../../shared/storage/persistence.js';
+import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships, deleteServerConfig, saveGlobalConfig, getDb, getSqlLogEmitter } from '../../../shared/storage/persistence.js';
 import os from 'os';
 
 const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
+
+function logDbQuery(tableName, query, duration) {
+    const timestamp = new Date().toISOString();
+    const logLine = `[DB] ${timestamp} - ${tableName}: ${query} (${duration}ms)`;
+    if (io) {
+        io.emit('db:log', logLine);
+    }
+}
 
 // Variables to track CPU usage over time
 let prevCpuTimes = null;
@@ -279,6 +287,12 @@ export function startApi(client) {
         });
     });
 
+    // Listen to SQL query logs from persistence layer
+    const sqlLogEmitter = getSqlLogEmitter();
+    sqlLogEmitter.on('query', (logLine) => {
+        io.emit('db:log', logLine);
+    });
+
     // Servers endpoints
     app.get('/api/servers', async (req, res) => {
         try {
@@ -408,6 +422,166 @@ export function startApi(client) {
         } catch (err) {
             logger.error('Failed to generate reply', err);
             res.status(500).json({ error: 'Failed to generate reply' });
+        }
+    });
+
+    // Database viewer endpoints
+    app.get('/api/db/tables', async (req, res) => {
+        const startTime = Date.now();
+        try {
+            const db = await getDb();
+            const result = await db.query(`
+                SELECT 
+                    t.table_name,
+                    obj_description(t.table_name::regclass) as description,
+                    (SELECT COUNT(*) FROM information_schema.columns c WHERE c.table_name = t.table_name) as column_count
+                FROM information_schema.tables t
+                WHERE t.table_schema = 'public' AND t.table_type = 'BASE TABLE'
+                ORDER BY t.table_name
+            `);
+            logDbQuery('information_schema', 'SELECT tables', Date.now() - startTime);
+            res.json(result.rows);
+        } catch (err) {
+            logger.error('Failed to fetch tables', err);
+            res.status(500).json({ error: 'Failed to fetch tables' });
+        }
+    });
+
+    app.get('/api/db/tables/:tableName/schema', async (req, res) => {
+        const startTime = Date.now();
+        try {
+            const { tableName } = req.params;
+            const db = await getDb();
+            
+            // Get columns
+            const columnsResult = await db.query(`
+                SELECT 
+                    c.column_name,
+                    c.data_type,
+                    c.is_nullable,
+                    c.column_default,
+                    c.character_maximum_length,
+                    (SELECT COUNT(*) > 0 FROM information_schema.table_constraints tc
+                     JOIN information_schema.key_column_usage kcu
+                     ON tc.constraint_name = kcu.constraint_name
+                     WHERE tc.table_name = c.table_name
+                     AND tc.constraint_type = 'PRIMARY KEY'
+                     AND kcu.column_name = c.column_name) as is_primary_key,
+                    (SELECT kcu2.column_name 
+                     FROM information_schema.table_constraints tc2
+                     JOIN information_schema.key_column_usage kcu2
+                     ON tc2.constraint_name = kcu2.constraint_name
+                     WHERE tc2.table_name = c.table_name
+                     AND tc2.constraint_type = 'FOREIGN KEY'
+                     AND kcu2.column_name = c.column_name
+                     LIMIT 1) as foreign_key
+                FROM information_schema.columns c
+                WHERE c.table_name = $1 AND c.table_schema = 'public'
+                ORDER BY c.ordinal_position
+            `, [tableName]);
+
+            // Get foreign key relationships
+            const fkResult = await db.query(`
+                SELECT
+                    kcu.column_name as column_name,
+                    ccu.table_name AS foreign_table,
+                    ccu.column_name AS foreign_column
+                FROM information_schema.table_constraints AS tc 
+                JOIN information_schema.key_column_usage AS kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                JOIN information_schema.constraint_column_usage AS ccu
+                    ON ccu.constraint_name = tc.constraint_name
+                WHERE tc.constraint_type = 'FOREIGN KEY' 
+                AND tc.table_name = $1
+            `, [tableName]);
+
+            const foreignKeys = {};
+            fkResult.rows.forEach(fk => {
+                foreignKeys[fk.column_name] = {
+                    table: fk.foreign_table,
+                    column: fk.foreign_column
+                };
+            });
+
+            logDbQuery(tableName, 'SELECT schema', Date.now() - startTime);
+            res.json({
+                columns: columnsResult.rows,
+                foreignKeys
+            });
+        } catch (err) {
+            logger.error('Failed to fetch table schema', err);
+            res.status(500).json({ error: 'Failed to fetch table schema' });
+        }
+    });
+
+    app.get('/api/db/tables/:tableName/data', async (req, res) => {
+        const startTime = Date.now();
+        try {
+            const { tableName } = req.params;
+            const page = parseInt(req.query.page) || 1;
+            const pageSize = parseInt(req.query.pageSize) || 20;
+            const offset = (page - 1) * pageSize;
+
+            // Validate table name to prevent SQL injection
+            const validTables = ['bot_replies', 'global_config', 'guilds', 'messages',
+                'relationship_behaviors', 'relationship_boundaries',
+                'relationships', 'server_configs'];
+            if (!validTables.includes(tableName)) {
+                return res.status(400).json({ error: 'Invalid table name' });
+            }
+
+            const db = await getDb();
+            
+            // Get total count
+            const countResult = await db.query(`SELECT COUNT(*) as total FROM ${tableName}`);
+            const total = parseInt(countResult.rows[0].total);
+
+            // Get data with pagination
+            const dataResult = await db.query(
+                `SELECT * FROM ${tableName} ORDER BY 1 LIMIT $1 OFFSET $2`,
+                [pageSize, offset]
+            );
+
+            logDbQuery(tableName, `SELECT data (page ${page}, ${pageSize} rows)`, Date.now() - startTime);
+            res.json({
+                data: dataResult.rows,
+                pagination: {
+                    page,
+                    pageSize,
+                    total,
+                    totalPages: Math.ceil(total / pageSize)
+                }
+            });
+        } catch (err) {
+            logger.error('Failed to fetch table data', err);
+            res.status(500).json({ error: 'Failed to fetch table data' });
+        }
+    });
+
+    app.get('/api/db/relationships', async (req, res) => {
+        const startTime = Date.now();
+        try {
+            const db = await getDb();
+            const result = await db.query(`
+                SELECT
+                    tc.table_name AS from_table,
+                    kcu.column_name AS from_column,
+                    ccu.table_name AS to_table,
+                    ccu.column_name AS to_column
+                FROM information_schema.table_constraints AS tc 
+                JOIN information_schema.key_column_usage AS kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                JOIN information_schema.constraint_column_usage AS ccu
+                    ON ccu.constraint_name = tc.constraint_name
+                WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND tc.table_schema = 'public'
+                ORDER BY tc.table_name, kcu.column_name
+            `);
+            logDbQuery('information_schema', 'SELECT relationships', Date.now() - startTime);
+            res.json(result.rows);
+        } catch (err) {
+            logger.error('Failed to fetch relationships', err);
+            res.status(500).json({ error: 'Failed to fetch relationships' });
         }
     });
 

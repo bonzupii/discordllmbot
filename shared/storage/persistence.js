@@ -1,7 +1,60 @@
 import { getPool } from './database.js';
+import { isSqlLoggingEnabled, setSqlLoggingEnabled } from '../config/configLoader.js';
+import { logger } from '../utils/logger.js';
+import { EventEmitter } from 'events';
 
-async function getDb() {
-    return getPool();
+const sqlLogEmitter = new EventEmitter();
+let isPoolWrapped = false;
+
+export function getSqlLogEmitter() {
+    return sqlLogEmitter;
+}
+
+export function resetPoolWrapper() {
+    isPoolWrapped = false;
+}
+
+export async function getDb() {
+    const pool = await getPool();
+    
+    if (isPoolWrapped) {
+        return pool;
+    }
+    
+    const shouldLog = isSqlLoggingEnabled();
+    
+    if (!shouldLog) {
+        isPoolWrapped = true;
+        return pool;
+    }
+    
+    const originalQuery = pool.query.bind(pool);
+    
+    pool.query = async (...args) => {
+        const startTime = Date.now();
+        const query = typeof args[0] === 'string' ? args[0] : args[0].text;
+        const params = args[0].params || args[1];
+        
+        try {
+            const result = await originalQuery(...args);
+            const duration = Date.now() - startTime;
+            
+            const logEntry = `${query.substring(0, 100)}${query.length > 100 ? '...' : ''} (${duration}ms)`;
+            logger.sql(logEntry, { query, params, duration });
+            sqlLogEmitter.emit('query', logEntry, { query, params, duration });
+            
+            return result;
+        } catch (err) {
+            const duration = Date.now() - startTime;
+            const logEntry = `${query.substring(0, 100)}${query.length > 100 ? '...' : ''} ERROR (${duration}ms)`;
+            logger.sql(logEntry, { query, params, duration, error: err.message });
+            sqlLogEmitter.emit('query', logEntry, { query, params, duration, error: err.message });
+            throw err;
+        }
+    };
+    
+    isPoolWrapped = true;
+    return pool;
 }
 
 /**

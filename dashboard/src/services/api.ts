@@ -184,4 +184,75 @@ export const chatApi = {
     api.post('/chat', { message, username, guildName }),
 };
 
+// ===========================================================================
+// Database Viewer
+// ===========================================================================
+
+export interface TableInfo {
+  table_name: string;
+  description: string | null;
+  column_count: number;
+}
+
+export interface ColumnInfo {
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+  column_default: string | null;
+  character_maximum_length: number | null;
+  is_primary_key: boolean;
+  foreign_key: string | null;
+}
+
+export interface TableSchema {
+  columns: ColumnInfo[];
+  foreignKeys: Record<string, { table: string; column: string }>;
+}
+
+export interface TableData {
+  data: Record<string, unknown>[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface TableRelationship {
+  from_table: string;
+  from_column: string;
+  to_table: string;
+  to_column: string;
+}
+
+/**
+ * Database viewer endpoints
+ * View tables, schemas, and data
+ */
+export const databaseApi = {
+  /**
+   * Get all tables in the database
+   */
+  getTables: (): Promise<AxiosResponse<TableInfo[]>> => api.get('/db/tables'),
+  /**
+   * Get table schema (columns and foreign keys)
+   * @param tableName - Name of the table
+   */
+  getTableSchema: (tableName: string): Promise<AxiosResponse<TableSchema>> => 
+    api.get(`/db/tables/${tableName}/schema`),
+  /**
+   * Get table data with pagination
+   * @param tableName - Name of the table
+   * @param page - Page number (default 1)
+   * @param pageSize - Rows per page (default 20)
+   */
+  getTableData: (tableName: string, page = 1, pageSize = 20): Promise<AxiosResponse<TableData>> => 
+    api.get(`/db/tables/${tableName}/data`, { params: { page, pageSize } }),
+  /**
+   * Get all foreign key relationships
+   */
+  getRelationships: (): Promise<AxiosResponse<TableRelationship[]>> => api.get('/db/relationships'),
+};
+
 export default api;

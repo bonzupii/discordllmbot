@@ -21,7 +21,8 @@ const listeners = new Set<() => void>();
  */
 function getSocket(): ReturnType<typeof io> {
   if (!socketInstance) {
-    socketInstance = io();
+    const socketUrl = import.meta.env.VITE_API_URL || window.location.origin;
+    socketInstance = io(socketUrl);
     socketInstance.on('bot:status', (status: { isRestarting: boolean }) => {
       isRestarting = status.isRestarting;
       notifyListeners();

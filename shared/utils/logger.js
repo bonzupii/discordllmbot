@@ -15,6 +15,7 @@ const logEmitter = new EventEmitter()
 
 const LOG_LEVELS = {
     api: 'API',
+    sql: 'SQL',
     message: 'MESSAGE',
     info: 'INFO',
     warn: 'WARN',
@@ -77,6 +78,22 @@ export const logger = {
      */
     api(message, data = null) {
         const formatted = emitLog(LOG_LEVELS.api, message, data)
+        if (data) {
+            console.log(formatted, data)
+            writeToFile(formatted + ' ' + JSON.stringify(data))
+        } else {
+            console.log(formatted)
+            writeToFile(formatted)
+        }
+    },
+
+    /**
+     * Logs an SQL query event.
+     * @param {string} message - The log message.
+     * @param {Object} [data=null] - Optional data to log.
+     */
+    sql(message, data = null) {
+        const formatted = emitLog(LOG_LEVELS.sql, message, data)
         if (data) {
             console.log(formatted, data)
             writeToFile(formatted + ' ' + JSON.stringify(data))
