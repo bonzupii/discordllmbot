@@ -1,3 +1,16 @@
+/**
+ * API Server Module
+ * 
+ * Express + Socket.io API server for the Discord bot dashboard.
+ * Provides REST endpoints for configuration, relationships, analytics, and database management.
+ * Also handles real-time log streaming via Socket.io.
+ * 
+ * @module bot/src/api/server
+ * @requires express
+ * @requires socket.io
+ * @requires discord.js
+ */
+
 import 'dotenv/config';
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
@@ -15,6 +28,9 @@ import os from 'os';
 
 const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
 
+/**
+ * Interface for CPU times used in CPU usage calculation.
+ */
 interface CpuTimes {
     idle: number;
     total: number;
@@ -25,6 +41,12 @@ let prevTimestamp: number | null = null;
 let isRestarting = false;
 let io: SocketIOServer;
 
+/**
+ * Logs database query execution time to connected dashboard clients.
+ * @param tableName - Name of the database table
+ * @param query - Description of the query
+ * @param duration - Query execution time in milliseconds
+ */
 function logDbQuery(tableName: string, query: string, duration: number): void {
     const timestamp = new Date().toISOString();
     const logLine = `[DB] ${timestamp} - ${tableName}: ${query} (${duration}ms)`;
@@ -33,6 +55,13 @@ function logDbQuery(tableName: string, query: string, duration: number): void {
     }
 }
 
+/**
+ * Starts the Express API server and Socket.io for the dashboard.
+ * Sets up all REST endpoints and real-time log streaming.
+ * 
+ * @param client - The Discord.js client instance
+ * @returns Object containing the Express app and Socket.io server
+ */
 export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     const app: Express = express();
     const httpServer: HttpServer = createServer(app);
@@ -266,8 +295,11 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     });
 
     const sqlLogEmitter = getSqlLogEmitter();
-    sqlLogEmitter.on('query', (logLine: string) => {
-        io.emit('db:log', logLine);
+    sqlLogEmitter.on('query', (logLine: string, data: { query: string; params?: unknown[]; duration: number; error?: string }) => {
+        const timestamp = new Date().toISOString();
+        const errorStr = data.error ? ' ERROR' : '';
+        const fullLogLine = `[${timestamp}] [SQL] ${logLine} ${JSON.stringify(data)}`;
+        io.emit('log', fullLogLine);
     });
 
     app.get('/api/servers', async (req: Request, res: Response) => {

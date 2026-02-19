@@ -86,6 +86,10 @@ function Logs() {
       setLogs((prev: string[]) => [...prev.slice(-499), line]); // Keep last 500 lines
     });
 
+    socket.on('db:log', (line: string) => {
+      setLogs((prev: string[]) => [...prev.slice(-499), line]); // Keep last 500 lines
+    });
+
     return () => {
       socket.disconnect();
     };
