@@ -19,7 +19,6 @@ import {
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
-  ExpandMore as ExpandMoreIcon,
   Info as InfoIcon,
   Warning as WarningIcon,
   Error as ErrorIcon,
@@ -370,7 +369,7 @@ function Logs() {
                 >
                   {parsedLog.timestamp}
                 </Box>
-                <Box
+                {/* <Box
                   sx={{
                     fontFamily: "'Google Sans', 'Fira Code', 'Courier New', monospace",
                     fontSize: '0.75rem',
@@ -381,7 +380,7 @@ function Logs() {
                   }}
                 >
                   [{type}]
-                </Box>
+                </Box> */}
                 <Box
                   sx={{
                     fontFamily: "'Google Sans Code', 'Fira Code', 'Courier New', monospace",
@@ -403,19 +402,17 @@ function Logs() {
                 <Accordion
                   key={index}
                   sx={{
-                    bgcolor: 'transparent',
+                    bgcolor: index % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
                     boxShadow: 'none',
                     border: 'none',
                     '&:before': { display: 'none' },
                     '&.Mui-expanded': { margin: 0 },
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
                     borderBottom: '1px solid',
                     borderBottomColor: 'divider',
                   }}
                 >
                   <AccordionSummary
-                    expandIcon={
-                      <ExpandMoreIcon sx={{ color: 'text.secondary' }} />
-                    }
                     sx={{
                       padding: 0,
                       minHeight: 'auto',
@@ -457,6 +454,8 @@ function Logs() {
                   py: 0.5,
                   borderBottom: '1px solid',
                   borderBottomColor: 'divider',
+                  bgcolor: index % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
                 }}
               >
                 {logContent}
