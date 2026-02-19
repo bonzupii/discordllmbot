@@ -1,5 +1,5 @@
 import { getPool } from './database.js';
-import { isSqlLoggingEnabled, setSqlLoggingEnabled } from '../config/configLoader.js';
+import { isSqlLoggingEnabled } from '../config/configLoader.js';
 import { logger } from '../utils/logger.js';
 import { EventEmitter } from 'events';
 

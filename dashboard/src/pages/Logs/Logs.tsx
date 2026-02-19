@@ -312,7 +312,7 @@ function Logs() {
           bgcolor: 'background.default',
           border: '1px solid',
           borderColor: 'divider',
-          fontFamily: "'Fira Code', 'Courier New', monospace",
+          fontFamily: "'Google Sans Code', 'Fira Code', 'Courier New', monospace",
           fontSize: '0.75rem',
           height: '100%',
           overflowY: 'auto',
@@ -357,7 +357,7 @@ function Logs() {
                 </Box>
                 <Box
                   sx={{
-                    fontFamily: "'Fira Code', 'Courier New', monospace",
+                    fontFamily: "'Google Sans Code', 'Fira Code', 'Courier New', monospace",
                     fontSize: '0.75rem',
                     whiteSpace: 'nowrap',
                     lineHeight: 1.4,
@@ -368,7 +368,7 @@ function Logs() {
                 </Box>
                 <Box
                   sx={{
-                    fontFamily: "'Fira Code', 'Courier New', monospace",
+                    fontFamily: "'Google Sans Code', 'Fira Code', 'Courier New', monospace",
                     fontSize: '0.75rem',
                     fontWeight: 600,
                     whiteSpace: 'nowrap',
@@ -380,7 +380,7 @@ function Logs() {
                 </Box>
                 <Box
                   sx={{
-                    fontFamily: "'Fira Code', 'Courier New', monospace",
+                    fontFamily: "'Google Sans Code', 'Fira Code', 'Courier New', monospace",
                     fontSize: '0.75rem',
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
@@ -389,11 +389,7 @@ function Logs() {
                     paddingRight: '15px',
                   }}
                 >
-                  {parsedLog.text.split(/\[([A-Z]+)\]/).map((part, i, arr) => {
-                    if (i % 2 === 1) return null;
-                    if (i === arr.length - 1) return part;
-                    return null;
-                  })}
+                  {parsedLog.text.replace(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[([A-Z]+)\]\s*/, '')}
                 </Box>
               </Box>
             );
@@ -437,7 +433,7 @@ function Logs() {
                       <Box
                         component="div"
                         sx={{
-                          fontFamily: "'Fira Code', 'Courier New', monospace",
+                          fontFamily: "'Google Sans Code', 'Fira Code', 'Courier New', monospace",
                           fontSize: '0.8rem',
                           lineHeight: 1.4,
                         }}
