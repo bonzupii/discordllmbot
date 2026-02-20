@@ -84,8 +84,8 @@ export async function shouldReply({ message, isMentioned, replyBehavior = {}, re
     };
 
     console.log(`DEBUG: shouldReply called for guild ${message.guild?.name} (${message.guild?.id}), user: ${message.author.username}, isMentioned: ${isMentioned}`);
-    console.log(`DEBUG: replyBehavior:`, replyBehavior);
-    console.log(`DEBUG: relationship:`, relationship);
+    console.log('DEBUG: replyBehavior:', replyBehavior);
+    console.log('DEBUG: relationship:', relationship);
 
     const mode = (replyBehavior.mode as string) ?? 'mention-only';
     checks.push({ check: 'Mode', value: mode });

@@ -17,6 +17,10 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
+
+console.log(`[START] Loading... [${Date.now() % 100000}]`);
+const startTime = Date.now();
+
 import { validateEnvironment } from '../../shared/config/validation.js';
 import { logger, initializeLogger } from '../../shared/utils/logger.js';
 import { pruneOldMessages, resetPoolWrapper, getDb } from '../../shared/storage/persistence.js';
@@ -24,10 +28,13 @@ import { initializeDatabase } from '../../shared/storage/database.js';
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 import { startApi } from './api/server.js';
 
+console.log(`[START] Modules loaded in ${Date.now() - startTime}ms`);
+
 /**
  * Initializes the logger with default settings before full config is loaded.
  */
 initializeLogger(undefined);
+console.log(`[START] Logger init done, ${Date.now() - startTime}ms`);
 
 /**
  * Main async function to start the Discord bot.

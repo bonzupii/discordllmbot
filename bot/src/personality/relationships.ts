@@ -111,7 +111,7 @@ export async function loadGuildRelationships(guildId: string): Promise<GuildRela
  * @param guildId - The Discord guild ID
  * @param guildName - The Discord guild name
  */
-export async function saveGuildRelationships(guildId: string, guildName: string): Promise<void> {
+export async function saveGuildRelationships(guildId: string, _guildName: string): Promise<void> {
     if (guildRelationships[guildId]) {
         await saveRelationships(guildId, guildRelationships[guildId]);
     }
@@ -119,6 +119,11 @@ export async function saveGuildRelationships(guildId: string, guildName: string)
 
 export async function initializeGuildRelationships(guild: Guild): Promise<void> {
     const guildId = guild.id;
+
+    if (guildRelationships[guildId]) {
+        return;
+    }
+
     const guildName = guild.name;
 
     await saveGuild(guildId, guildName);

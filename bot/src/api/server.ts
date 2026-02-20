@@ -282,7 +282,11 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
 
         try {
             if (fs.existsSync(LOG_FILE_PATH)) {
-                const logs = fs.readFileSync(LOG_FILE_PATH, 'utf-8').split('\n').slice(-50);
+                const logs = fs.readFileSync(LOG_FILE_PATH, 'utf-8')
+                    .split('\n')
+                    .slice(-50)
+                    .map((line) => line.replace(/[\n\r]/g, '\\n'))
+                    .filter((l) => l.trim());
                 socket.emit('logs:init', logs);
             }
         } catch (err) {
@@ -297,9 +301,10 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     const sqlLogEmitter = getSqlLogEmitter();
     sqlLogEmitter.on('query', (logLine: string, data: { query: string; params?: unknown[]; duration: number; error?: string }) => {
         const timestamp = new Date().toISOString();
-        const errorStr = data.error ? ' ERROR' : '';
-        const fullLogLine = `[${timestamp}] [SQL] ${logLine} ${JSON.stringify(data)}`;
+        const jsonStr = JSON.stringify(data).replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+        const fullLogLine = `[${timestamp}] [SQL] ${logLine} ${jsonStr}`;
         io.emit('log', fullLogLine);
+        io.emit('db:log', fullLogLine);
     });
 
     logger.onLog((logEntry: { timestamp: string; level: string; message: string; formatted: string }) => {
@@ -370,7 +375,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             const models = await getAvailableModels(requestedProvider);
             res.json(models);
         } catch (err) {
-            logger.error(`Failed to fetch models:`, err);
+            logger.error('Failed to fetch models:', err);
             res.status(500).json({ error: `Failed to fetch models from ${req.query.provider || 'Gemini'} API` });
         }
     });

@@ -32,15 +32,15 @@ export interface LLMResponse {
  */
 export async function generateReply(prompt: string): Promise<LLMResponse> {
     const apiConfig = await getApiConfig();
-    console.log(`DEBUG: generateReply using apiConfig:`, apiConfig);
+    console.log('DEBUG: generateReply using apiConfig:', apiConfig);
     const provider = apiConfig.provider || 'gemini';
 
     switch (provider.toLowerCase()) {
         case 'gemini':
-            logger.info(`Using Gemini provider for generateReply`);
+            logger.info('Using Gemini provider for generateReply');
             return await geminiGenerateReply(prompt);
         case 'ollama':
-            logger.info(`Using Ollama provider for generateReply`);
+            logger.info('Using Ollama provider for generateReply');
             return await ollamaGenerateReply(prompt);
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
@@ -53,10 +53,10 @@ export async function getAvailableModels(overrideProvider?: string): Promise<str
 
     switch (provider.toLowerCase()) {
         case 'gemini':
-            logger.info(`Fetching models from Gemini provider`);
+            logger.info('Fetching models from Gemini provider');
             return await geminiGetAvailableModels();
         case 'ollama':
-            logger.info(`Fetching models from Ollama provider`);
+            logger.info('Fetching models from Ollama provider');
             return await ollamaGetAvailableModels();
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);

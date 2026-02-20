@@ -89,18 +89,38 @@ export async function loadRelationships(guildId) {
 
     const relRes = await db.query('SELECT userId, attitude, username, displayName, ignored, avatarUrl FROM relationships WHERE guildId = $1', [guildId]);
 
-    for (const row of relRes.rows) {
-        const behaviorRes = await db.query('SELECT behavior FROM relationship_behaviors WHERE guildId = $1 AND userId = $2', [guildId, row.userId]);
-        const boundaryRes = await db.query('SELECT boundary FROM relationship_boundaries WHERE guildId = $1 AND userId = $2', [guildId, row.userId]);
+    if (relRes.rows.length === 0) {
+        return rels;
+    }
 
+    const userIds = relRes.rows.map(r => r.userid);
+
+    const [behaviorRes, boundaryRes] = await Promise.all([
+        db.query('SELECT userId, behavior FROM relationship_behaviors WHERE guildId = $1 AND userId = ANY($2)', [guildId, userIds]),
+        db.query('SELECT userId, boundary FROM relationship_boundaries WHERE guildId = $1 AND userId = ANY($2)', [guildId, userIds])
+    ]);
+
+    const behaviorByUser = {};
+    for (const row of behaviorRes.rows) {
+        behaviorByUser[row.userid] ??= [];
+        behaviorByUser[row.userid].push(row.behavior);
+    }
+
+    const boundaryByUser = {};
+    for (const row of boundaryRes.rows) {
+        boundaryByUser[row.userid] ??= [];
+        boundaryByUser[row.userid].push(row.boundary);
+    }
+
+    for (const row of relRes.rows) {
         rels[row.userid] = {
             attitude: row.attitude,
             username: row.username,
             displayName: row.displayname,
             avatarUrl: row.avatarurl,
             ignored: row.ignored,
-            behavior: behaviorRes.rows.map(r => r.behavior),
-            boundaries: boundaryRes.rows.map(r => r.boundary),
+            behavior: behaviorByUser[row.userid] ?? [],
+            boundaries: boundaryByUser[row.userid] ?? [],
         };
     }
     return rels;

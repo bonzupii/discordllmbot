@@ -5,9 +5,9 @@
   "main": "src/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node src/index.ts",
-    "dev:container": "NODE_OPTIONS='--max-old-space-size=2048 --loader ts-node/esm' nodemon src/index.ts --inspect=0.0.0.0:9229",
-    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "dev:container": "nodemon --exec 'tsx' src/index.ts",
+    "start": "node dist/bot/src/index.js",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit"
   },
@@ -37,6 +37,9 @@
     "eslint": "^10.0.0",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.0"
   }
 }

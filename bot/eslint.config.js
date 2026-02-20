@@ -1,16 +1,14 @@
 import globals from 'globals';
-import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
 
 export default [
-    // Global configuration for all files
     {
-        ignores: ['node_modules/', 'dist/', 'logs/'],
+        ignores: ['node_modules/', 'dist/', 'logs/', '**/*.d.ts'],
     },
-    // Configuration for all JavaScript files in the bot/ directory
+    ...tseslint.configs.recommended,
     {
-        files: ['**/*.js'],
+        files: ['**/*.ts', '**/*.js'],
         languageOptions: {
-            // Set environment for Node.js and ES2022 (for top-level await, etc.)
             globals: {
                 ...globals.node,
                 ...globals.es2022,
@@ -20,17 +18,15 @@ export default [
                 ecmaVersion: 2022,
             },
         },
-        // Use recommended rules
-        ...js.configs.recommended,
         rules: {
-            // Custom rules for the project
-            'no-console': 'off', // Allow console.log for logging utility
-            'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_|client', caughtErrors: 'none' }], // Allow unused variables starting with _ and 'client' in event handlers, and ignore unused catch variables
-            'no-undef': 'error',
+            'no-console': 'off',
+            'no-unused-vars': 'off',
             'prefer-const': 'error',
             'semi': ['error', 'always'],
             'quotes': ['error', 'single'],
-            'indent': ['error', 4, { 'SwitchCase': 1 }],
+            'indent': ['error', 4, { SwitchCase: 1 }],
+            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+            '@typescript-eslint/no-explicit-any': 'off',
         },
     },
 ];

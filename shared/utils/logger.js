@@ -115,7 +115,8 @@ export const logger = {
         const formatted = emitLog(LOG_LEVELS.sql, message, data)
         if (data) {
             console.log(formatted, data)
-            writeToFile(formatted + ' ' + JSON.stringify(data))
+            const jsonStr = JSON.stringify(data).replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+            writeToFile(formatted + ' ' + jsonStr)
         } else {
             console.log(formatted)
             writeToFile(formatted)
@@ -179,7 +180,10 @@ export const logger = {
         const formatted = emitLog(LOG_LEVELS.error, message, error)
         if (error) {
             console.error(formatted, error)
-            writeToFile(formatted + ' ' + (error && error.stack ? error.stack : JSON.stringify(error)))
+            const errorData = error && error.stack 
+                ? { error: error.message, stack: error.stack }
+                : { error: error.message ?? error };
+            writeToFile(formatted + ' ' + JSON.stringify(errorData))
         } else {
             console.error(formatted)
             writeToFile(formatted)
@@ -192,6 +196,7 @@ export const logger = {
  * Call this at app startup
  */
 export function initializeLogger(maxLines) {
+    const start = Date.now();
     if (typeof maxLines === 'number' && maxLines > 0) {
         MAX_LOG_LINES = Math.floor(maxLines)
     }
@@ -207,8 +212,8 @@ export function initializeLogger(maxLines) {
             try {
                 const content = fs.readFileSync(LOG_FILE, 'utf-8')
                 const lines = content.split(/\r?\n/)
-                const start = Math.max(0, lines.length - MAX_LOG_LINES)
-                const truncated = lines.slice(start).join('\n')
+                const _start = Math.max(0, lines.length - MAX_LOG_LINES)
+                const truncated = lines.slice(_start).join('\n')
                 fs.writeFileSync(LOG_FILE, truncated + (truncated.endsWith('\n') ? '' : '\n'), 'utf-8')
             } catch (e) {
                 // If truncation fails, fall back to creating/overwriting the file
@@ -219,7 +224,7 @@ export function initializeLogger(maxLines) {
             fs.writeFileSync(LOG_FILE, '', 'utf-8')
         }
 
-        logger.info('Logger initialized')
+        logger.info(`Logger initialized (${Date.now() - start}ms)`)
     } catch (err) {
         console.error('Failed to initialize log file:', err)
     }

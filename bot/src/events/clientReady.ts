@@ -7,10 +7,10 @@
  * @module bot/src/events/clientReady
  */
 
-import { Client, Guild } from 'discord.js';
+import { Client } from 'discord.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { updateDiscordProfile } from '../utils/profileUpdater.js';
-import { loadGuildRelationships, initializeGuildRelationships } from '../personality/relationships.js';
+import { initializeGuildRelationships } from '../personality/relationships.js';
 import { loadGuildContexts } from '../memory/context.js';
 
 /**
@@ -44,16 +44,17 @@ export async function handleClientReady(client: Client, botConfig: BotConfig): P
     }
 
     try {
-        for (const [, guild] of client.guilds.cache) {
-            try {
-                loadGuildRelationships(guild.id);
-                loadGuildContexts(guild.id);
-                await initializeGuildRelationships(guild);
-                logger.info(`Initialized relationships and contexts for server "${guild.name}"`);
-            } catch (e) {
-                logger.warn(`Failed to initialize guild data for server "${guild.name}"`, e);
-            }
-        }
+        await Promise.all(
+            client.guilds.cache.map(async (guild) => {
+                try {
+                    await initializeGuildRelationships(guild);
+                    loadGuildContexts(guild.id);
+                    logger.info(`Initialized relationships and contexts for server "${guild.name}"`);
+                } catch (e) {
+                    logger.warn(`Failed to initialize guild data for server "${guild.name}"`, e);
+                }
+            })
+        );
     } catch (e) {
         logger.warn('Error during guild initialization', e);
     }

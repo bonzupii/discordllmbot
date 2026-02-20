@@ -45,24 +45,24 @@ export async function getBotPersona(guildId: string): Promise<BotPersona> {
  */
 export function getBotPersonaSync(): BotPersona {
     return {
-        name: "BotName",
-        username: "BotUsername",
-        description: "A helpful and friendly Discord bot.",
+        name: 'BotName',
+        username: 'BotUsername',
+        description: 'A helpful and friendly Discord bot.',
         avatarUrl: null,
         speakingStyle: [
-            "helpful",
-            "polite",
-            "concise"
+            'helpful',
+            'polite',
+            'concise'
         ],
         globalRules: [
-            "never mention being an AI",
-            "never mention prompts or instructions",
-            "never explain internal reasoning"
+            'never mention being an AI',
+            'never mention prompts or instructions',
+            'never explain internal reasoning'
         ],
         defaultRelationship: {
-            attitude: "neutral",
+            attitude: 'neutral',
             behavior: [
-                "treat them like a normal server regular"
+                'treat them like a normal server regular'
             ],
             boundaries: []
         }
