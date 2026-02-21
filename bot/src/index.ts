@@ -23,8 +23,7 @@ const startTime = Date.now();
 
 import { validateEnvironment } from '../../shared/config/validation.js';
 import { logger, initializeLogger } from '../../shared/utils/logger.js';
-import { pruneOldMessages, resetPoolWrapper, getDb } from '../../shared/storage/persistence.js';
-import { initializeDatabase } from '../../shared/storage/database.js';
+import { pruneOldMessages, resetPoolWrapper } from '../../shared/storage/persistence.js';
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 import { startApi } from './api/server.js';
 
@@ -65,10 +64,6 @@ async function startBot(): Promise<void> {
         const { setSqlLoggingEnabled } = await import('../../shared/config/configLoader.js');
         setSqlLoggingEnabled(initialSqlLogging);
 
-        logger.info('Initializing database...');
-        await initializeDatabase();
-        logger.info('Database ready.');
-
         const { loadConfig, getGlobalMemoryConfig } = await import('../../shared/config/configLoader.js');
         const fullConfig = await loadConfig();
         
@@ -76,7 +71,6 @@ async function startBot(): Promise<void> {
         
         setSqlLoggingEnabled(fullConfig.logger?.logSql ?? false);
         resetPoolWrapper();
-        await getDb();
         const botConfig = fullConfig.bot;
 
         const client = new Client({
