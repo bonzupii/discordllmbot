@@ -31,7 +31,6 @@ export default function Header({ open, onMenuClick, drawerWidth }: HeaderProps) 
   return (
     <AppBar
       position="fixed"
-      open={open}
       sx={{
         zIndex: (theme: Theme) => theme.zIndex.drawer + 1,
         width: isMobile ? '100%' : (open ? `calc(100% - ${drawerWidth}px)` : '100%'),
