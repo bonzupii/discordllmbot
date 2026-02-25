@@ -64,25 +64,21 @@ const DEFAULT_SERVER_CONFIG = {
 
 function normalizeGlobalConfig(config) {
     const source = config ?? {};
-    const legacyBot = source.bot ?? {};
-    const botPersona = source.botPersona ?? {};
-    const legacyApi = source.api ?? {};
-    const llm = source.llm ?? {};
 
     return {
         botPersona: {
-            username: botPersona.username ?? legacyBot.username ?? legacyBot.name ?? DEFAULT_GLOBAL_CONFIG.botPersona.username,
-            description: botPersona.description ?? legacyBot.description ?? DEFAULT_GLOBAL_CONFIG.botPersona.description,
-            globalRules: Array.isArray(botPersona.globalRules)
-                ? botPersona.globalRules
-                : (Array.isArray(legacyBot.globalRules) ? legacyBot.globalRules : DEFAULT_GLOBAL_CONFIG.botPersona.globalRules),
+            username: source.botPersona?.username ?? DEFAULT_GLOBAL_CONFIG.botPersona.username,
+            description: source.botPersona?.description ?? DEFAULT_GLOBAL_CONFIG.botPersona.description,
+            globalRules: Array.isArray(source.botPersona?.globalRules)
+                ? source.botPersona.globalRules
+                : DEFAULT_GLOBAL_CONFIG.botPersona.globalRules,
         },
         llm: {
-            provider: llm.provider ?? legacyApi.provider ?? DEFAULT_GLOBAL_CONFIG.llm.provider,
-            geminiModel: llm.geminiModel ?? legacyApi.geminiModel ?? DEFAULT_GLOBAL_CONFIG.llm.geminiModel,
-            ollamaModel: llm.ollamaModel ?? legacyApi.ollamaModel ?? DEFAULT_GLOBAL_CONFIG.llm.ollamaModel,
-            retryAttempts: llm.retryAttempts ?? legacyApi.retryAttempts ?? DEFAULT_GLOBAL_CONFIG.llm.retryAttempts,
-            retryBackoffMs: llm.retryBackoffMs ?? legacyApi.retryBackoffMs ?? DEFAULT_GLOBAL_CONFIG.llm.retryBackoffMs,
+            provider: source.llm?.provider ?? DEFAULT_GLOBAL_CONFIG.llm.provider,
+            geminiModel: source.llm?.geminiModel ?? DEFAULT_GLOBAL_CONFIG.llm.geminiModel,
+            ollamaModel: source.llm?.ollamaModel ?? DEFAULT_GLOBAL_CONFIG.llm.ollamaModel,
+            retryAttempts: source.llm?.retryAttempts ?? DEFAULT_GLOBAL_CONFIG.llm.retryAttempts,
+            retryBackoffMs: source.llm?.retryBackoffMs ?? DEFAULT_GLOBAL_CONFIG.llm.retryBackoffMs,
         },
         memory: {
             maxMessages: source.memory?.maxMessages ?? DEFAULT_GLOBAL_CONFIG.memory.maxMessages,
@@ -98,23 +94,22 @@ function normalizeGlobalConfig(config) {
 
 function normalizeServerConfig(config) {
     const source = config ?? {};
-    const legacyBot = source.bot ?? {};
-    const legacyReply = source.replyBehavior ?? {};
+    const reply = source.replyBehavior ?? {};
 
     return {
         nickname: source.nickname ?? '',
         speakingStyle: Array.isArray(source.speakingStyle)
             ? source.speakingStyle
-            : (Array.isArray(legacyBot.speakingStyle) ? legacyBot.speakingStyle : [...DEFAULT_SERVER_CONFIG.speakingStyle]),
+            : [...DEFAULT_SERVER_CONFIG.speakingStyle],
         replyBehavior: {
-            replyProbability: legacyReply.replyProbability ?? DEFAULT_SERVER_CONFIG.replyBehavior.replyProbability,
-            minDelayMs: legacyReply.minDelayMs ?? DEFAULT_SERVER_CONFIG.replyBehavior.minDelayMs,
-            maxDelayMs: legacyReply.maxDelayMs ?? DEFAULT_SERVER_CONFIG.replyBehavior.maxDelayMs,
-            mentionOnly: legacyReply.mentionOnly ?? legacyReply.requireMention ?? DEFAULT_SERVER_CONFIG.replyBehavior.mentionOnly,
-            ignoreUsers: Array.isArray(legacyReply.ignoreUsers) ? legacyReply.ignoreUsers : [],
-            ignoreChannels: Array.isArray(legacyReply.ignoreChannels) ? legacyReply.ignoreChannels : [],
-            ignoreKeywords: Array.isArray(legacyReply.ignoreKeywords) ? legacyReply.ignoreKeywords : [],
-            guildSpecificChannels: legacyReply.guildSpecificChannels ?? {},
+            replyProbability: reply.replyProbability ?? DEFAULT_SERVER_CONFIG.replyBehavior.replyProbability,
+            minDelayMs: reply.minDelayMs ?? DEFAULT_SERVER_CONFIG.replyBehavior.minDelayMs,
+            maxDelayMs: reply.maxDelayMs ?? DEFAULT_SERVER_CONFIG.replyBehavior.maxDelayMs,
+            mentionOnly: reply.mentionOnly ?? DEFAULT_SERVER_CONFIG.replyBehavior.mentionOnly,
+            ignoreUsers: Array.isArray(reply.ignoreUsers) ? reply.ignoreUsers : [],
+            ignoreChannels: Array.isArray(reply.ignoreChannels) ? reply.ignoreChannels : [],
+            ignoreKeywords: Array.isArray(reply.ignoreKeywords) ? reply.ignoreKeywords : [],
+            guildSpecificChannels: reply.guildSpecificChannels ?? {},
         },
     };
 }
