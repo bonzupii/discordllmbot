@@ -141,8 +141,13 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
             );
 
             const apiConfig = await getApiConfig();
-            const geminiModel = apiConfig.geminiModel ?? 'gemini-2.0-flash';
-            logger.api(`→ Gemini(${geminiModel}):generateReply() -> Discord API: message.reply()`);
+            const provider = apiConfig.provider ?? 'gemini';
+            const providerModel = provider === 'ollama'
+                ? (apiConfig.ollamaModel ?? 'llama3.2')
+                : provider === 'qwen'
+                    ? (apiConfig.qwenModel ?? 'qwen-plus')
+                    : (apiConfig.geminiModel ?? 'gemini-2.0-flash');
+            logger.api(`→ ${provider}(${providerModel}):generateReply() -> Discord API: message.reply()`);
 
             const replyPreview = finalReply.substring(0, 80).replace(/\n/g, ' ');
             logger.message(`✓ Replied to ${message.author.username}: "${replyPreview}"`);
