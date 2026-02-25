@@ -25,6 +25,7 @@ import { loadGuildRelationships } from '../personality/relationships.js';
 import { generateReply, getAvailableModels } from '../llm/index.js';
 import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships, deleteServerConfig, saveGlobalConfig, getDb, getSqlLogEmitter } from '../../../shared/storage/persistence.js';
 import os from 'os';
+import crypto from 'crypto';
 
 const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
 
@@ -40,6 +41,31 @@ let prevCpuTimes: CpuTimes | null = null;
 let prevTimestamp: number | null = null;
 let isRestarting = false;
 let io: SocketIOServer;
+
+
+interface QwenOauthState {
+    codeVerifier: string;
+    redirectUri: string;
+    clientId: string;
+    createdAt: number;
+}
+
+const qwenOauthStateStore = new Map<string, QwenOauthState>();
+const QWEN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const QWEN_OAUTH_DEFAULT_CLIENT_ID = 'qwen-code';
+
+function createPkceChallenge(verifier: string): string {
+    return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
+
+function pruneExpiredQwenOauthStates(): void {
+    const now = Date.now();
+    for (const [state, value] of qwenOauthStateStore.entries()) {
+        if (now - value.createdAt > QWEN_OAUTH_STATE_TTL_MS) {
+            qwenOauthStateStore.delete(state);
+        }
+    }
+}
 
 /**
  * Logs database query execution time to connected dashboard clients.
@@ -373,57 +399,83 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     });
 
     app.get('/api/llm/qwen/oauth/start', async (req: Request, res: Response) => {
-        const clientId = process.env.QWEN_OAUTH_CLIENT_ID;
-        if (!clientId) {
-            return res.status(500).json({ error: 'QWEN_OAUTH_CLIENT_ID is not configured.' });
+        try {
+            pruneExpiredQwenOauthStates();
+
+            const clientId = process.env.QWEN_OAUTH_CLIENT_ID ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
+            const redirectUri = process.env.QWEN_OAUTH_REDIRECT_URI ?? `${req.protocol}://${req.get('host')}/api/llm/qwen/oauth/callback`;
+            const authUrlBase = process.env.QWEN_OAUTH_AUTH_URL ?? 'https://chat.qwen.ai/oauth/authorize';
+            const scope = process.env.QWEN_OAUTH_SCOPE ?? 'openid profile';
+
+            const state = crypto.randomBytes(24).toString('hex');
+            const codeVerifier = crypto.randomBytes(64).toString('base64url');
+            const codeChallenge = createPkceChallenge(codeVerifier);
+
+            qwenOauthStateStore.set(state, {
+                codeVerifier,
+                redirectUri,
+                clientId,
+                createdAt: Date.now(),
+            });
+
+            const authUrl = `${authUrlBase}?${new URLSearchParams({
+                response_type: 'code',
+                client_id: clientId,
+                redirect_uri: redirectUri,
+                scope,
+                state,
+                code_challenge: codeChallenge,
+                code_challenge_method: 'S256',
+            }).toString()}`;
+
+            res.json({ authUrl });
+        } catch (err) {
+            logger.error('Failed to initialize Qwen OAuth flow', err);
+            res.status(500).json({ error: 'Failed to initialize Qwen OAuth flow' });
         }
-
-        const redirectUri = process.env.QWEN_OAUTH_REDIRECT_URI ?? `${req.protocol}://${req.get('host')}/api/llm/qwen/oauth/callback`;
-        const authUrlBase = process.env.QWEN_OAUTH_AUTH_URL ?? 'https://chat.qwen.ai/oauth/authorize';
-        const scope = process.env.QWEN_OAUTH_SCOPE ?? 'openid profile';
-
-        const authUrl = `${authUrlBase}?${new URLSearchParams({
-            response_type: 'code',
-            client_id: clientId,
-            redirect_uri: redirectUri,
-            scope,
-        }).toString()}`;
-
-        res.json({ authUrl });
     });
 
     app.get('/api/llm/qwen/oauth/callback', async (req: Request, res: Response) => {
         const code = req.query.code as string | undefined;
         const error = req.query.error as string | undefined;
+        const state = req.query.state as string | undefined;
 
         if (error) {
             return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify(error)} }, '*');window.close();</script>`);
         }
 
-        if (!code) {
-            return res.status(400).send('<script>window.opener?.postMessage({ type: \'qwen-oauth-error\', error: \'Missing authorization code.\' }, \'*\');window.close();</script>');
+        if (!code || !state) {
+            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify('Missing authorization code or state.')} }, '*');window.close();</script>`);
         }
 
-        const clientId = process.env.QWEN_OAUTH_CLIENT_ID;
-        const clientSecret = process.env.QWEN_OAUTH_CLIENT_SECRET;
+        pruneExpiredQwenOauthStates();
+        const statePayload = qwenOauthStateStore.get(state);
+        qwenOauthStateStore.delete(state);
+
+        if (!statePayload) {
+            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify('OAuth session expired. Please try again.')} }, '*');window.close();</script>`);
+        }
+
         const tokenUrl = process.env.QWEN_OAUTH_TOKEN_URL ?? 'https://chat.qwen.ai/oauth/token';
-        const redirectUri = process.env.QWEN_OAUTH_REDIRECT_URI ?? `${req.protocol}://${req.get('host')}/api/llm/qwen/oauth/callback`;
-
-        if (!clientId || !clientSecret) {
-            return res.status(500).send('<script>window.opener?.postMessage({ type: \'qwen-oauth-error\', error: \'Missing Qwen OAuth client credentials.\' }, \'*\');window.close();</script>');
-        }
 
         try {
+            const tokenParams = new URLSearchParams({
+                grant_type: 'authorization_code',
+                code,
+                client_id: statePayload.clientId,
+                redirect_uri: statePayload.redirectUri,
+                code_verifier: statePayload.codeVerifier,
+            });
+
+            const clientSecret = process.env.QWEN_OAUTH_CLIENT_SECRET;
+            if (clientSecret) {
+                tokenParams.set('client_secret', clientSecret);
+            }
+
             const tokenResponse = await fetch(tokenUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    grant_type: 'authorization_code',
-                    code,
-                    client_id: clientId,
-                    client_secret: clientSecret,
-                    redirect_uri: redirectUri,
-                }),
+                body: tokenParams,
             });
 
             if (!tokenResponse.ok) {
