@@ -171,8 +171,32 @@ export async function saveRelationships(guildId, relationships) {
  */
 export async function getServerConfig(guildId) {
     const db = await getDb();
-    const result = await db.query('SELECT config FROM server_configs WHERE guildId = $1', [guildId]);
-    return result.rows.length > 0 ? result.rows[0].config : null;
+    const result = await db.query(`
+        SELECT nickname, speakingStyle, replyProbability, minDelayMs, maxDelayMs, mentionOnly,
+               ignoreUsers, ignoreChannels, ignoreKeywords, guildSpecificChannels
+        FROM server_configs
+        WHERE guildId = $1
+    `, [guildId]);
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    const row = result.rows[0];
+    return {
+        nickname: row.nickname,
+        speakingStyle: row.speakingstyle,
+        replyBehavior: {
+            replyProbability: row.replyprobability,
+            minDelayMs: row.mindelayms,
+            maxDelayMs: row.maxdelayms,
+            mentionOnly: row.mentiononly,
+            ignoreUsers: row.ignoreusers,
+            ignoreChannels: row.ignorechannels,
+            ignoreKeywords: row.ignorekeywords,
+            guildSpecificChannels: row.guildspecificchannels,
+        },
+    };
 }
 
 /**
@@ -184,11 +208,37 @@ export async function getServerConfig(guildId) {
 export async function saveServerConfig(guildId, config) {
     const db = await getDb();
     await db.query(`
-        INSERT INTO server_configs (guildId, config, updatedAt)
-        VALUES ($1, $2, CURRENT_TIMESTAMP)
+        INSERT INTO server_configs (
+            guildId, nickname, speakingStyle, replyProbability, minDelayMs, maxDelayMs,
+            mentionOnly, ignoreUsers, ignoreChannels, ignoreKeywords, guildSpecificChannels, updatedAt
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
         ON CONFLICT (guildId)
-        DO UPDATE SET config = $2, updatedAt = CURRENT_TIMESTAMP
-    `, [guildId, config]);
+        DO UPDATE SET
+            nickname = $2,
+            speakingStyle = $3,
+            replyProbability = $4,
+            minDelayMs = $5,
+            maxDelayMs = $6,
+            mentionOnly = $7,
+            ignoreUsers = $8,
+            ignoreChannels = $9,
+            ignoreKeywords = $10,
+            guildSpecificChannels = $11,
+            updatedAt = CURRENT_TIMESTAMP
+    `, [
+        guildId,
+        config.nickname ?? null,
+        JSON.stringify(config.speakingStyle),
+        config.replyBehavior.replyProbability,
+        config.replyBehavior.minDelayMs,
+        config.replyBehavior.maxDelayMs,
+        config.replyBehavior.mentionOnly,
+        JSON.stringify(config.replyBehavior.ignoreUsers ?? []),
+        JSON.stringify(config.replyBehavior.ignoreChannels ?? []),
+        JSON.stringify(config.replyBehavior.ignoreKeywords ?? []),
+        JSON.stringify(config.replyBehavior.guildSpecificChannels ?? {}),
+    ]);
 }
 
 /**
@@ -207,8 +257,49 @@ export async function deleteServerConfig(guildId) {
  */
 export async function getGlobalConfig() {
     const db = await getDb();
-    const result = await db.query('SELECT config FROM global_config WHERE id = $1', ['global']);
-    return result.rows.length > 0 ? result.rows[0].config : null;
+    const result = await db.query(`
+        SELECT botUsername, botDescription, botGlobalRules,
+               llmProvider, llmGeminiModel, llmOllamaModel, llmQwenModel,
+               llmGeminiApiKey, llmOllamaApiKey, llmQwenApiKey,
+               llmRetryAttempts, llmRetryBackoffMs,
+               memoryMaxMessages, memoryMaxMessageAgeDays,
+               loggerMaxLogLines, loggerLogReplyDecisions, loggerLogSql
+        FROM global_config
+        WHERE id = $1
+    `, ['global']);
+
+    if (result.rows.length === 0) {
+        return null;
+    }
+
+    const row = result.rows[0];
+    return {
+        botPersona: {
+            username: row.botusername,
+            description: row.botdescription,
+            globalRules: row.botglobalrules,
+        },
+        llm: {
+            provider: row.llmprovider,
+            geminiModel: row.llmgeminimodel,
+            ollamaModel: row.llmollamamodel,
+            qwenModel: row.llmqwenmodel,
+            geminiApiKey: row.llmgeminiapikey,
+            ollamaApiKey: row.llmollamaapikey,
+            qwenApiKey: row.llmqwenapikey,
+            retryAttempts: row.llmretryattempts,
+            retryBackoffMs: row.llmretrybackoffms,
+        },
+        memory: {
+            maxMessages: row.memorymaxmessages,
+            maxMessageAgeDays: row.memorymaxmessageagedays,
+        },
+        logger: {
+            maxLogLines: row.loggermaxloglines,
+            logReplyDecisions: row.loggerlogreplydecisions,
+            logSql: row.loggerlogsql,
+        },
+    };
 }
 
 /**
@@ -219,11 +310,56 @@ export async function getGlobalConfig() {
 export async function saveGlobalConfig(config) {
     const db = await getDb();
     await db.query(`
-        INSERT INTO global_config (id, config, updatedAt)
-        VALUES ($1, $2, CURRENT_TIMESTAMP)
+        INSERT INTO global_config (
+            id, botUsername, botDescription, botGlobalRules,
+            llmProvider, llmGeminiModel, llmOllamaModel, llmQwenModel,
+            llmGeminiApiKey, llmOllamaApiKey, llmQwenApiKey,
+            llmRetryAttempts, llmRetryBackoffMs,
+            memoryMaxMessages, memoryMaxMessageAgeDays,
+            loggerMaxLogLines, loggerLogReplyDecisions, loggerLogSql,
+            updatedAt
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP)
         ON CONFLICT (id)
-        DO UPDATE SET config = $2, updatedAt = CURRENT_TIMESTAMP
-    `, ['global', config]);
+        DO UPDATE SET
+            botUsername = $2,
+            botDescription = $3,
+            botGlobalRules = $4,
+            llmProvider = $5,
+            llmGeminiModel = $6,
+            llmOllamaModel = $7,
+            llmQwenModel = $8,
+            llmGeminiApiKey = $9,
+            llmOllamaApiKey = $10,
+            llmQwenApiKey = $11,
+            llmRetryAttempts = $12,
+            llmRetryBackoffMs = $13,
+            memoryMaxMessages = $14,
+            memoryMaxMessageAgeDays = $15,
+            loggerMaxLogLines = $16,
+            loggerLogReplyDecisions = $17,
+            loggerLogSql = $18,
+            updatedAt = CURRENT_TIMESTAMP
+    `, [
+        'global',
+        config.botPersona.username,
+        config.botPersona.description,
+        JSON.stringify(config.botPersona.globalRules),
+        config.llm.provider,
+        config.llm.geminiModel,
+        config.llm.ollamaModel,
+        config.llm.qwenModel,
+        config.llm.geminiApiKey || null,
+        config.llm.ollamaApiKey || null,
+        config.llm.qwenApiKey || null,
+        config.llm.retryAttempts,
+        config.llm.retryBackoffMs,
+        config.memory.maxMessages,
+        config.memory.maxMessageAgeDays,
+        config.logger.maxLogLines,
+        config.logger.logReplyDecisions,
+        config.logger.logSql,
+    ]);
 }
 
 /**
@@ -242,7 +378,22 @@ export async function deleteGlobalConfig() {
 export async function getAllServerConfigs() {
     const db = await getDb();
     const result = await db.query(`
-        SELECT sc.guildId, sc.config, g.guildName, sc.updatedAt
+        SELECT sc.guildId,
+               jsonb_build_object(
+                   'nickname', sc.nickname,
+                   'speakingStyle', sc.speakingStyle,
+                   'replyBehavior', jsonb_build_object(
+                       'replyProbability', sc.replyProbability,
+                       'minDelayMs', sc.minDelayMs,
+                       'maxDelayMs', sc.maxDelayMs,
+                       'mentionOnly', sc.mentionOnly,
+                       'ignoreUsers', sc.ignoreUsers,
+                       'ignoreChannels', sc.ignoreChannels,
+                       'ignoreKeywords', sc.ignoreKeywords,
+                       'guildSpecificChannels', sc.guildSpecificChannels
+                   )
+               ) AS config,
+               g.guildName, sc.updatedAt
         FROM server_configs sc
         JOIN guilds g ON sc.guildId = g.guildId
         ORDER BY sc.updatedAt DESC

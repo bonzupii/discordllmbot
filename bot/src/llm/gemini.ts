@@ -17,6 +17,7 @@ interface ApiConfig {
     geminiModel?: string;
     retryAttempts?: number;
     retryBackoffMs?: number;
+    geminiApiKey?: string;
 }
 
 /**
@@ -71,7 +72,8 @@ function isRetryable(error: Error): boolean {
 async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 1000): Promise<T> {
     let lastError: Error;
 
-    const totalAttempts = maxRetries + 1;
+    const safeMaxRetries = Number.isFinite(maxRetries) ? Math.max(0, Math.floor(maxRetries)) : 3;
+    const totalAttempts = safeMaxRetries + 1;
     
     for (let i = 0; i < totalAttempts; i++) {
         try {
@@ -89,7 +91,7 @@ async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 10
                     backoffMs = (lastError as GeminiAPIError).retryAfterMs;
                 }
 
-                if (!backoffMs) {
+                if (backoffMs === null || backoffMs === undefined) {
                     backoffMs = Math.pow(2, i) * baseBackoffMs + Math.random() * Math.min(1000, baseBackoffMs);
                 }
 
@@ -122,14 +124,15 @@ interface GeminiResponse {
  */
 export async function generateReply(prompt: string): Promise<GeminiResponse> {
     const apiCfg: ApiConfig = await getApiConfig();
-    const { geminiModel, retryAttempts = 3, retryBackoffMs = 1000 } = apiCfg;
+    const { geminiModel, retryBackoffMs = 1000 } = apiCfg;
+    const retryAttempts = Number.isFinite(apiCfg.retryAttempts) ? Math.max(0, Math.floor(apiCfg.retryAttempts as number)) : 3;
 
     return retry(async () => {
         const url = await getGeminiUrl();
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = apiCfg.geminiApiKey?.trim() || process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-            throw new Error('GEMINI_API_KEY not set in environment');
+            throw new Error('Gemini API key not configured. Set llm.geminiApiKey in dashboard or GEMINI_API_KEY in env.');
         }
 
         logger.api(`→ Gemini API Request: Model=${geminiModel} Function=generateReply()`);
@@ -197,9 +200,10 @@ export async function generateReply(prompt: string): Promise<GeminiResponse> {
  * @returns Promise resolving to array of available model names
  */
 export async function getAvailableModels(): Promise<string[]> {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiCfg: ApiConfig = await getApiConfig();
+    const apiKey = apiCfg.geminiApiKey?.trim() || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        throw new Error('GEMINI_API_KEY not set in environment');
+        throw new Error('Gemini API key not configured. Set llm.geminiApiKey in dashboard or GEMINI_API_KEY in env.');
     }
 
     try {

@@ -1,7 +1,7 @@
 /**
  * LLM Provider Abstraction Layer
  * 
- * Unified interface for multiple LLM providers (Gemini, Ollama).
+ * Unified interface for multiple LLM providers (Gemini, Ollama, Qwen).
  * Handles provider selection based on configuration.
  * 
  * @module bot/src/llm
@@ -9,6 +9,7 @@
 
 import { generateReply as geminiGenerateReply, getAvailableModels as geminiGetAvailableModels } from './gemini.js';
 import { generateReply as ollamaGenerateReply, getAvailableModels as ollamaGetAvailableModels } from './ollama.js';
+import { generateReply as qwenGenerateReply, getAvailableModels as qwenGetAvailableModels } from './qwen.js';
 import { getApiConfig } from '../../../shared/config/configLoader.js';
 import { logger } from '../../../shared/utils/logger.js';
 
@@ -42,6 +43,9 @@ export async function generateReply(prompt: string): Promise<LLMResponse> {
         case 'ollama':
             logger.info('Using Ollama provider for generateReply');
             return await ollamaGenerateReply(prompt);
+        case 'qwen':
+            logger.info('Using Qwen provider for generateReply');
+            return await qwenGenerateReply(prompt);
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
     }
@@ -58,6 +62,9 @@ export async function getAvailableModels(overrideProvider?: string): Promise<str
         case 'ollama':
             logger.info('Fetching models from Ollama provider');
             return await ollamaGetAvailableModels();
+        case 'qwen':
+            logger.info('Fetching models from Qwen provider');
+            return await qwenGetAvailableModels();
         default:
             throw new Error(`Unsupported LLM provider: ${provider}`);
     }
@@ -74,9 +81,11 @@ export async function validateProviderConfig(): Promise<boolean> {
 
     switch (provider.toLowerCase()) {
         case 'gemini':
-            return !!process.env.GEMINI_API_KEY;
+            return !!apiConfig.geminiApiKey || !!process.env.GEMINI_API_KEY;
         case 'ollama':
             return true;
+        case 'qwen':
+            return !!apiConfig.qwenApiKey || !!process.env.QWEN_API_KEY;
         default:
             return false;
     }

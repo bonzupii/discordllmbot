@@ -363,20 +363,97 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     app.get('/api/models', async (req: Request, res: Response) => {
         try {
             const config = await loadConfig();
-            const requestedProvider = req.query.provider as string || config.api?.provider || 'gemini';
-
-            if (requestedProvider === 'gemini') {
-                const apiKey = process.env.GEMINI_API_KEY;
-                if (!apiKey) {
-                    return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
-                }
-            }
-
+            const requestedProvider = (req.query.provider as string) ?? config.llm?.provider ?? 'gemini';
             const models = await getAvailableModels(requestedProvider);
             res.json(models);
         } catch (err) {
             logger.error('Failed to fetch models:', err);
-            res.status(500).json({ error: `Failed to fetch models from ${req.query.provider || 'Gemini'} API` });
+            res.status(500).json({ error: `Failed to fetch models from ${(req.query.provider as string) ?? 'Gemini'} API` });
+        }
+    });
+
+    app.get('/api/llm/qwen/oauth/start', async (req: Request, res: Response) => {
+        const clientId = process.env.QWEN_OAUTH_CLIENT_ID;
+        if (!clientId) {
+            return res.status(500).json({ error: 'QWEN_OAUTH_CLIENT_ID is not configured.' });
+        }
+
+        const redirectUri = process.env.QWEN_OAUTH_REDIRECT_URI ?? `${req.protocol}://${req.get('host')}/api/llm/qwen/oauth/callback`;
+        const authUrlBase = process.env.QWEN_OAUTH_AUTH_URL ?? 'https://chat.qwen.ai/oauth/authorize';
+        const scope = process.env.QWEN_OAUTH_SCOPE ?? 'openid profile';
+
+        const authUrl = `${authUrlBase}?${new URLSearchParams({
+            response_type: 'code',
+            client_id: clientId,
+            redirect_uri: redirectUri,
+            scope,
+        }).toString()}`;
+
+        res.json({ authUrl });
+    });
+
+    app.get('/api/llm/qwen/oauth/callback', async (req: Request, res: Response) => {
+        const code = req.query.code as string | undefined;
+        const error = req.query.error as string | undefined;
+
+        if (error) {
+            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify(error)} }, '*');window.close();</script>`);
+        }
+
+        if (!code) {
+            return res.status(400).send('<script>window.opener?.postMessage({ type: \'qwen-oauth-error\', error: \'Missing authorization code.\' }, \'*\');window.close();</script>');
+        }
+
+        const clientId = process.env.QWEN_OAUTH_CLIENT_ID;
+        const clientSecret = process.env.QWEN_OAUTH_CLIENT_SECRET;
+        const tokenUrl = process.env.QWEN_OAUTH_TOKEN_URL ?? 'https://chat.qwen.ai/oauth/token';
+        const redirectUri = process.env.QWEN_OAUTH_REDIRECT_URI ?? `${req.protocol}://${req.get('host')}/api/llm/qwen/oauth/callback`;
+
+        if (!clientId || !clientSecret) {
+            return res.status(500).send('<script>window.opener?.postMessage({ type: \'qwen-oauth-error\', error: \'Missing Qwen OAuth client credentials.\' }, \'*\');window.close();</script>');
+        }
+
+        try {
+            const tokenResponse = await fetch(tokenUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    code,
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    redirect_uri: redirectUri,
+                }),
+            });
+
+            if (!tokenResponse.ok) {
+                const body = await tokenResponse.text();
+                throw new Error(`Failed to exchange OAuth code (${tokenResponse.status}): ${body}`);
+            }
+
+            const tokenData = await tokenResponse.json() as { access_token?: string };
+            const accessToken = tokenData.access_token?.trim();
+            if (!accessToken) {
+                throw new Error('OAuth response did not include access_token');
+            }
+
+            const config = await loadConfig();
+            const updatedConfig = {
+                ...config,
+                llm: {
+                    ...config.llm,
+                    qwenApiKey: accessToken,
+                },
+            };
+
+            await saveGlobalConfig(updatedConfig);
+            await reloadConfig();
+
+            res.send('<script>window.opener?.postMessage({ type: \'qwen-oauth-success\' }, \'*\');window.close();</script>');
+        } catch (oauthErr) {
+            logger.error('Failed to complete Qwen OAuth flow', oauthErr);
+            const message = oauthErr instanceof Error ? oauthErr.message : 'Qwen OAuth failed';
+            res.status(500).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify(message)} }, '*');window.close();</script>`);
         }
     });
 
