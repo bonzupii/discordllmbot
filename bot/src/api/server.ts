@@ -363,7 +363,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     app.get('/api/models', async (req: Request, res: Response) => {
         try {
             const config = await loadConfig();
-            const requestedProvider = req.query.provider as string || config.api?.provider || 'gemini';
+            const requestedProvider = (req.query.provider as string) ?? config.llm?.provider ?? 'gemini';
 
             if (requestedProvider === 'gemini') {
                 const apiKey = process.env.GEMINI_API_KEY;
@@ -376,7 +376,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             res.json(models);
         } catch (err) {
             logger.error('Failed to fetch models:', err);
-            res.status(500).json({ error: `Failed to fetch models from ${req.query.provider || 'Gemini'} API` });
+            res.status(500).json({ error: `Failed to fetch models from ${(req.query.provider as string) ?? 'Gemini'} API` });
         }
     });
 
