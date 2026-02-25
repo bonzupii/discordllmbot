@@ -60,7 +60,10 @@ function isRetryable(error: Error): boolean {
 async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 1000): Promise<T> {
     let lastError: Error;
 
-    for (let i = 0; i < maxRetries; i++) {
+    const safeMaxRetries = Number.isFinite(maxRetries) ? Math.max(0, Math.floor(maxRetries)) : 3;
+    const totalAttempts = safeMaxRetries + 1;
+
+    for (let i = 0; i < totalAttempts; i++) {
         try {
             return await fn();
         } catch (err) {
@@ -70,17 +73,17 @@ async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 10
                 throw lastError;
             }
 
-            if (i < maxRetries - 1) {
+            if (i < totalAttempts - 1) {
                 let backoffMs: number | null = null;
                 if (lastError && typeof (lastError as OllamaAPIError).retryAfterMs === 'number') {
                     backoffMs = (lastError as OllamaAPIError).retryAfterMs;
                 }
 
-                if (!backoffMs) {
+                if (backoffMs === null || backoffMs === undefined) {
                     backoffMs = Math.pow(2, i) * baseBackoffMs + Math.random() * Math.min(1000, baseBackoffMs);
                 }
 
-                logger.warn(`Retrying Ollama API (attempt ${i + 2}/${maxRetries}) after ${backoffMs}ms: ${lastError.message}${lastError.cause ? ` (Cause: ${(lastError.cause as Error).message})` : ''}`);
+                logger.warn(`Retrying Ollama API (attempt ${i + 2}/${totalAttempts}) after ${backoffMs}ms: ${lastError.message}${lastError.cause ? ` (Cause: ${(lastError.cause as Error).message})` : ''}`);
                 await new Promise(r => setTimeout(r, backoffMs));
             }
         }
@@ -112,7 +115,8 @@ interface OllamaResponse {
  */
 export async function generateReply(prompt: string): Promise<OllamaResponse> {
     const apiCfg: ApiConfig = await getApiConfig();
-    const { ollamaModel = 'llama2', retryAttempts = 3, retryBackoffMs = 1000 } = apiCfg;
+    const { ollamaModel = 'llama2', retryBackoffMs = 1000 } = apiCfg;
+    const retryAttempts = Number.isFinite(apiCfg.retryAttempts) ? Math.max(0, Math.floor(apiCfg.retryAttempts as number)) : 3;
 
     return retry(async () => {
         const url = `${getOllamaUrl()}/api/generate`;
