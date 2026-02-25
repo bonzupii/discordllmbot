@@ -31,9 +31,9 @@ const DEFAULT_GLOBAL_CONFIG = {
     },
     llm: {
         provider: 'gemini',
-        geminiModel: 'gemini-2.0-flash',
+        geminiModel: 'gemini-2.5-pro',
         ollamaModel: 'llama3.2',
-        retryAttempts: 3,
+        retryAttempts: 1,
         retryBackoffMs: 1000,
     },
     memory: {
