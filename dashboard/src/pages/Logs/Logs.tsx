@@ -160,7 +160,7 @@ function Logs() {
 
     const entries = Object.entries(obj as Record<string, unknown>);
     if (entries.length === 0)
-      return <Typography component="span">{{}}</Typography>;
+      return <Typography component="span">{'{}'}</Typography>;
 
     return (
       <Box component="div" sx={{ ml: 2 }}>

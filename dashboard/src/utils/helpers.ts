@@ -3,12 +3,11 @@
  * @module utils/helpers
  */
 
-import type { BotConfig } from '@types';
 
 /**
  * Check if a channel is ignored based on the configuration
  */
-export const isChannelIgnored = (config: BotConfig | null | undefined, guildId: string, channelId: string): boolean => {
+export const isChannelIgnored = (config: { replyBehavior?: Record<string, unknown> } | null | undefined, guildId: string, channelId: string): boolean => {
   if (!config) return false;
 
   const replyBehavior = config.replyBehavior || {};
@@ -66,7 +65,7 @@ export const updateNestedProperty = <T extends Record<string, unknown>>(obj: T, 
 
   for (const key of keys) {
     if (current[key]) {
-      current[key] = { ...current[key] };
+      current[key] = { ...(current[key] as Record<string, unknown>) };
       current = current[key] as Record<string, unknown>;
     }
   }

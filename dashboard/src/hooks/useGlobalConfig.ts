@@ -180,7 +180,11 @@ export function useGlobalConfig() {
       for (const key of keys) current = current[key] as Record<string, unknown>;
 
       const arr = current[lastKey] as unknown[];
-      current[lastKey] = arr.filter((item) => item !== itemToRemove);
+      if (typeof itemToRemove === 'number') {
+        current[lastKey] = arr.filter((_, index) => index !== itemToRemove);
+      } else {
+        current[lastKey] = arr.filter((item) => item !== itemToRemove);
+      }
       return newConfig;
     });
   }, []);
@@ -219,7 +223,7 @@ export function useGlobalConfig() {
     const init = async () => {
       const initialConfig = await fetchConfig();
       if (initialConfig) {
-        await fetchModels(initialConfig.api?.provider || 'gemini');
+        await fetchModels(initialConfig.llm?.provider || 'gemini');
       }
     };
     init();
