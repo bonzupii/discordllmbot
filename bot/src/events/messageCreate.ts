@@ -31,7 +31,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
 
     const guildId = message.guild.id;
     const cleanMessage = message.content.replace(/<@!?\d+>/g, '').trim();
-    const channelName = (message.channel as { name?: string }).name || 'unknown';
+    const channelName = (message.channel as { name?: string }).name ?? 'unknown';
 
     console.log(`DEBUG: Processing message from guild: ${message.guild.name} (${guildId}), channel: #${channelName}, user: ${message.author.username}`);
 
@@ -39,7 +39,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
     const memoryConfig = await getMemoryConfig(guildId);
     const replyBehavior = await getReplyBehavior(guildId);
 
-    const guildSpecificChannels = (replyBehavior.guildSpecificChannels as Record<string, { ignored?: string[] }>) || {};
+    const guildSpecificChannels = (replyBehavior.guildSpecificChannels as Record<string, { ignored?: string[] }>) ?? {};
     const guildIgnoredChannels = guildSpecificChannels[guildId]?.ignored ?? [];
     const isChannelIgnored = guildIgnoredChannels.includes(message.channel.id);
 
@@ -48,7 +48,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
         return;
     }
 
-    console.log(`DEBUG: Retrieved configs for guild ${guildId}. Bot name: ${botConfig.name}, Mode: ${replyBehavior.mode}, Reply Probability: ${replyBehavior.replyProbability}`);
+    console.log(`DEBUG: Retrieved configs for guild ${guildId}. Bot name: ${botConfig.name}, MentionOnly: ${replyBehavior.mentionOnly}, Reply Probability: ${replyBehavior.replyProbability}`);
 
     logger.message(`@mention from ${message.author.username} in #${channelName}: "${cleanMessage}"`);
 
@@ -102,7 +102,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
         const { text: reply, usageMetadata } = await generateReply(prompt);
         const processingTimeMs = Date.now() - startTime;
 
-        console.log(`DEBUG: Generated reply from LLM for guild ${message.guild.name} (${guildId}), length: ${reply?.length || 0} chars`);
+        console.log(`DEBUG: Generated reply from LLM for guild ${message.guild.name} (${guildId}), length: ${reply?.length ?? 0} chars`);
 
         if (reply) {
             let finalReply = reply;
@@ -141,7 +141,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
             );
 
             const apiConfig = await getApiConfig();
-            const geminiModel = apiConfig.geminiModel || 'gemini-2.0-flash';
+            const geminiModel = apiConfig.geminiModel ?? 'gemini-2.0-flash';
             logger.api(`→ Gemini(${geminiModel}):generateReply() -> Discord API: message.reply()`);
 
             const replyPreview = finalReply.substring(0, 80).replace(/\n/g, ' ');

@@ -168,7 +168,16 @@ export async function setupSchema() {
             );`,
             `CREATE TABLE IF NOT EXISTS server_configs (
                 guildId TEXT PRIMARY KEY REFERENCES guilds(guildId) ON DELETE CASCADE,
-                config JSONB NOT NULL,
+                nickname TEXT,
+                speakingStyle JSONB NOT NULL,
+                replyProbability DOUBLE PRECISION NOT NULL,
+                minDelayMs INTEGER NOT NULL,
+                maxDelayMs INTEGER NOT NULL,
+                mentionOnly BOOLEAN NOT NULL,
+                ignoreUsers JSONB NOT NULL DEFAULT '[]'::jsonb,
+                ignoreChannels JSONB NOT NULL DEFAULT '[]'::jsonb,
+                ignoreKeywords JSONB NOT NULL DEFAULT '[]'::jsonb,
+                guildSpecificChannels JSONB NOT NULL DEFAULT '{}'::jsonb,
                 createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );`,
@@ -176,7 +185,19 @@ export async function setupSchema() {
             `CREATE INDEX IF NOT EXISTS idx_server_configs_updated_at ON server_configs(updatedAt);`,
             `CREATE TABLE IF NOT EXISTS global_config (
                 id TEXT PRIMARY KEY DEFAULT 'global',
-                config JSONB NOT NULL,
+                botUsername TEXT NOT NULL,
+                botDescription TEXT NOT NULL,
+                botGlobalRules JSONB NOT NULL,
+                llmProvider TEXT NOT NULL,
+                llmGeminiModel TEXT NOT NULL,
+                llmOllamaModel TEXT NOT NULL,
+                llmRetryAttempts INTEGER NOT NULL,
+                llmRetryBackoffMs INTEGER NOT NULL,
+                memoryMaxMessages INTEGER NOT NULL,
+                memoryMaxMessageAgeDays INTEGER NOT NULL,
+                loggerMaxLogLines INTEGER NOT NULL,
+                loggerLogReplyDecisions BOOLEAN NOT NULL,
+                loggerLogSql BOOLEAN NOT NULL,
                 createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );`

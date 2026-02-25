@@ -38,6 +38,8 @@ Thumbs.db
 !src/config/bot.json.defaults
 !mcp-config.json
 !docs/package.json
+!dashboard/tsconfig.json
+!dashboard/tsconfig.node.json
 
 # Misc
 .cache/
