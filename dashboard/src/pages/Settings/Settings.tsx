@@ -97,18 +97,18 @@ function Settings() {
    */
   const handleProviderChange = async (e) => {
     const newProvider = e.target.value;
-    updateNested('api.provider', newProvider, isRestarting);
+    updateNested('llm.provider', newProvider, isRestarting);
     
     // Reset model selection when switching providers
     if (newProvider === 'gemini') {
-      updateNested('api.geminiModel', 'gemini-2.0-flash', isRestarting);
+      updateNested('llm.geminiModel', 'gemini-2.0-flash', isRestarting);
       await fetchModels(newProvider);
     } else if (newProvider === 'ollama') {
       const fetchedModels = await fetchModels(newProvider);
       if (fetchedModels && fetchedModels.length > 0) {
-        updateNested('api.ollamaModel', fetchedModels[0], isRestarting);
+        updateNested('llm.ollamaModel', fetchedModels[0], isRestarting);
       } else {
-        updateNested('api.ollamaModel', '', isRestarting);
+        updateNested('llm.ollamaModel', '', isRestarting);
       }
     } else {
       await fetchModels(newProvider);
@@ -213,21 +213,10 @@ function Settings() {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
-                    label="Global Bot Name"
-                    helperText="The name used for the Discord application"
-                    value={config.bot.name}
-                    onChange={(e) => updateNested('bot.name', e.target.value, isRestarting)}
-                    variant="outlined"
-                    disabled={isRestarting}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
                     label="Global Username"
-                    helperText="The username used for the Discord application"
-                    value={config.bot.username}
-                    onChange={(e) => updateNested('bot.username', e.target.value, isRestarting)}
+                    helperText="The default username/persona name used in prompts"
+                    value={config.botPersona.username}
+                    onChange={(e) => updateNested('botPersona.username', e.target.value, isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -239,8 +228,8 @@ function Settings() {
                     helperText="Baseline description for new servers"
                     multiline
                     rows={3}
-                    value={config.bot.description}
-                    onChange={(e) => updateNested('bot.description', e.target.value, isRestarting)}
+                    value={config.botPersona.description}
+                    onChange={(e) => updateNested('botPersona.description', e.target.value, isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -285,21 +274,21 @@ function Settings() {
                         sx={{ pl: 2, pr: 2, pt: 2, pb: 2 }}
                         id="global-rules-content"
                       >
-                        {config.bot.globalRules.map((rule, index) => (
+                        {config.botPersona.globalRules.map((rule, index) => (
                           <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
                             <TextField
                               fullWidth
                               size="small"
                               value={rule}
                               onChange={(e) =>
-                                updateArrayItem('bot.globalRules', index, e.target.value, isRestarting)
+                                updateArrayItem('botPersona.globalRules', index, e.target.value, isRestarting)
                               }
                               variant="outlined"
                               disabled={isRestarting}
                             />
                             <IconButton
                               color="error"
-                              onClick={() => removeArrayItem('bot.globalRules', index)}
+                              onClick={() => removeArrayItem('botPersona.globalRules', index)}
                               disabled={isRestarting}
                               aria-label={`Remove rule ${index + 1}`}
                             >
@@ -310,7 +299,7 @@ function Settings() {
                         <Button
                           startIcon={<AddIcon />}
                           size="small"
-                          onClick={() => addArrayItem('bot.globalRules')}
+                          onClick={() => addArrayItem('botPersona.globalRules')}
                           disabled={isRestarting}
                           aria-label="Add new rule"
                         >
@@ -346,7 +335,7 @@ function Settings() {
                   <FormControl fullWidth>
                     <InputLabel>Provider</InputLabel>
                     <Select
-                      value={config.api.provider || 'gemini'}
+                      value={config.llm.provider || 'gemini'}
                       label="Provider"
                       onChange={handleProviderChange}
                       disabled={isRestarting}
@@ -357,17 +346,17 @@ function Settings() {
                   </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  {config.api.provider === 'ollama' ? (
+                  {config.llm.provider === 'ollama' ? (
                     <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
                       <InputLabel>Ollama Model</InputLabel>
                       <Select
                         value={
-                          models.includes(config.api.ollamaModel)
-                            ? config.api.ollamaModel
+                          models.includes(config.llm.ollamaModel)
+                            ? config.llm.ollamaModel
                             : ''
                         }
                         label="Ollama Model"
-                        onChange={(e) => updateNested('api.ollamaModel', e.target.value, isRestarting)}
+                        onChange={(e) => updateNested('llm.ollamaModel', e.target.value, isRestarting)}
                       >
                         {isFetchingModels ? (
                           <MenuItem value="">
@@ -391,12 +380,12 @@ function Settings() {
                       <InputLabel>Gemini Model</InputLabel>
                       <Select
                         value={
-                          models.includes(config.api.geminiModel)
-                            ? config.api.geminiModel
+                          models.includes(config.llm.geminiModel)
+                            ? config.llm.geminiModel
                             : ''
                         }
                         label="Gemini Model"
-                        onChange={(e) => updateNested('api.geminiModel', e.target.value, isRestarting)}
+                        onChange={(e) => updateNested('llm.geminiModel', e.target.value, isRestarting)}
                       >
                         {isFetchingModels ? (
                           <MenuItem value="">
@@ -422,8 +411,8 @@ function Settings() {
                     fullWidth
                     type="number"
                     label="Retry Attempts"
-                    value={config.api.retryAttempts}
-                    onChange={(e) => updateNested('api.retryAttempts', parseInt(e.target.value), isRestarting)}
+                    value={config.llm.retryAttempts}
+                    onChange={(e) => updateNested('llm.retryAttempts', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -433,8 +422,8 @@ function Settings() {
                     fullWidth
                     type="number"
                     label="Retry Backoff (ms)"
-                    value={config.api.retryBackoffMs}
-                    onChange={(e) => updateNested('api.retryBackoffMs', parseInt(e.target.value), isRestarting)}
+                    value={config.llm.retryBackoffMs}
+                    onChange={(e) => updateNested('llm.retryBackoffMs', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />

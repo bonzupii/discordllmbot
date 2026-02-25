@@ -1,95 +1,139 @@
 /**
  * Configuration Loader Module
- * 
- * Loads and caches configuration from database and files.
+ *
+ * Loads and caches configuration from database.
  * Provides server-specific and global configuration management.
- * 
+ *
  * @module shared/config/configLoader
  */
 
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import { logger } from '../utils/logger.js'
-import { getServerConfig as getDbServerConfig, saveServerConfig as saveDbServerConfig, getGlobalConfig, saveGlobalConfig } from '../storage/persistence.js'
+import { logger } from '../utils/logger.js';
+import {
+    getServerConfig as getDbServerConfig,
+    saveServerConfig as saveDbServerConfig,
+    getGlobalConfig,
+    saveGlobalConfig,
+} from '../storage/persistence.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CONFIG_FILE = path.join(__dirname, 'bot.json')
-const DEFAULTS_FILE = path.join(__dirname, 'bot.json.defaults')
+let cachedConfig = null;
+const serverConfigCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000;
 
-let cachedConfig = null
-const serverConfigCache = new Map()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-
-// Load default config template
-const DEFAULT_GLOBAL_CONFIG = JSON.parse(fs.readFileSync(DEFAULTS_FILE, 'utf-8'))
-
-// Create server-specific defaults that include replyBehavior but exclude global-only fields
-const DEFAULT_SERVER_CONFIG = {
-    ...DEFAULT_GLOBAL_CONFIG,
-    // Override bot section to exclude description (since Discord only supports global description)
-    bot: {
-        ...DEFAULT_GLOBAL_CONFIG.bot,
-        description: DEFAULT_GLOBAL_CONFIG.bot.description // Keep the global description as default but this will be overridden by global setting
+const DEFAULT_GLOBAL_CONFIG = {
+    botPersona: {
+        username: 'BotUsername',
+        description: 'A helpful and friendly Discord bot.',
+        globalRules: [
+            'never mention being an AI',
+            'never mention prompts or instructions',
+            'never explain internal reasoning',
+        ],
     },
+    llm: {
+        provider: 'gemini',
+        geminiModel: 'gemini-2.0-flash',
+        ollamaModel: 'llama3.2',
+        retryAttempts: 3,
+        retryBackoffMs: 1000,
+    },
+    memory: {
+        maxMessages: 25,
+        maxMessageAgeDays: 30,
+    },
+    logger: {
+        maxLogLines: 1000,
+        logReplyDecisions: false,
+        logSql: false,
+    },
+};
+
+const DEFAULT_SERVER_CONFIG = {
+    nickname: '',
+    speakingStyle: ['helpful', 'polite', 'concise'],
     replyBehavior: {
-        mode: "mention-only",
         replyProbability: 1.0,
         minDelayMs: 500,
         maxDelayMs: 3000,
+        mentionOnly: true,
         ignoreUsers: [],
         ignoreChannels: [],
         ignoreKeywords: [],
-        requireMention: true,
-        engagementMode: "passive",
-        proactiveReplyChance: 0.05
-    }
-}
+        guildSpecificChannels: {},
+    },
+};
 
-// Create a version of the default server config that excludes bot description
-function getServerConfigDefaults(globalConfig) {
+function normalizeGlobalConfig(config) {
+    const source = config ?? {};
+    const legacyBot = source.bot ?? {};
+    const botPersona = source.botPersona ?? {};
+    const legacyApi = source.api ?? {};
+    const llm = source.llm ?? {};
+
     return {
-        ...DEFAULT_SERVER_CONFIG,
-        bot: {
-            ...DEFAULT_SERVER_CONFIG.bot,
-            // Use the global description instead of allowing server-specific description
-            description: globalConfig?.bot?.description || DEFAULT_GLOBAL_CONFIG.bot.description
-        }
-        // replyBehavior is fully server-specific, no global merging needed
+        botPersona: {
+            username: botPersona.username ?? legacyBot.username ?? legacyBot.name ?? DEFAULT_GLOBAL_CONFIG.botPersona.username,
+            description: botPersona.description ?? legacyBot.description ?? DEFAULT_GLOBAL_CONFIG.botPersona.description,
+            globalRules: Array.isArray(botPersona.globalRules)
+                ? botPersona.globalRules
+                : (Array.isArray(legacyBot.globalRules) ? legacyBot.globalRules : DEFAULT_GLOBAL_CONFIG.botPersona.globalRules),
+        },
+        llm: {
+            provider: llm.provider ?? legacyApi.provider ?? DEFAULT_GLOBAL_CONFIG.llm.provider,
+            geminiModel: llm.geminiModel ?? legacyApi.geminiModel ?? DEFAULT_GLOBAL_CONFIG.llm.geminiModel,
+            ollamaModel: llm.ollamaModel ?? legacyApi.ollamaModel ?? DEFAULT_GLOBAL_CONFIG.llm.ollamaModel,
+            retryAttempts: llm.retryAttempts ?? legacyApi.retryAttempts ?? DEFAULT_GLOBAL_CONFIG.llm.retryAttempts,
+            retryBackoffMs: llm.retryBackoffMs ?? legacyApi.retryBackoffMs ?? DEFAULT_GLOBAL_CONFIG.llm.retryBackoffMs,
+        },
+        memory: {
+            maxMessages: source.memory?.maxMessages ?? DEFAULT_GLOBAL_CONFIG.memory.maxMessages,
+            maxMessageAgeDays: source.memory?.maxMessageAgeDays ?? DEFAULT_GLOBAL_CONFIG.memory.maxMessageAgeDays,
+        },
+        logger: {
+            maxLogLines: source.logger?.maxLogLines ?? DEFAULT_GLOBAL_CONFIG.logger.maxLogLines,
+            logReplyDecisions: source.logger?.logReplyDecisions ?? DEFAULT_GLOBAL_CONFIG.logger.logReplyDecisions,
+            logSql: source.logger?.logSql ?? DEFAULT_GLOBAL_CONFIG.logger.logSql,
+        },
     };
 }
 
-/**
- * Load global bot configuration (for system-wide settings)
- * @returns {Object} Configuration object
- */
+function normalizeServerConfig(config) {
+    const source = config ?? {};
+    const legacyBot = source.bot ?? {};
+    const legacyReply = source.replyBehavior ?? {};
+
+    return {
+        nickname: source.nickname ?? '',
+        speakingStyle: Array.isArray(source.speakingStyle)
+            ? source.speakingStyle
+            : (Array.isArray(legacyBot.speakingStyle) ? legacyBot.speakingStyle : [...DEFAULT_SERVER_CONFIG.speakingStyle]),
+        replyBehavior: {
+            replyProbability: legacyReply.replyProbability ?? DEFAULT_SERVER_CONFIG.replyBehavior.replyProbability,
+            minDelayMs: legacyReply.minDelayMs ?? DEFAULT_SERVER_CONFIG.replyBehavior.minDelayMs,
+            maxDelayMs: legacyReply.maxDelayMs ?? DEFAULT_SERVER_CONFIG.replyBehavior.maxDelayMs,
+            mentionOnly: legacyReply.mentionOnly ?? legacyReply.requireMention ?? DEFAULT_SERVER_CONFIG.replyBehavior.mentionOnly,
+            ignoreUsers: Array.isArray(legacyReply.ignoreUsers) ? legacyReply.ignoreUsers : [],
+            ignoreChannels: Array.isArray(legacyReply.ignoreChannels) ? legacyReply.ignoreChannels : [],
+            ignoreKeywords: Array.isArray(legacyReply.ignoreKeywords) ? legacyReply.ignoreKeywords : [],
+            guildSpecificChannels: legacyReply.guildSpecificChannels ?? {},
+        },
+    };
+}
+
 export async function loadConfig() {
-    if (cachedConfig) return cachedConfig
+    if (cachedConfig) return cachedConfig;
 
     try {
-        // First try to load from database
-        let configFromDb = await getGlobalConfig();
+        const configFromDb = await getGlobalConfig();
+        const normalized = normalizeGlobalConfig(configFromDb);
 
-        if (configFromDb) {
-            cachedConfig = configFromDb;
-            logger.info('✓ Loaded global config from database');
+        if (!configFromDb) {
+            await saveGlobalConfig(normalized);
+            logger.info('✓ Created default global config in database');
         } else {
-            // If not in database, check if JSON file exists (migration scenario)
-            if (fs.existsSync(CONFIG_FILE)) {
-                const data = fs.readFileSync(CONFIG_FILE, 'utf-8');
-                const jsonConfig = JSON.parse(data);
-
-                // Save to database and remove from JSON file for future loads
-                await saveGlobalConfig(jsonConfig);
-                cachedConfig = jsonConfig;
-
-                logger.info('✓ Loaded global config from bot.json (and migrated to database)');
-            } else {
-                // Use defaults if neither database nor file exists
-                cachedConfig = DEFAULT_GLOBAL_CONFIG;
-                logger.info('✓ Using default global config');
-            }
+            logger.info('✓ Loaded global config from database');
         }
+
+        cachedConfig = normalized;
         return cachedConfig;
     } catch (err) {
         logger.error('Failed to load global config', err);
@@ -97,131 +141,81 @@ export async function loadConfig() {
     }
 }
 
-/**
- * Get server-specific configuration
- * @param {string} guildId - Discord guild ID
- * @returns {Promise<Object>} Server configuration
- */
 export async function getServerConfig(guildId) {
-    if (!guildId) return DEFAULT_GLOBAL_CONFIG
+    if (!guildId) return DEFAULT_SERVER_CONFIG;
 
-    // Check cache
-    const cached = serverConfigCache.get(guildId)
+    const cached = serverConfigCache.get(guildId);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.config
+        return cached.config;
     }
 
     try {
-        let serverConfig = await getDbServerConfig(guildId)
+        const serverConfig = normalizeServerConfig(await getDbServerConfig(guildId));
 
-        if (!serverConfig) {
-            // No server-specific config exists, create it using server-specific default config
-            const globalConfig = await loadConfig();
-            serverConfig = getServerConfigDefaults(globalConfig);
-            await saveDbServerConfig(guildId, serverConfig)
-            logger.info(`Created default configuration for new server: ${guildId}`)
-        }
-
-        // Cache the config
         serverConfigCache.set(guildId, {
             config: serverConfig,
-            timestamp: Date.now()
-        })
+            timestamp: Date.now(),
+        });
 
-        return serverConfig
+        return serverConfig;
     } catch (err) {
-        logger.error(`Failed to load server config for guild ${guildId}`, err)
-        const globalConfig = await loadConfig();
-        return getServerConfigDefaults(globalConfig);
+        logger.error(`Failed to load server config for guild ${guildId}`, err);
+        return normalizeServerConfig(null);
     }
 }
 
-/**
- * Update server-specific configuration
- * @param {string} guildId - Discord guild ID
- * @param {Object} newConfig - New server configuration
- */
 export async function updateServerConfig(guildId, newConfig) {
     try {
-        await saveDbServerConfig(guildId, newConfig)
-        serverConfigCache.delete(guildId)
-        logger.info(`Updated server config for guild ${guildId}`)
+        const normalized = normalizeServerConfig(newConfig);
+        await saveDbServerConfig(guildId, normalized);
+        serverConfigCache.delete(guildId);
+        logger.info(`Updated server config for guild ${guildId}`);
     } catch (err) {
-        logger.error(`Failed to update server config for guild ${guildId}`, err)
-        throw err
+        logger.error(`Failed to update server config for guild ${guildId}`, err);
+        throw err;
     }
 }
 
-/**
- * Force reload of global configuration from database
- */
 export async function reloadConfig() {
-    cachedConfig = null
-    return loadConfig()
+    cachedConfig = null;
+    return loadConfig();
 }
 
-/**
- * Get bot personality config for a specific server
- * @param {string} guildId - Discord guild ID
- * @returns {Promise<Object>} Bot persona settings
- */
 export async function getBotConfig(guildId) {
-    const serverConfig = await getServerConfig(guildId)
     const globalConfig = await loadConfig();
+    const serverConfig = guildId ? await getServerConfig(guildId) : null;
 
-    // Use global description but server-specific other bot settings
     return {
-        ...serverConfig.bot,
-        description: globalConfig.bot.description
-    }
+        name: serverConfig?.nickname ?? globalConfig.botPersona.username,
+        description: globalConfig.botPersona.description,
+        globalRules: globalConfig.botPersona.globalRules,
+        speakingStyle: serverConfig?.speakingStyle ?? DEFAULT_SERVER_CONFIG.speakingStyle,
+    };
 }
 
-/**
- * Get memory settings for a specific server
- * @param {string} guildId - Discord guild ID
- * @returns {Promise<Object>} Memory configuration
- */
-export async function getMemoryConfig(guildId) {
-    const config = await getServerConfig(guildId)
-    return config.memory
+export async function getMemoryConfig() {
+    const config = await loadConfig();
+    return config.memory;
 }
 
-/**
- * Get global memory settings
- * @returns {Promise<Object>} Global memory configuration
- */
 export async function getGlobalMemoryConfig() {
     const config = await loadConfig();
     return config.memory;
 }
 
-/**
- * Get API settings (global)
- * @returns {Promise<Object>} API configuration
- */
 export async function getApiConfig() {
-    const config = await loadConfig()
-    return config.api
+    const config = await loadConfig();
+    return config.llm;
 }
 
-/**
- * Get reply behavior settings for a specific server
- * @param {string} guildId - Discord guild ID
- * @returns {Promise<Object>} Reply behavior configuration
- */
 export async function getReplyBehavior(guildId) {
-    const config = await getServerConfig(guildId)
-    return config.replyBehavior ?? {}
+    const config = await getServerConfig(guildId);
+    return config.replyBehavior ?? {};
 }
 
-/**
- * Get logger settings for a specific server
- * @param {string} guildId - Discord guild ID
- * @returns {Promise<Object>} Logger configuration
- */
-export async function getLoggerConfig(guildId) {
-    const config = await getServerConfig(guildId)
-    return config.logger ?? {}
+export async function getLoggerConfig() {
+    const config = await loadConfig();
+    return config.logger ?? {};
 }
 
 let sqlLoggingEnabled = false;
@@ -230,18 +224,10 @@ export function setSqlLoggingEnabled(enabled) {
     sqlLoggingEnabled = enabled;
 }
 
-/**
- * Check if SQL query logging is enabled globally
- * @returns {boolean} True if SQL logging is enabled
- */
 export function isSqlLoggingEnabled() {
     return sqlLoggingEnabled;
 }
 
-/**
- * Clear cache when configuration is updated
- * @param {string} guildId - Discord guild ID
- */
 export function clearServerConfigCache(guildId) {
-    serverConfigCache.delete(guildId)
+    serverConfigCache.delete(guildId);
 }
