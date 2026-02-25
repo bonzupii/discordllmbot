@@ -229,15 +229,15 @@ export async function saveServerConfig(guildId, config) {
     `, [
         guildId,
         config.nickname ?? null,
-        config.speakingStyle,
+        JSON.stringify(config.speakingStyle),
         config.replyBehavior.replyProbability,
         config.replyBehavior.minDelayMs,
         config.replyBehavior.maxDelayMs,
         config.replyBehavior.mentionOnly,
-        config.replyBehavior.ignoreUsers ?? [],
-        config.replyBehavior.ignoreChannels ?? [],
-        config.replyBehavior.ignoreKeywords ?? [],
-        config.replyBehavior.guildSpecificChannels ?? {},
+        JSON.stringify(config.replyBehavior.ignoreUsers ?? []),
+        JSON.stringify(config.replyBehavior.ignoreChannels ?? []),
+        JSON.stringify(config.replyBehavior.ignoreKeywords ?? []),
+        JSON.stringify(config.replyBehavior.guildSpecificChannels ?? {}),
     ]);
 }
 
@@ -332,7 +332,7 @@ export async function saveGlobalConfig(config) {
         'global',
         config.botPersona.username,
         config.botPersona.description,
-        config.botPersona.globalRules,
+        JSON.stringify(config.botPersona.globalRules),
         config.llm.provider,
         config.llm.geminiModel,
         config.llm.ollamaModel,
