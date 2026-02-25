@@ -3,13 +3,6 @@
  * @module types
  */
 
-// ===========================================================================
-// Health & Analytics
-// ===========================================================================
-
-/**
- * Response from the /health endpoint
- */
 export interface HealthResponse {
   status: string;
   uptime: number;
@@ -17,9 +10,6 @@ export interface HealthResponse {
   memory_usage: number;
 }
 
-/**
- * Response from the /analytics endpoint
- */
 export interface AnalyticsResponse {
   stats24h: {
     total_replies: number;
@@ -38,9 +28,6 @@ export interface AnalyticsResponse {
   }[];
 }
 
-/**
- * A bot reply stored in the database
- */
 export interface Reply {
   id: number;
   username: string;
@@ -52,13 +39,6 @@ export interface Reply {
   timestamp: string;
 }
 
-// ===========================================================================
-// Server Management
-// ===========================================================================
-
-/**
- * Discord server the bot is connected to
- */
 export interface Server {
   id: string;
   name: string;
@@ -67,56 +47,47 @@ export interface Server {
   joinedAt?: string;
 }
 
-/**
- * Server-specific configuration overrides
- */
 export interface ServerConfig {
+  nickname?: string;
+  speakingStyle: string[];
   replyBehavior: {
+    replyProbability: number;
+    minDelayMs: number;
+    maxDelayMs: number;
+    mentionOnly: boolean;
     guildSpecificChannels?: Record<string, {
       allowed?: string[];
       ignored?: string[];
     }>;
   };
-  [key: string]: unknown;
 }
 
-/**
- * User relationship data - defines how the bot interacts with a user
- */
 export interface Relationship {
   attitude: string;
   behavior: string[];
   ignored: boolean;
 }
 
-/**
- * Discord channel information
- */
 export interface Channel {
   id: string;
   name: string;
   type: number;
 }
 
-// ===========================================================================
-// Bot Configuration
-// ===========================================================================
-
-/**
- * Complete bot configuration structure
- * Used for both global config and server-specific overrides
- */
 export interface BotConfig {
-  bot: {
-    name: string;
+  botPersona: {
     username: string;
     description: string;
     globalRules: string[];
   };
-  api: {
-    provider: 'gemini' | 'ollama';
+  llm: {
+    provider: 'gemini' | 'ollama' | 'qwen';
     geminiModel: string;
     ollamaModel: string;
+    qwenModel: string;
+    geminiApiKey: string;
+    ollamaApiKey: string;
+    qwenApiKey: string;
     retryAttempts: number;
     retryBackoffMs: number;
   };
@@ -129,21 +100,8 @@ export interface BotConfig {
     logReplyDecisions: boolean;
     logSql: boolean;
   };
-  replyBehavior: {
-    guildSpecificChannels?: Record<string, {
-      allowed?: string[];
-      ignored?: string[];
-    }>;
-  };
 }
 
-// ===========================================================================
-// Chat / Playground
-// ===========================================================================
-
-/**
- * A message in the chat playground
- */
 export interface ChatMessage {
   id: number;
   role: 'user' | 'assistant' | 'system';
@@ -156,18 +114,12 @@ export interface ChatMessage {
   };
 }
 
-/**
- * Request body for sending a chat message
- */
 export interface ChatRequest {
   message: string;
   username: string;
   guildName: string;
 }
 
-/**
- * Response from the chat endpoint
- */
 export interface ChatResponse {
   reply: string;
   timestamp: string;
@@ -177,30 +129,13 @@ export interface ChatResponse {
   };
 }
 
-// ===========================================================================
-// Bot Info
-// ===========================================================================
-
-/**
- * Bot information from the API
- */
 export interface BotInfo {
   clientId?: string;
   inviteUrl?: string;
 }
 
-// ===========================================================================
-// Logging
-// ===========================================================================
-
-/**
- * Log level types
- */
 export type LogType = 'ERROR' | 'WARN' | 'INFO' | 'API' | 'SQL' | 'MESSAGE' | 'OTHER';
 
-/**
- * A parsed log entry
- */
 export interface ParsedLog {
   timestamp: string | null;
   level: LogType;

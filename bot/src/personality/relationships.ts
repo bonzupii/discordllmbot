@@ -8,7 +8,6 @@
  */
 
 import { loadRelationships, saveRelationships, saveGuild } from '../../../shared/storage/persistence.js';
-import { getBotConfig } from '../../../shared/config/configLoader.js';
 import { Guild } from 'discord.js';
 
 /**
@@ -51,21 +50,6 @@ function createDefaultRelationship(): Relationship {
         ],
         boundaries: []
     };
-}
-
-/**
- * Gets the default relationship from config or creates one.
- * 
- * @returns Promise resolving to default relationship
- */
-async function getDefaultRelationship(): Promise<Relationship> {
-    try {
-        const botConfig = await getBotConfig('') as Record<string, unknown>;
-        const defaultRel = botConfig.defaultRelationship as Relationship | undefined;
-        return defaultRel ?? createDefaultRelationship();
-    } catch {
-        return createDefaultRelationship();
-    }
 }
 
 /**
@@ -140,7 +124,7 @@ export async function initializeGuildRelationships(guild: Guild): Promise<void> 
         members = guild.members.cache;
     }
 
-    const defaultRel = await getDefaultRelationship();
+    const defaultRel = createDefaultRelationship();
     let changed = false;
 
     for (const [, member] of members) {

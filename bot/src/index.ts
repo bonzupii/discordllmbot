@@ -14,8 +14,6 @@
  */
 
 import 'dotenv/config';
-import fs from 'fs';
-import path from 'path';
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 
 console.log(`[START] Loading... [${Date.now() % 100000}]`);
@@ -49,29 +47,19 @@ async function startBot(): Promise<void> {
     let cleanupInterval: NodeJS.Timeout | null = null;
 
     try {
-        const BOT_CONFIG_PATH = path.join(process.cwd(), 'shared', 'config', 'bot.json');
-        let initialMaxLogLines: number | undefined;
-        let initialSqlLogging = false;
-        if (fs.existsSync(BOT_CONFIG_PATH)) {
-            const cfg = JSON.parse(fs.readFileSync(BOT_CONFIG_PATH, 'utf-8'));
-            initialMaxLogLines = cfg?.logger?.maxLogLines;
-            initialSqlLogging = cfg?.logger?.logSql ?? false;
-            if (initialMaxLogLines !== undefined) {
-                initializeLogger(initialMaxLogLines);
-            }
-        }
-
         const { setSqlLoggingEnabled } = await import('../../shared/config/configLoader.js');
-        setSqlLoggingEnabled(initialSqlLogging);
-
         const { loadConfig, getGlobalMemoryConfig } = await import('../../shared/config/configLoader.js');
         const fullConfig = await loadConfig();
-        
+
         initializeLogger(fullConfig.logger?.maxLogLines);
-        
+
         setSqlLoggingEnabled(fullConfig.logger?.logSql ?? false);
         resetPoolWrapper();
-        const botConfig = fullConfig.bot;
+        const botConfig = {
+            name: fullConfig.botPersona?.username,
+            description: fullConfig.botPersona?.description,
+            persona: ''
+        };
 
         const client = new Client({
             intents: [
