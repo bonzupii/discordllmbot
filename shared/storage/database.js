@@ -200,7 +200,31 @@ export async function setupSchema() {
                 loggerLogSql BOOLEAN NOT NULL,
                 createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            );`
+            );`,
+
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botUsername TEXT DEFAULT 'BotUsername';`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botDescription TEXT DEFAULT 'A helpful and friendly Discord bot.';`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botGlobalRules JSONB DEFAULT '[]'::jsonb;`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmProvider TEXT DEFAULT 'gemini';`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmGeminiModel TEXT DEFAULT 'gemini-2.0-flash';`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmOllamaModel TEXT DEFAULT 'llama3.2';`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmRetryAttempts INTEGER DEFAULT 3;`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmRetryBackoffMs INTEGER DEFAULT 1000;`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS memoryMaxMessages INTEGER DEFAULT 25;`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS memoryMaxMessageAgeDays INTEGER DEFAULT 30;`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerMaxLogLines INTEGER DEFAULT 1000;`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerLogReplyDecisions BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerLogSql BOOLEAN DEFAULT FALSE;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS nickname TEXT;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS speakingStyle JSONB DEFAULT '[]'::jsonb;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS replyProbability DOUBLE PRECISION DEFAULT 1.0;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS minDelayMs INTEGER DEFAULT 500;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS maxDelayMs INTEGER DEFAULT 3000;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS mentionOnly BOOLEAN DEFAULT TRUE;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreUsers JSONB DEFAULT '[]'::jsonb;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreChannels JSONB DEFAULT '[]'::jsonb;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreKeywords JSONB DEFAULT '[]'::jsonb;`,
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS guildSpecificChannels JSONB DEFAULT '{}'::jsonb;`
         ];
 
         logger.info('setupSchema: Verifying and updating schema...');
