@@ -57,6 +57,7 @@ function Settings() {
     updateArrayItem,
     fetchModels,
     clearMessage,
+    refetch,
   } = useGlobalConfig();
 
   const { isRestarting } = useSocket();
@@ -73,6 +74,44 @@ function Settings() {
 
   if (!config)
     return <Alert severity="error">Failed to load configuration.</Alert>;
+
+  /**
+   * Starts Qwen OAuth in a popup and reloads config when complete.
+   */
+  const handleConnectQwen = async () => {
+    const popup = window.open('/api/llm/qwen/oauth/start', 'qwen-oauth', 'width=700,height=800');
+    if (!popup) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/llm/qwen/oauth/start');
+      const data = await response.json();
+      if (!response.ok || !data.authUrl) {
+        throw new Error(data.error || 'Failed to start Qwen OAuth flow');
+      }
+      popup.location.href = data.authUrl;
+    } catch (err) {
+      popup.close();
+      console.error(err);
+      return;
+    }
+
+    const onMessage = async (event: MessageEvent) => {
+      const msg = event.data as { type?: string };
+      if (!msg || (msg.type !== 'qwen-oauth-success' && msg.type !== 'qwen-oauth-error')) {
+        return;
+      }
+
+      window.removeEventListener('message', onMessage);
+      if (msg.type === 'qwen-oauth-success') {
+        await refetch();
+        await fetchModels('qwen');
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+  };
 
   /**
    * Handles tab selection change.
@@ -110,6 +149,9 @@ function Settings() {
       } else {
         updateNested('llm.ollamaModel', '', isRestarting);
       }
+    } else if (newProvider === 'qwen') {
+      updateNested('llm.qwenModel', 'qwen-plus', isRestarting);
+      await fetchModels(newProvider);
     } else {
       await fetchModels(newProvider);
     }
@@ -342,68 +384,95 @@ function Settings() {
                     >
                       <MenuItem value="gemini">Google Gemini</MenuItem>
                       <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                      <MenuItem value="qwen">Qwen</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  {config.llm.provider === 'ollama' ? (
-                    <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
-                      <InputLabel>Ollama Model</InputLabel>
-                      <Select
-                        value={
-                          models.includes(config.llm.ollamaModel)
+                  <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
+                    <InputLabel>{config.llm.provider === 'ollama' ? 'Ollama Model' : config.llm.provider === 'qwen' ? 'Qwen Model' : 'Gemini Model'}</InputLabel>
+                    <Select
+                      value={
+                        models.includes(
+                          config.llm.provider === 'ollama'
                             ? config.llm.ollamaModel
-                            : ''
-                        }
-                        label="Ollama Model"
-                        onChange={(e) => updateNested('llm.ollamaModel', e.target.value, isRestarting)}
-                      >
-                        {isFetchingModels ? (
-                          <MenuItem value="">
-                            <CircularProgress size={20} />
+                            : config.llm.provider === 'qwen'
+                              ? config.llm.qwenModel
+                              : config.llm.geminiModel
+                        )
+                          ? (config.llm.provider === 'ollama'
+                              ? config.llm.ollamaModel
+                              : config.llm.provider === 'qwen'
+                                ? config.llm.qwenModel
+                                : config.llm.geminiModel)
+                          : ''
+                      }
+                      label={config.llm.provider === 'ollama' ? 'Ollama Model' : config.llm.provider === 'qwen' ? 'Qwen Model' : 'Gemini Model'}
+                      onChange={(e) => updateNested(
+                        config.llm.provider === 'ollama'
+                          ? 'llm.ollamaModel'
+                          : config.llm.provider === 'qwen'
+                            ? 'llm.qwenModel'
+                            : 'llm.geminiModel',
+                        e.target.value,
+                        isRestarting
+                      )}
+                    >
+                      {isFetchingModels ? (
+                        <MenuItem value="">
+                          <CircularProgress size={20} />
+                        </MenuItem>
+                      ) : models.length === 0 ? (
+                        <MenuItem value="" disabled>
+                          No models available
+                        </MenuItem>
+                      ) : (
+                        models.map((m) => (
+                          <MenuItem key={m} value={m}>
+                            {m}
                           </MenuItem>
-                        ) : models.length === 0 ? (
-                          <MenuItem value="" disabled>
-                            No models available
-                          </MenuItem>
-                        ) : (
-                          models.map((m) => (
-                            <MenuItem key={m} value={m}>
-                              {m}
-                            </MenuItem>
-                          ))
-                        )}
-                      </Select>
-                    </FormControl>
+                        ))
+                      )}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                  {config.llm.provider === 'qwen' ? (
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <TextField
+                        fullWidth
+                        type="password"
+                        label="Qwen API Key"
+                        value={config.llm.qwenApiKey}
+                        onChange={(e) => updateNested('llm.qwenApiKey', e.target.value, isRestarting)}
+                        variant="outlined"
+                        disabled={isRestarting}
+                      />
+                      <Button variant="outlined" onClick={handleConnectQwen} disabled={isRestarting}>
+                        Connect OAuth
+                      </Button>
+                    </Box>
+                  ) : config.llm.provider === 'gemini' ? (
+                    <TextField
+                      fullWidth
+                      type="password"
+                      label="Gemini API Key"
+                      value={config.llm.geminiApiKey}
+                      onChange={(e) => updateNested('llm.geminiApiKey', e.target.value, isRestarting)}
+                      variant="outlined"
+                      disabled={isRestarting}
+                    />
                   ) : (
-                    <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
-                      <InputLabel>Gemini Model</InputLabel>
-                      <Select
-                        value={
-                          models.includes(config.llm.geminiModel)
-                            ? config.llm.geminiModel
-                            : ''
-                        }
-                        label="Gemini Model"
-                        onChange={(e) => updateNested('llm.geminiModel', e.target.value, isRestarting)}
-                      >
-                        {isFetchingModels ? (
-                          <MenuItem value="">
-                            <CircularProgress size={20} />
-                          </MenuItem>
-                        ) : models.length === 0 ? (
-                          <MenuItem value="" disabled>
-                            No models available
-                          </MenuItem>
-                        ) : (
-                          models.map((m) => (
-                            <MenuItem key={m} value={m}>
-                              {m}
-                            </MenuItem>
-                          ))
-                        )}
-                      </Select>
-                    </FormControl>
+                    <TextField
+                      fullWidth
+                      type="password"
+                      label="Ollama API Key (optional)"
+                      value={config.llm.ollamaApiKey}
+                      onChange={(e) => updateNested('llm.ollamaApiKey', e.target.value, isRestarting)}
+                      variant="outlined"
+                      disabled={isRestarting}
+                    />
                   )}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>

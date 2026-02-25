@@ -17,6 +17,7 @@ interface ApiConfig {
     ollamaModel?: string;
     retryAttempts?: number;
     retryBackoffMs?: number;
+    ollamaApiKey?: string;
 }
 
 /**
@@ -123,9 +124,15 @@ export async function generateReply(prompt: string): Promise<OllamaResponse> {
 
         logger.api(`→ Ollama API Request: Model=${ollamaModel} Function=generateReply()`);
 
+        const ollamaApiKey = apiCfg.ollamaApiKey?.trim() || process.env.OLLAMA_API_KEY || '';
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (ollamaApiKey) {
+            headers.Authorization = `Bearer ${ollamaApiKey}`;
+        }
+
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({
                 model: ollamaModel,
                 prompt: prompt,
@@ -184,9 +191,16 @@ export async function getAvailableModels(): Promise<string[]> {
     const url = `${getOllamaUrl()}/api/tags`;
 
     try {
+        const apiCfg: ApiConfig = await getApiConfig();
+        const ollamaApiKey = apiCfg.ollamaApiKey?.trim() || process.env.OLLAMA_API_KEY || '';
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (ollamaApiKey) {
+            headers.Authorization = `Bearer ${ollamaApiKey}`;
+        }
+
         const res = await fetch(url, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
+            headers
         });
 
         if (!res.ok) {

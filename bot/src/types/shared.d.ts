@@ -33,7 +33,15 @@ export interface LoggerConfig {
 }
 
 export interface ApiConfig {
-    provider: 'gemini' | 'ollama';
+    provider: 'gemini' | 'ollama' | 'qwen';
+    geminiModel?: string;
+    ollamaModel?: string;
+    qwenModel?: string;
+    geminiApiKey?: string;
+    ollamaApiKey?: string;
+    qwenApiKey?: string;
+    retryAttempts?: number;
+    retryBackoffMs?: number;
     model?: string;
     ollamaUrl?: string;
 }

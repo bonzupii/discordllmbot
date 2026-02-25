@@ -259,7 +259,9 @@ export async function getGlobalConfig() {
     const db = await getDb();
     const result = await db.query(`
         SELECT botUsername, botDescription, botGlobalRules,
-               llmProvider, llmGeminiModel, llmOllamaModel, llmRetryAttempts, llmRetryBackoffMs,
+               llmProvider, llmGeminiModel, llmOllamaModel, llmQwenModel,
+               llmGeminiApiKey, llmOllamaApiKey, llmQwenApiKey,
+               llmRetryAttempts, llmRetryBackoffMs,
                memoryMaxMessages, memoryMaxMessageAgeDays,
                loggerMaxLogLines, loggerLogReplyDecisions, loggerLogSql
         FROM global_config
@@ -281,6 +283,10 @@ export async function getGlobalConfig() {
             provider: row.llmprovider,
             geminiModel: row.llmgeminimodel,
             ollamaModel: row.llmollamamodel,
+            qwenModel: row.llmqwenmodel,
+            geminiApiKey: row.llmgeminiapikey,
+            ollamaApiKey: row.llmollamaapikey,
+            qwenApiKey: row.llmqwenapikey,
             retryAttempts: row.llmretryattempts,
             retryBackoffMs: row.llmretrybackoffms,
         },
@@ -306,12 +312,14 @@ export async function saveGlobalConfig(config) {
     await db.query(`
         INSERT INTO global_config (
             id, botUsername, botDescription, botGlobalRules,
-            llmProvider, llmGeminiModel, llmOllamaModel, llmRetryAttempts, llmRetryBackoffMs,
+            llmProvider, llmGeminiModel, llmOllamaModel, llmQwenModel,
+            llmGeminiApiKey, llmOllamaApiKey, llmQwenApiKey,
+            llmRetryAttempts, llmRetryBackoffMs,
             memoryMaxMessages, memoryMaxMessageAgeDays,
             loggerMaxLogLines, loggerLogReplyDecisions, loggerLogSql,
             updatedAt
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP)
         ON CONFLICT (id)
         DO UPDATE SET
             botUsername = $2,
@@ -320,13 +328,17 @@ export async function saveGlobalConfig(config) {
             llmProvider = $5,
             llmGeminiModel = $6,
             llmOllamaModel = $7,
-            llmRetryAttempts = $8,
-            llmRetryBackoffMs = $9,
-            memoryMaxMessages = $10,
-            memoryMaxMessageAgeDays = $11,
-            loggerMaxLogLines = $12,
-            loggerLogReplyDecisions = $13,
-            loggerLogSql = $14,
+            llmQwenModel = $8,
+            llmGeminiApiKey = $9,
+            llmOllamaApiKey = $10,
+            llmQwenApiKey = $11,
+            llmRetryAttempts = $12,
+            llmRetryBackoffMs = $13,
+            memoryMaxMessages = $14,
+            memoryMaxMessageAgeDays = $15,
+            loggerMaxLogLines = $16,
+            loggerLogReplyDecisions = $17,
+            loggerLogSql = $18,
             updatedAt = CURRENT_TIMESTAMP
     `, [
         'global',
@@ -336,6 +348,10 @@ export async function saveGlobalConfig(config) {
         config.llm.provider,
         config.llm.geminiModel,
         config.llm.ollamaModel,
+        config.llm.qwenModel,
+        config.llm.geminiApiKey || null,
+        config.llm.ollamaApiKey || null,
+        config.llm.qwenApiKey || null,
         config.llm.retryAttempts,
         config.llm.retryBackoffMs,
         config.memory.maxMessages,

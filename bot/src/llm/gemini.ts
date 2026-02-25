@@ -17,6 +17,7 @@ interface ApiConfig {
     geminiModel?: string;
     retryAttempts?: number;
     retryBackoffMs?: number;
+    geminiApiKey?: string;
 }
 
 /**
@@ -128,10 +129,10 @@ export async function generateReply(prompt: string): Promise<GeminiResponse> {
 
     return retry(async () => {
         const url = await getGeminiUrl();
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = apiCfg.geminiApiKey?.trim() || process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-            throw new Error('GEMINI_API_KEY not set in environment');
+            throw new Error('Gemini API key not configured. Set llm.geminiApiKey in dashboard or GEMINI_API_KEY in env.');
         }
 
         logger.api(`→ Gemini API Request: Model=${geminiModel} Function=generateReply()`);
@@ -199,9 +200,10 @@ export async function generateReply(prompt: string): Promise<GeminiResponse> {
  * @returns Promise resolving to array of available model names
  */
 export async function getAvailableModels(): Promise<string[]> {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiCfg: ApiConfig = await getApiConfig();
+    const apiKey = apiCfg.geminiApiKey?.trim() || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        throw new Error('GEMINI_API_KEY not set in environment');
+        throw new Error('Gemini API key not configured. Set llm.geminiApiKey in dashboard or GEMINI_API_KEY in env.');
     }
 
     try {
