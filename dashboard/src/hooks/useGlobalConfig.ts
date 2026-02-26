@@ -218,15 +218,9 @@ export function useGlobalConfig() {
     });
   }, [debouncedSave]);
 
-  // Fetch config and models on mount
+  // Fetch config on mount
   useEffect(() => {
-    const init = async () => {
-      const initialConfig = await fetchConfig();
-      if (initialConfig) {
-        await fetchModels(initialConfig.llm?.provider || 'gemini');
-      }
-    };
-    init();
+    fetchConfig();
 
     // Cleanup debounce timer on unmount
     return () => {
@@ -234,7 +228,7 @@ export function useGlobalConfig() {
         clearTimeout(debounceTimer.current);
       }
     };
-  }, [fetchConfig, fetchModels]);
+  }, [fetchConfig]);
 
   /**
    * Close the notification message

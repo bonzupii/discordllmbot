@@ -76,8 +76,12 @@ function readNonEmptyEnv(name: string): string | null {
         return null;
     }
 
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    const trimmed = value.trim().replace(/^['"]|['"]$/g, '');
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+        return null;
+    }
+
+    return trimmed;
 }
 
 function getChangedFields(previousValue: unknown, nextValue: unknown, prefix = ''): JsonRecord {
@@ -475,9 +479,11 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
         try {
             pruneExpiredQwenOauthStates();
 
-            const clientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID') ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
+            const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
+            const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
             const requestHost = req.get('host') ?? 'localhost:3000';
-            const redirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI') ?? `${req.protocol}://${requestHost}/api/llm/qwen/oauth/callback`;
+            const configuredRedirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
+            const redirectUri = configuredRedirectUri ?? `${req.protocol}://${requestHost}/api/llm/qwen/oauth/callback`;
             const authUrlBase = readNonEmptyEnv('QWEN_OAUTH_AUTH_URL') ?? 'https://chat.qwen.ai/oauth/authorize';
             const scope = readNonEmptyEnv('QWEN_OAUTH_SCOPE') ?? 'openid profile';
 
@@ -492,6 +498,10 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
                 createdAt: Date.now(),
             });
 
+            if (!clientId || !redirectUri) {
+                return res.status(500).json({ error: 'Qwen OAuth client_id/redirect_uri are not configured.' });
+            }
+
             const authUrl = `${authUrlBase}?${new URLSearchParams({
                 response_type: 'code',
                 client_id: clientId,
@@ -503,7 +513,8 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             }).toString()}`;
 
             logger.info('Initialized Qwen OAuth URL', {
-                clientId: clientId ? 'configured' : 'missing',
+                clientIdSource: configuredClientId ? 'env' : 'default',
+                redirectUriSource: configuredRedirectUri ? 'env' : 'derived',
                 redirectUri,
                 authUrlBase,
             });

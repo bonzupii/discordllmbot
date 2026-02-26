@@ -2,7 +2,7 @@
  * Settings page for configuring bot persona, LLM, memory, and logging.
  * @module pages/Settings/Settings
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Paper,
@@ -66,15 +66,43 @@ function Settings() {
   const [activeSpeakingSection, setActiveSpeakingSection] =
     useState('globalRules');
 
-  if (loading)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+  /**
+   * Starts Qwen OAuth in a popup and reloads config when complete.
+   */
+  const handleConnectQwen = async () => {
+    const popup = window.open('/api/llm/qwen/oauth/start', 'qwen-oauth', 'width=700,height=800');
+    if (!popup) {
+      return;
+    }
 
-  if (!config)
-    return <Alert severity="error">Failed to load configuration.</Alert>;
+    try {
+      const response = await fetch('/api/llm/qwen/oauth/start');
+      const data = await response.json();
+      if (!response.ok || !data.authUrl) {
+        throw new Error(data.error || 'Failed to start Qwen OAuth flow');
+      }
+      popup.location.href = data.authUrl;
+    } catch (err) {
+      popup.close();
+      console.error(err);
+      return;
+    }
+
+    const onMessage = async (event: MessageEvent) => {
+      const msg = event.data as { type?: string };
+      if (!msg || (msg.type !== 'qwen-oauth-success' && msg.type !== 'qwen-oauth-error')) {
+        return;
+      }
+
+      window.removeEventListener('message', onMessage);
+      if (msg.type === 'qwen-oauth-success') {
+        await refetch();
+        await fetchModels('qwen');
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+  };
 
   /**
    * Starts Qwen OAuth in a popup and reloads config when complete.
@@ -135,28 +163,73 @@ function Settings() {
    * Handles provider change and fetches models for the selected provider.
    * @param event - Select change event
    */
-  const handleProviderChange = async (e) => {
+  const handleProviderChange = (e) => {
     const newProvider = e.target.value;
     updateNested('llm.provider', newProvider, isRestarting);
-    
-    // Reset model selection when switching providers
-    if (newProvider === 'gemini') {
-      updateNested('llm.geminiModel', 'gemini-2.0-flash', isRestarting);
-      await fetchModels(newProvider);
-    } else if (newProvider === 'ollama') {
-      const fetchedModels = await fetchModels(newProvider);
-      if (fetchedModels && fetchedModels.length > 0) {
-        updateNested('llm.ollamaModel', fetchedModels[0], isRestarting);
-      } else {
-        updateNested('llm.ollamaModel', '', isRestarting);
-      }
-    } else if (newProvider === 'qwen') {
-      updateNested('llm.qwenModel', 'qwen-plus', isRestarting);
-      await fetchModels(newProvider);
-    } else {
-      await fetchModels(newProvider);
-    }
   };
+
+
+  const fetchedProvidersRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!config || activeTab !== 1) {
+      return;
+    }
+
+    const provider = config.llm.provider;
+    if (fetchedProvidersRef.current.has(provider)) {
+      return;
+    }
+
+    let isCancelled = false;
+    const loadProviderModels = async () => {
+      const fetchedModels = await fetchModels(provider);
+      if (isCancelled) {
+        return;
+      }
+
+      fetchedProvidersRef.current.add(provider);
+
+      if (!fetchedModels || fetchedModels.length === 0) {
+        if (provider === 'ollama') {
+          updateNested('llm.ollamaModel', '', isRestarting);
+        }
+        return;
+      }
+
+      if (provider === 'gemini') {
+        const currentModel = config.llm.geminiModel;
+        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
+        if (nextModel !== currentModel) {
+          updateNested('llm.geminiModel', nextModel, isRestarting);
+        }
+        return;
+      }
+
+      if (provider === 'ollama') {
+        const currentModel = config.llm.ollamaModel;
+        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
+        if (nextModel !== currentModel) {
+          updateNested('llm.ollamaModel', nextModel, isRestarting);
+        }
+        return;
+      }
+
+      if (provider === 'qwen') {
+        const currentModel = config.llm.qwenModel;
+        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
+        if (nextModel !== currentModel) {
+          updateNested('llm.qwenModel', nextModel, isRestarting);
+        }
+      }
+    };
+
+    loadProviderModels();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeTab, config, fetchModels, isRestarting, updateNested]);
 
 
   const providerApiKeyPath = config.llm.provider === 'qwen'
@@ -176,6 +249,16 @@ function Settings() {
     : config.llm.provider === 'gemini'
       ? !!config.llm.geminiApiKeyFromEnv
       : !!config.llm.ollamaApiKeyFromEnv;
+
+  if (loading)
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+
+  if (!config)
+    return <Alert severity="error">Failed to load configuration.</Alert>;
 
   const providerApiKeyLabel = config.llm.provider === 'qwen'
     ? 'Qwen API Key'

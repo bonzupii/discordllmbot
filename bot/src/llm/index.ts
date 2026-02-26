@@ -13,6 +13,21 @@ import { generateReply as qwenGenerateReply, getAvailableModels as qwenGetAvaila
 import { getApiConfig } from '../../../shared/config/configLoader.js';
 import { logger } from '../../../shared/utils/logger.js';
 
+
+function maskSecret(value?: string): string {
+    if (!value) {
+        return '';
+    }
+
+    const trimmed = value.trim();
+    if (trimmed.length <= 5) {
+        return trimmed;
+    }
+
+    return `***${trimmed.slice(-5)}`;
+}
+
+
 /**
  * Response from LLM generation.
  */
@@ -33,7 +48,13 @@ export interface LLMResponse {
  */
 export async function generateReply(prompt: string): Promise<LLMResponse> {
     const apiConfig = await getApiConfig();
-    console.log('DEBUG: generateReply using apiConfig:', apiConfig);
+    const maskedApiConfig = {
+        ...apiConfig,
+        geminiApiKey: maskSecret(apiConfig.geminiApiKey),
+        ollamaApiKey: maskSecret(apiConfig.ollamaApiKey),
+        qwenApiKey: maskSecret(apiConfig.qwenApiKey),
+    };
+    logger.info('generateReply using apiConfig', maskedApiConfig);
     const provider = apiConfig.provider || 'gemini';
 
     switch (provider.toLowerCase()) {
