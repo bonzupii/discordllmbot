@@ -254,7 +254,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     app.get('/api/config', async (req: Request, res: Response) => {
         try {
             const config = await loadConfig();
-            console.log('Loaded Global Config:', JSON.stringify(config, null, 2));
+            logger.info('Loaded global config via API');
             res.json(config);
         } catch (err) {
             logger.error('Failed to load global config', err);
@@ -269,8 +269,8 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             
             const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
-            
-            console.log('Loaded Server Config for guild', `${guildName} (${guildId}):`, JSON.stringify(config, null, 2));
+
+            logger.info(`Loaded server config for guild ${guildName} (${guildId})`);
             res.json(config);
         } catch (err) {
             const guildId = req.params.guildId as string;
@@ -332,7 +332,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             
             await deleteServerConfig(guildId);
             clearServerConfigCache(guildId);
-            console.log('Server config reset to default for guild', `${guildName} (${guildId})`);
+            logger.info(`Server config reset to default for guild ${guildName} (${guildId})`);
             res.json({ message: 'Server config reset to default' });
         } catch (err) {
             const guildId = req.params.guildId as string;
