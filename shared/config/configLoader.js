@@ -69,7 +69,7 @@ const DEFAULT_SERVER_CONFIG = {
 function normalizeGlobalConfig(config) {
     const source = config ?? {};
 
-    return {
+    const normalized = {
         botPersona: {
             username: source.botPersona?.username ?? DEFAULT_GLOBAL_CONFIG.botPersona.username,
             description: source.botPersona?.description ?? DEFAULT_GLOBAL_CONFIG.botPersona.description,
@@ -98,6 +98,40 @@ function normalizeGlobalConfig(config) {
             logSql: source.logger?.logSql ?? DEFAULT_GLOBAL_CONFIG.logger.logSql,
         },
     };
+
+    return applyEnvKeyOverrides(normalized);
+}
+
+function applyEnvKeyOverrides(config) {
+    const nextConfig = {
+        ...config,
+        llm: {
+            ...config.llm,
+            geminiApiKeyFromEnv: false,
+            ollamaApiKeyFromEnv: false,
+            qwenApiKeyFromEnv: false,
+        },
+    };
+
+    const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+    if (geminiApiKey) {
+        nextConfig.llm.geminiApiKey = geminiApiKey;
+        nextConfig.llm.geminiApiKeyFromEnv = true;
+    }
+
+    const ollamaApiKey = process.env.OLLAMA_API_KEY?.trim();
+    if (ollamaApiKey) {
+        nextConfig.llm.ollamaApiKey = ollamaApiKey;
+        nextConfig.llm.ollamaApiKeyFromEnv = true;
+    }
+
+    const qwenApiKey = process.env.QWEN_API_KEY?.trim();
+    if (qwenApiKey) {
+        nextConfig.llm.qwenApiKey = qwenApiKey;
+        nextConfig.llm.qwenApiKeyFromEnv = true;
+    }
+
+    return nextConfig;
 }
 
 function normalizeServerConfig(config) {
@@ -140,7 +174,7 @@ export async function loadConfig() {
         return cachedConfig;
     } catch (err) {
         logger.error('Failed to load global config', err);
-        return DEFAULT_GLOBAL_CONFIG;
+        return applyEnvKeyOverrides(DEFAULT_GLOBAL_CONFIG);
     }
 }
 

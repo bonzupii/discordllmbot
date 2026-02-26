@@ -309,6 +309,11 @@ export async function getGlobalConfig() {
  */
 export async function saveGlobalConfig(config) {
     const db = await getDb();
+
+    const geminiApiKey = process.env.GEMINI_API_KEY?.trim() || config.llm.geminiApiKey || null;
+    const ollamaApiKey = process.env.OLLAMA_API_KEY?.trim() || config.llm.ollamaApiKey || null;
+    const qwenApiKey = process.env.QWEN_API_KEY?.trim() || config.llm.qwenApiKey || null;
+
     await db.query(`
         INSERT INTO global_config (
             id, botUsername, botDescription, botGlobalRules,
@@ -349,9 +354,9 @@ export async function saveGlobalConfig(config) {
         config.llm.geminiModel,
         config.llm.ollamaModel,
         config.llm.qwenModel,
-        config.llm.geminiApiKey || null,
-        config.llm.ollamaApiKey || null,
-        config.llm.qwenApiKey || null,
+        geminiApiKey,
+        ollamaApiKey,
+        qwenApiKey,
         config.llm.retryAttempts,
         config.llm.retryBackoffMs,
         config.memory.maxMessages,

@@ -37,6 +37,8 @@ interface CpuTimes {
     total: number;
 }
 
+type JsonRecord = Record<string, unknown>;
+
 let prevCpuTimes: CpuTimes | null = null;
 let prevTimestamp: number | null = null;
 let isRestarting = false;
@@ -65,6 +67,32 @@ function pruneExpiredQwenOauthStates(): void {
             qwenOauthStateStore.delete(state);
         }
     }
+}
+
+function getChangedFields(previousValue: unknown, nextValue: unknown, prefix = ''): JsonRecord {
+    const previousObject = previousValue && typeof previousValue === 'object' ? previousValue as JsonRecord : null;
+    const nextObject = nextValue && typeof nextValue === 'object' ? nextValue as JsonRecord : null;
+
+    if (!previousObject || !nextObject || Array.isArray(previousObject) || Array.isArray(nextObject)) {
+        if (JSON.stringify(previousValue) === JSON.stringify(nextValue)) {
+            return {};
+        }
+
+        return {
+            [prefix || 'value']: nextValue,
+        };
+    }
+
+    const keys = new Set([...Object.keys(previousObject), ...Object.keys(nextObject)]);
+    const changes: JsonRecord = {};
+
+    for (const key of keys) {
+        const nextPrefix = prefix ? `${prefix}.${key}` : key;
+        const childChanges = getChangedFields(previousObject[key], nextObject[key], nextPrefix);
+        Object.assign(changes, childChanges);
+    }
+
+    return changes;
 }
 
 /**
@@ -189,12 +217,31 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             if (!newConfig || typeof newConfig !== 'object') {
                 return res.status(400).json({ error: 'Invalid config format' });
             }
+
+            const previousConfig = await getServerConfig(guildId);
             
             const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
             
             await updateServerConfig(guildId, newConfig);
-            console.log('Updated Server Config for guild', `${guildName} (${guildId}):`, JSON.stringify(newConfig, null, 2));
+
+            const changedFields = getChangedFields(previousConfig, newConfig);
+            logger.info(`Updated Server Config for guild ${guildName} (${guildId})`, changedFields);
+
+            if (guild) {
+                const nextNickname = typeof newConfig.nickname === 'string' ? newConfig.nickname.trim() : '';
+                const me = guild.members.me ?? await guild.members.fetchMe();
+                const targetNickname = nextNickname.length > 0 ? nextNickname : null;
+                if (me.nickname !== targetNickname) {
+                    try {
+                        await me.setNickname(targetNickname);
+                        logger.info(`Updated Discord nickname for guild ${guildName} (${guildId}) to ${targetNickname ?? 'default username'}`);
+                    } catch (nicknameErr) {
+                        logger.warn(`Failed to update Discord nickname for guild ${guildName} (${guildId})`, nicknameErr);
+                    }
+                }
+            }
+
             res.json({ message: 'Server config updated successfully' });
         } catch (err) {
             const guildId = req.params.guildId as string;
@@ -232,6 +279,8 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
                 return res.status(400).json({ error: 'Invalid config format' });
             }
 
+            const previousConfig = await loadConfig();
+
             await saveGlobalConfig(newConfig);
             logger.info('Global config updated via API and saved to database');
 
@@ -239,9 +288,22 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             io.emit('bot:status', { isRestarting });
 
             try {
-                await reloadConfig();
+                const reloadedConfig = await reloadConfig();
                 logger.info('Global configuration reloaded from database.');
-                console.log('Updated Global Config:', JSON.stringify(newConfig, null, 2));
+
+                const changedFields = getChangedFields(previousConfig, reloadedConfig);
+                logger.info('Updated Global Config fields', changedFields);
+
+                const previousUsername = previousConfig.botPersona?.username;
+                const nextUsername = reloadedConfig.botPersona?.username;
+                if (client.user && nextUsername && previousUsername !== nextUsername) {
+                    try {
+                        await client.user.setUsername(nextUsername);
+                        logger.info(`Updated Discord bot username to ${nextUsername}`);
+                    } catch (usernameErr) {
+                        logger.warn('Failed to update Discord bot username immediately', usernameErr);
+                    }
+                }
             } catch (reloadErr) {
                 logger.error('Failed to reload global config in memory', reloadErr);
             } finally {

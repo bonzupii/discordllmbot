@@ -25,6 +25,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   IconButton,
+  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -157,6 +158,31 @@ function Settings() {
     }
   };
 
+
+  const providerApiKeyPath = config.llm.provider === 'qwen'
+    ? 'llm.qwenApiKey'
+    : config.llm.provider === 'gemini'
+      ? 'llm.geminiApiKey'
+      : 'llm.ollamaApiKey';
+
+  const providerApiKeyValue = config.llm.provider === 'qwen'
+    ? config.llm.qwenApiKey
+    : config.llm.provider === 'gemini'
+      ? config.llm.geminiApiKey
+      : config.llm.ollamaApiKey;
+
+  const providerApiKeyLockedByEnv = config.llm.provider === 'qwen'
+    ? !!config.llm.qwenApiKeyFromEnv
+    : config.llm.provider === 'gemini'
+      ? !!config.llm.geminiApiKeyFromEnv
+      : !!config.llm.ollamaApiKeyFromEnv;
+
+  const providerApiKeyLabel = config.llm.provider === 'qwen'
+    ? 'Qwen API Key'
+    : config.llm.provider === 'gemini'
+      ? 'Gemini API Key'
+      : 'Ollama API Key (optional)';
+
   return (
     <Box sx={{ width: '100%' }}>
       <Box
@@ -252,6 +278,11 @@ function Settings() {
                 Bot Persona
               </Typography>
               <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
@@ -373,6 +404,11 @@ function Settings() {
                 LLM Settings
               </Typography>
               <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <FormControl fullWidth>
                     <InputLabel>Provider</InputLabel>
@@ -438,43 +474,32 @@ function Settings() {
                 </Grid>
 
                 <Grid size={{ xs: 12 }}>
-                  {config.llm.provider === 'qwen' ? (
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                      <TextField
-                        fullWidth
-                        type="password"
-                        label="Qwen API Key"
-                        value={config.llm.qwenApiKey}
-                        onChange={(e) => updateNested('llm.qwenApiKey', e.target.value, isRestarting)}
-                        variant="outlined"
-                        disabled={isRestarting}
-                      />
-                      <Button variant="outlined" onClick={handleConnectQwen} disabled={isRestarting}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <TextField
+                      fullWidth
+                      type="password"
+                      label={providerApiKeyLabel}
+                      value={providerApiKeyValue}
+                      onChange={(e) => updateNested(providerApiKeyPath, e.target.value, isRestarting)}
+                      variant="outlined"
+                      disabled={isRestarting || providerApiKeyLockedByEnv}
+                      helperText={providerApiKeyLockedByEnv ? 'Managed by .env and cannot be overridden in dashboard.' : ''}
+                    />
+                    {config.llm.provider === 'qwen' && (
+                      <Button variant="outlined" onClick={handleConnectQwen} disabled={isRestarting || providerApiKeyLockedByEnv}>
                         Connect OAuth
                       </Button>
-                    </Box>
-                  ) : config.llm.provider === 'gemini' ? (
-                    <TextField
-                      fullWidth
-                      type="password"
-                      label="Gemini API Key"
-                      value={config.llm.geminiApiKey}
-                      onChange={(e) => updateNested('llm.geminiApiKey', e.target.value, isRestarting)}
-                      variant="outlined"
-                      disabled={isRestarting}
-                    />
-                  ) : (
-                    <TextField
-                      fullWidth
-                      type="password"
-                      label="Ollama API Key (optional)"
-                      value={config.llm.ollamaApiKey}
-                      onChange={(e) => updateNested('llm.ollamaApiKey', e.target.value, isRestarting)}
-                      variant="outlined"
-                      disabled={isRestarting}
-                    />
-                  )}
+                    )}
+                  </Box>
                 </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Request Settings
+                  </Typography>
+                </Grid>
+
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
@@ -519,6 +544,11 @@ function Settings() {
                 Memory Settings
               </Typography>
               <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
@@ -563,6 +593,11 @@ function Settings() {
                 Logger Settings
               </Typography>
               <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
