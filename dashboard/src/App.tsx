@@ -4,7 +4,7 @@
  */
 import { useState, useCallback } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, Box, useMediaQuery } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, useMediaQuery, CircularProgress, Typography } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   Dns as DnsIcon,
@@ -38,7 +38,8 @@ const DRAWER_WIDTH = 240;
 function AppContent() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { health } = useHealth();
+  const { health, loading, error } = useHealth();
+  const isApiUnavailable = loading || !!error || !health;
 
   /**
    * Toggle mobile drawer open/close
@@ -74,16 +75,50 @@ function AppContent() {
         health={health}
       />
       <MainContent drawerWidth={DRAWER_WIDTH} isMobile={isMobile}>
-        <ErrorBoundary>
-          <Routes>
-            <Route path="/" element={<Dashboard health={health} />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/servers" element={<Servers />} />
-            <Route path="/database" element={<Database />} />
-            <Route path="/playground" element={<Playground />} />
-            <Route path="/logs" element={<Logs />} />
-          </Routes>
-        </ErrorBoundary>
+        <Box sx={{ position: 'relative', minHeight: 'calc(100vh - 64px)' }}>
+          <Box
+            sx={{
+              pointerEvents: isApiUnavailable ? 'none' : 'auto',
+              opacity: isApiUnavailable ? 0.35 : 1,
+              transition: 'opacity 0.2s ease-in-out',
+            }}
+          >
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Dashboard health={health} />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/servers" element={<Servers />} />
+                <Route path="/database" element={<Database />} />
+                <Route path="/playground" element={<Playground />} />
+                <Route path="/logs" element={<Logs />} />
+              </Routes>
+            </ErrorBoundary>
+          </Box>
+
+          {isApiUnavailable && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: 2,
+                textAlign: 'center',
+                px: 2,
+                backdropFilter: 'blur(2px)',
+              }}
+            >
+              <CircularProgress size={36} />
+              <Typography variant="h6">Trying to connect to bot API...</Typography>
+              <Typography variant="body2" color="text.secondary">
+                The dashboard is disabled until the bot API becomes available.
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </MainContent>
     </Box>
   );
