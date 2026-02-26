@@ -51,6 +51,8 @@ interface SidebarProps {
   onNavClick?: () => void;
   /** Current health status from the API */
   health?: HealthResponse | null;
+  /** Current API connection state */
+  apiConnectionState?: 'connected' | 'connecting' | 'error';
 }
 
 /**
@@ -67,6 +69,7 @@ export default function Sidebar({
   mobileOpen = false,
   onNavClick,
   health,
+  apiConnectionState = 'connecting',
 }: SidebarProps) {
   const location = useLocation();
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
@@ -160,27 +163,28 @@ export default function Sidebar({
       <Box sx={{ flexGrow: 1 }} />
       {(isMobile || open) && (
         <Box sx={{ p: 2 }}>
-          {health ? (
-            <Chip
-              label={`API: ${health.status}`}
-              color={health.status === 'ok' ? 'success' : 'error'}
-              size="small"
-              variant="filled"
-              sx={{
-                width: '100%',
-                bgcolor: health.status === 'ok' ? 'success.main' : 'error.main',
-                color: 'white',
-              }}
-            />
-          ) : (
-            <Chip
-              label="API: Connecting..."
-              color="default"
-              size="small"
-              variant="filled"
-              sx={{ width: '100%' }}
-            />
-          )}
+          <Chip
+            label={
+              apiConnectionState === 'connected'
+                ? `API: ${health?.status ?? 'ok'}`
+                : apiConnectionState === 'error'
+                  ? 'API: Reconnecting...'
+                  : 'API: Connecting...'
+            }
+            color={apiConnectionState === 'connected' ? 'success' : apiConnectionState === 'error' ? 'warning' : 'default'}
+            size="small"
+            variant="filled"
+            sx={{
+              width: '100%',
+              bgcolor:
+                apiConnectionState === 'connected'
+                  ? 'success.main'
+                  : apiConnectionState === 'error'
+                    ? 'warning.main'
+                    : undefined,
+              color: apiConnectionState === 'connecting' ? undefined : 'white',
+            }}
+          />
         </Box>
       )}
     </>
