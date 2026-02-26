@@ -84,6 +84,62 @@ function readNonEmptyEnv(name: string): string | null {
     return trimmed;
 }
 
+function normalizeBaseUrl(input: string): string | null {
+    const trimmed = input.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    try {
+        const parsed = new URL(trimmed);
+        return parsed.origin;
+    } catch {
+        return null;
+    }
+}
+
+function getPublicApiBaseUrl(req: Request): string {
+    const configuredPublicBaseUrl = readNonEmptyEnv('PUBLIC_API_BASE_URL');
+    const configuredQwenCallbackUrl = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
+
+    if (configuredQwenCallbackUrl) {
+        try {
+            const parsed = new URL(configuredQwenCallbackUrl);
+            return parsed.origin;
+        } catch {
+            logger.warn('Invalid QWEN_OAUTH_REDIRECT_URI provided; falling back to request-derived URL');
+        }
+    }
+
+    if (configuredPublicBaseUrl) {
+        const normalizedConfiguredBase = normalizeBaseUrl(configuredPublicBaseUrl);
+        if (normalizedConfiguredBase) {
+            return normalizedConfiguredBase;
+        }
+        logger.warn('Invalid PUBLIC_API_BASE_URL provided; falling back to request-derived URL');
+    }
+
+    const forwardedProto = req.get('x-forwarded-proto')?.split(',')[0]?.trim();
+    const forwardedHost = req.get('x-forwarded-host')?.split(',')[0]?.trim();
+
+    if (forwardedProto && forwardedHost) {
+        return `${forwardedProto}://${forwardedHost}`;
+    }
+
+    const originHeader = req.get('origin');
+    if (originHeader) {
+        const normalizedOrigin = normalizeBaseUrl(originHeader);
+        if (normalizedOrigin) {
+            return normalizedOrigin;
+        }
+    }
+
+    const requestHost = req.get('host') ?? 'localhost:3000';
+    const isInternalHost = requestHost.startsWith('bot:') || requestHost === 'bot';
+    const fallbackHost = isInternalHost ? 'localhost:3000' : requestHost;
+    return `${req.protocol}://${fallbackHost}`;
+}
+
 function getChangedFields(previousValue: unknown, nextValue: unknown, prefix = ''): JsonRecord {
     const previousObject = previousValue && typeof previousValue === 'object' ? previousValue as JsonRecord : null;
     const nextObject = nextValue && typeof nextValue === 'object' ? nextValue as JsonRecord : null;
@@ -481,9 +537,9 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
 
             const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
             const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
-            const requestHost = req.get('host') ?? 'localhost:3000';
             const configuredRedirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
-            const redirectUri = configuredRedirectUri ?? `${req.protocol}://${requestHost}/api/llm/qwen/oauth/callback`;
+            const publicApiBaseUrl = getPublicApiBaseUrl(req);
+            const redirectUri = configuredRedirectUri ?? `${publicApiBaseUrl}/api/llm/qwen/oauth/callback`;
             const authUrlBase = readNonEmptyEnv('QWEN_OAUTH_AUTH_URL') ?? 'https://chat.qwen.ai/oauth/authorize';
             const scope = readNonEmptyEnv('QWEN_OAUTH_SCOPE') ?? 'openid profile';
 
@@ -515,6 +571,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             logger.info('Initialized Qwen OAuth URL', {
                 clientIdSource: configuredClientId ? 'env' : 'default',
                 redirectUriSource: configuredRedirectUri ? 'env' : 'derived',
+                publicApiBaseUrl,
                 redirectUri,
                 authUrlBase,
             });
