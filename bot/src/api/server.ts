@@ -54,7 +54,6 @@ interface QwenOauthState {
 
 const qwenOauthStateStore = new Map<string, QwenOauthState>();
 const QWEN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
-const QWEN_OAUTH_DEFAULT_CLIENT_ID = 'qwen-code';
 
 function createPkceChallenge(verifier: string): string {
     return crypto.createHash('sha256').update(verifier).digest('base64url');
@@ -536,7 +535,13 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             pruneExpiredQwenOauthStates();
 
             const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
-            const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
+            if (!configuredClientId) {
+                return res.status(400).json({
+                    error: 'QWEN_OAUTH_CLIENT_ID is not configured. Set it in your environment before starting Qwen OAuth.',
+                });
+            }
+
+            const clientId = configuredClientId;
             const configuredRedirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
             const publicApiBaseUrl = getPublicApiBaseUrl(req);
             const redirectUri = configuredRedirectUri ?? `${publicApiBaseUrl}/api/llm/qwen/oauth/callback`;
@@ -569,7 +574,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             }).toString()}`;
 
             logger.info('Initialized Qwen OAuth URL', {
-                clientIdSource: configuredClientId ? 'env' : 'default',
+                clientIdSource: 'env',
                 redirectUriSource: configuredRedirectUri ? 'env' : 'derived',
                 publicApiBaseUrl,
                 redirectUri,

@@ -57,6 +57,8 @@ function Settings() {
     removeArrayItem,
     updateArrayItem,
     fetchModels,
+    getCachedModels,
+    applyCachedModels,
     clearMessage,
     refetch,
   } = useGlobalConfig();
@@ -65,13 +67,16 @@ function Settings() {
   const [activeTab, setActiveTab] = useState(0);
   const [activeSpeakingSection, setActiveSpeakingSection] =
     useState('globalRules');
+  const [oauthError, setOauthError] = useState<string | null>(null);
 
   /**
    * Starts Qwen OAuth in a popup and reloads config when complete.
    */
   const handleConnectQwen = async () => {
+    setOauthError(null);
     const popup = window.open('/api/llm/qwen/oauth/start', 'qwen-oauth', 'width=700,height=800');
     if (!popup) {
+      setOauthError('Popup was blocked. Please allow popups and try again.');
       return;
     }
 
@@ -84,6 +89,8 @@ function Settings() {
       popup.location.href = data.authUrl;
     } catch (err) {
       popup.close();
+      const message = err instanceof Error ? err.message : 'Failed to start Qwen OAuth flow';
+      setOauthError(message);
       console.error(err);
       return;
     }
@@ -98,6 +105,8 @@ function Settings() {
       if (msg.type === 'qwen-oauth-success') {
         await refetch();
         await fetchModels('qwen');
+      } else {
+        setOauthError('Qwen OAuth failed. Check backend logs and OAuth app redirect/client settings.');
       }
     };
 
@@ -129,6 +138,111 @@ function Settings() {
     const newProvider = e.target.value;
     updateNested('llm.provider', newProvider, isRestarting);
   };
+
+
+  const fetchedProvidersRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!config || activeTab !== 1) {
+      return;
+    }
+
+    const provider = config.llm.provider;
+    if (fetchedProvidersRef.current.has(provider)) {
+      const cachedModels = getCachedModels(provider);
+      applyCachedModels(provider);
+
+      if (cachedModels.length === 0) {
+        fetchedProvidersRef.current.delete(provider);
+      }
+      return;
+    }
+
+    let isCancelled = false;
+    const loadProviderModels = async () => {
+      const fetchedModels = await fetchModels(provider);
+      if (isCancelled) {
+        return;
+      }
+
+      fetchedProvidersRef.current.add(provider);
+
+      if (!fetchedModels || fetchedModels.length === 0) {
+        if (provider === 'ollama') {
+          updateNested('llm.ollamaModel', '', isRestarting);
+        }
+        return;
+      }
+
+      if (provider === 'gemini') {
+        const currentModel = config.llm.geminiModel;
+        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
+        if (nextModel !== currentModel) {
+          updateNested('llm.geminiModel', nextModel, isRestarting);
+        }
+        return;
+      }
+
+      if (provider === 'ollama') {
+        const currentModel = config.llm.ollamaModel;
+        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
+        if (nextModel !== currentModel) {
+          updateNested('llm.ollamaModel', nextModel, isRestarting);
+        }
+        return;
+      }
+
+      if (provider === 'qwen') {
+        const currentModel = config.llm.qwenModel;
+        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
+        if (nextModel !== currentModel) {
+          updateNested('llm.qwenModel', nextModel, isRestarting);
+        }
+      }
+    };
+
+    loadProviderModels();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeTab, applyCachedModels, config, fetchModels, getCachedModels, isRestarting, updateNested]);
+
+
+  if (loading)
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+
+  if (!config)
+    return <Alert severity="error">Failed to load configuration.</Alert>;
+
+
+  const providerApiKeyPath = config.llm.provider === 'qwen'
+    ? 'llm.qwenApiKey'
+    : config.llm.provider === 'gemini'
+      ? 'llm.geminiApiKey'
+      : 'llm.ollamaApiKey';
+
+  const providerApiKeyValue = config.llm.provider === 'qwen'
+    ? config.llm.qwenApiKey
+    : config.llm.provider === 'gemini'
+      ? config.llm.geminiApiKey
+      : config.llm.ollamaApiKey;
+
+  const providerApiKeyLockedByEnv = config.llm.provider === 'qwen'
+    ? !!config.llm.qwenApiKeyFromEnv
+    : config.llm.provider === 'gemini'
+      ? !!config.llm.geminiApiKeyFromEnv
+      : !!config.llm.ollamaApiKeyFromEnv;
+
+  const providerApiKeyLabel = config.llm.provider === 'qwen'
+    ? 'Qwen API Key'
+    : config.llm.provider === 'gemini'
+      ? 'Gemini API Key'
+      : 'Ollama API Key (optional)';
 
 
   const fetchedProvidersRef = useRef(new Set<string>());
@@ -694,6 +808,17 @@ function Settings() {
           onClose={clearMessage}
         >
           {message.text}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!oauthError}
+        autoHideDuration={6000}
+        onClose={() => setOauthError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setOauthError(null)} severity="error" sx={{ width: '100%' }}>
+          {oauthError}
         </Alert>
       </Snackbar>
     </Box>

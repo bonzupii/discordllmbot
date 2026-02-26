@@ -40,6 +40,7 @@ function AppContent() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { health, loading, error } = useHealth();
   const isApiUnavailable = loading || !!error || !health;
+  const apiConnectionState = health ? 'connected' : error ? 'error' : 'connecting';
 
   /**
    * Toggle mobile drawer open/close
@@ -73,6 +74,7 @@ function AppContent() {
         mobileOpen={mobileOpen}
         onNavClick={handleNavClick}
         health={health}
+        apiConnectionState={apiConnectionState}
       />
       <MainContent drawerWidth={DRAWER_WIDTH} isMobile={isMobile}>
         <Box sx={{ position: 'relative', minHeight: 'calc(100vh - 64px)' }}>

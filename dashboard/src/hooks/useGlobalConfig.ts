@@ -27,6 +27,15 @@ export function useGlobalConfig() {
 
   /** Debounce timer for auto-save */
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modelCacheRef = useRef<Record<string, string[]>>({});
+
+  const getCachedModels = useCallback((provider: string): string[] => {
+    return modelCacheRef.current[provider] ?? [];
+  }, []);
+
+  const applyCachedModels = useCallback((provider: string): void => {
+    setModels(modelCacheRef.current[provider] ?? []);
+  }, []);
 
   /**
    * Fetch global configuration from API
@@ -59,6 +68,7 @@ export function useGlobalConfig() {
     try {
       const response = await modelsApi.getModels(provider);
       setModels(response.data);
+      modelCacheRef.current[provider] = response.data;
       return response.data;
     } catch {
       setMessage({
@@ -66,8 +76,9 @@ export function useGlobalConfig() {
         text: `Could not fetch models from the ${provider} API.`,
         severity: 'warning'
       });
-      setModels([]);
-      return [];
+      const cachedModels = modelCacheRef.current[provider] ?? [];
+      setModels(cachedModels);
+      return cachedModels;
     } finally {
       setIsFetchingModels(false);
     }
@@ -250,6 +261,8 @@ export function useGlobalConfig() {
     removeArrayItem,
     updateArrayItem,
     fetchModels,
+    getCachedModels,
+    applyCachedModels,
     clearMessage,
     refetch: fetchConfig
   };
