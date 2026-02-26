@@ -83,6 +83,19 @@ function readNonEmptyEnv(name: string): string | null {
     return trimmed;
 }
 
+function readNonEmptyString(value: unknown): string | null {
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim().replace(/^['"]|['"]$/g, '');
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+        return null;
+    }
+
+    return trimmed;
+}
+
 function normalizeBaseUrl(input: string): string | null {
     const trimmed = input.trim();
     if (!trimmed) {
@@ -535,13 +548,14 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             pruneExpiredQwenOauthStates();
 
             const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
-            if (!configuredClientId) {
+            const requestedClientId = readNonEmptyString(req.query.clientId);
+            const clientId = configuredClientId ?? requestedClientId;
+
+            if (!clientId) {
                 return res.status(400).json({
-                    error: 'QWEN_OAUTH_CLIENT_ID is not configured. Set it in your environment before starting Qwen OAuth.',
+                    error: 'QWEN OAuth client ID is required. Configure QWEN_OAUTH_CLIENT_ID or provide a clientId in the request.',
                 });
             }
-
-            const clientId = configuredClientId;
             const configuredRedirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
             const publicApiBaseUrl = getPublicApiBaseUrl(req);
             const redirectUri = configuredRedirectUri ?? `${publicApiBaseUrl}/api/llm/qwen/oauth/callback`;
@@ -574,7 +588,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             }).toString()}`;
 
             logger.info('Initialized Qwen OAuth URL', {
-                clientIdSource: 'env',
+                clientIdSource: configuredClientId ? 'env' : 'request',
                 redirectUriSource: configuredRedirectUri ? 'env' : 'derived',
                 publicApiBaseUrl,
                 redirectUri,

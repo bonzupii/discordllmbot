@@ -74,18 +74,31 @@ function Settings() {
    */
   const handleConnectQwen = async () => {
     setOauthError(null);
-    const popup = window.open('/api/llm/qwen/oauth/start', 'qwen-oauth', 'width=700,height=800');
+    const popup = window.open('', 'qwen-oauth', 'width=700,height=800');
     if (!popup) {
       setOauthError('Popup was blocked. Please allow popups and try again.');
       return;
     }
 
     try {
-      const response = await fetch('/api/llm/qwen/oauth/start');
-      const data = await response.json();
-      if (!response.ok || !data.authUrl) {
-        throw new Error(data.error || 'Failed to start Qwen OAuth flow');
+      let response = await fetch('/api/llm/qwen/oauth/start');
+      let data = await response.json();
+
+      if (!response.ok && typeof data?.error === 'string' && data.error.toLowerCase().includes('client id')) {
+        const promptedClientId = window.prompt('Enter your Qwen OAuth Client ID');
+        if (!promptedClientId || !promptedClientId.trim()) {
+          throw new Error('Qwen OAuth cancelled: client ID is required.');
+        }
+
+        const params = new URLSearchParams({ clientId: promptedClientId.trim() });
+        response = await fetch(`/api/llm/qwen/oauth/start?${params.toString()}`);
+        data = await response.json();
       }
+
+      if (!response.ok || !data?.authUrl) {
+        throw new Error(data?.error || 'Failed to start Qwen OAuth flow');
+      }
+
       popup.location.href = data.authUrl;
     } catch (err) {
       popup.close();
