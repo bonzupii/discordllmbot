@@ -3,17 +3,23 @@ import type { Client, Guild, Message, GuildMember, TextChannel, Channel, APIChan
 export function validateEnvironment(): void;
 
 export interface GlobalConfig {
-    bot: BotConfig;
+    botPersona: BotPersonaConfig;
+    llm: ApiConfig;
     memory: MemoryConfig;
     logger: LoggerConfig;
-    api: ApiConfig;
-    replyBehavior: ReplyBehaviorConfig;
+}
+
+export interface BotPersonaConfig {
+    username: string;
+    description: string;
+    globalRules: string[];
 }
 
 export interface BotConfig {
     name: string;
     description: string;
-    persona: string;
+    speakingStyle: string[];
+    globalRules: string[];
 }
 
 export interface MemoryConfig {
@@ -27,26 +33,33 @@ export interface LoggerConfig {
 }
 
 export interface ApiConfig {
-    provider: 'gemini' | 'ollama';
+    provider: 'gemini' | 'ollama' | 'qwen';
+    geminiModel?: string;
+    ollamaModel?: string;
+    qwenModel?: string;
+    geminiApiKey?: string;
+    ollamaApiKey?: string;
+    qwenApiKey?: string;
+    retryAttempts?: number;
+    retryBackoffMs?: number;
     model?: string;
     ollamaUrl?: string;
 }
 
 export interface ReplyBehaviorConfig {
-    mode: 'mention-only' | 'anyone' | 'none';
     replyProbability: number;
     minDelayMs: number;
     maxDelayMs: number;
     ignoreUsers: string[];
     ignoreChannels: string[];
     ignoreKeywords: string[];
-    requireMention: boolean;
-    engagementMode: 'passive' | 'aggressive';
-    proactiveReplyChance: number;
+    mentionOnly: boolean;
 }
 
-export interface ServerConfig extends GlobalConfig {
-    bot: BotConfig;
+export interface ServerConfig {
+    nickname?: string;
+    speakingStyle: string[];
+    replyBehavior: ReplyBehaviorConfig;
 }
 
 export async function loadConfig(): Promise<GlobalConfig>;
