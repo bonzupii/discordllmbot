@@ -197,8 +197,17 @@ function Servers() {
         const response = await serversApi.getServerConfig(guildId);
         currentServerConfig = response.data;
       } catch {
-        const response = await configApi.getConfig();
-        currentServerConfig = response.data;
+        currentServerConfig = {
+          nickname: '',
+          speakingStyle: ['helpful', 'polite', 'concise'],
+          replyBehavior: {
+            replyProbability: 1,
+            minDelayMs: 500,
+            maxDelayMs: 3000,
+            mentionOnly: true,
+            guildSpecificChannels: {},
+          },
+        };
       }
     }
 
@@ -465,7 +474,7 @@ function Servers() {
               variant="contained"
               color="primary"
               startIcon={<AddLinkIcon />}
-              href={botInfo.inviteUrl}
+              href={botInfo.inviteUrl ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
             >

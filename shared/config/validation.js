@@ -9,8 +9,7 @@
 import { logger } from '../utils/logger.js'
 
 const REQUIRED_ENV_VARS = [
-    'DISCORD_TOKEN',
-    'GEMINI_API_KEY'
+    'DISCORD_TOKEN'
 ]
 
 /**
