@@ -585,6 +585,11 @@ function Settings() {
                 Memory Settings
               </Typography>
               <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
@@ -629,6 +634,11 @@ function Settings() {
                 Logger Settings
               </Typography>
               <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth

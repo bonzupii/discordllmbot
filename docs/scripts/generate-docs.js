@@ -57,6 +57,8 @@ features:
     link: /troubleshooting/
 ---`;
 
+    // Ensure docs/src directory exists
+    await fs.mkdir(DOCS_SRC_DIR, { recursive: true });
     await fs.writeFile(path.join(DOCS_SRC_DIR, 'index.md'), heroContent);
 
     const sectionGroups = {
@@ -769,7 +771,13 @@ async function generateApiDocs(repoUrl) {
 }
 
 async function updateVitepressConfig(sidebar) {
-    const configPath = path.join(DOCS_SRC_DIR, '.vitepress', 'config.js');
+    const configDir = path.join(DOCS_SRC_DIR, '.vitepress');
+    const configPath = path.join(configDir, 'config.js');
+    
+    // Ensure directories exist
+    await fs.mkdir(DOCS_SRC_DIR, { recursive: true });
+    await fs.mkdir(configDir, { recursive: true });
+    
     const configContent = `
 export default {
   title: 'DiscordLLMBot',
