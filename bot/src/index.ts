@@ -14,11 +14,8 @@
  */
 
 import 'dotenv/config';
-import fs from 'fs';
-import path from 'path';
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 
-console.log(`[START] Loading... [${Date.now() % 100000}]`);
 const startTime = Date.now();
 
 import { validateEnvironment } from '../../shared/config/validation.js';
@@ -27,13 +24,11 @@ import { pruneOldMessages, resetPoolWrapper } from '../../shared/storage/persist
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 import { startApi } from './api/server.js';
 
-console.log(`[START] Modules loaded in ${Date.now() - startTime}ms`);
-
 /**
  * Initializes the logger with default settings before full config is loaded.
  */
 initializeLogger(undefined);
-console.log(`[START] Logger init done, ${Date.now() - startTime}ms`);
+logger.info('Startup modules loaded', { elapsedMs: Date.now() - startTime });
 
 /**
  * Main async function to start the Discord bot.
@@ -49,29 +44,19 @@ async function startBot(): Promise<void> {
     let cleanupInterval: NodeJS.Timeout | null = null;
 
     try {
-        const BOT_CONFIG_PATH = path.join(process.cwd(), 'shared', 'config', 'bot.json');
-        let initialMaxLogLines: number | undefined;
-        let initialSqlLogging = false;
-        if (fs.existsSync(BOT_CONFIG_PATH)) {
-            const cfg = JSON.parse(fs.readFileSync(BOT_CONFIG_PATH, 'utf-8'));
-            initialMaxLogLines = cfg?.logger?.maxLogLines;
-            initialSqlLogging = cfg?.logger?.logSql ?? false;
-            if (initialMaxLogLines !== undefined) {
-                initializeLogger(initialMaxLogLines);
-            }
-        }
-
         const { setSqlLoggingEnabled } = await import('../../shared/config/configLoader.js');
-        setSqlLoggingEnabled(initialSqlLogging);
-
         const { loadConfig, getGlobalMemoryConfig } = await import('../../shared/config/configLoader.js');
         const fullConfig = await loadConfig();
-        
+
         initializeLogger(fullConfig.logger?.maxLogLines);
-        
+
         setSqlLoggingEnabled(fullConfig.logger?.logSql ?? false);
         resetPoolWrapper();
-        const botConfig = fullConfig.bot;
+        const botConfig = {
+            name: fullConfig.botPersona?.username,
+            description: fullConfig.botPersona?.description,
+            persona: ''
+        };
 
         const client = new Client({
             intents: [
