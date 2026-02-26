@@ -140,7 +140,7 @@ function Settings() {
   };
 
 
-  const fetchedProvidersRef = useRef(new Set<string>());
+  const fetchedModelProvidersRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!config || activeTab !== 1) {
@@ -148,12 +148,12 @@ function Settings() {
     }
 
     const provider = config.llm.provider;
-    if (fetchedProvidersRef.current.has(provider)) {
+    if (fetchedModelProvidersRef.current.has(provider)) {
       const cachedModels = getCachedModels(provider);
       applyCachedModels(provider);
 
       if (cachedModels.length === 0) {
-        fetchedProvidersRef.current.delete(provider);
+        fetchedModelProvidersRef.current.delete(provider);
       }
       return;
     }
@@ -165,7 +165,7 @@ function Settings() {
         return;
       }
 
-      fetchedProvidersRef.current.add(provider);
+      fetchedModelProvidersRef.current.add(provider);
 
       if (!fetchedModels || fetchedModels.length === 0) {
         if (provider === 'ollama') {
@@ -207,105 +207,6 @@ function Settings() {
       isCancelled = true;
     };
   }, [activeTab, applyCachedModels, config, fetchModels, getCachedModels, isRestarting, updateNested]);
-
-
-  if (loading)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-
-  if (!config)
-    return <Alert severity="error">Failed to load configuration.</Alert>;
-
-
-  const providerApiKeyPath = config.llm.provider === 'qwen'
-    ? 'llm.qwenApiKey'
-    : config.llm.provider === 'gemini'
-      ? 'llm.geminiApiKey'
-      : 'llm.ollamaApiKey';
-
-  const providerApiKeyValue = config.llm.provider === 'qwen'
-    ? config.llm.qwenApiKey
-    : config.llm.provider === 'gemini'
-      ? config.llm.geminiApiKey
-      : config.llm.ollamaApiKey;
-
-  const providerApiKeyLockedByEnv = config.llm.provider === 'qwen'
-    ? !!config.llm.qwenApiKeyFromEnv
-    : config.llm.provider === 'gemini'
-      ? !!config.llm.geminiApiKeyFromEnv
-      : !!config.llm.ollamaApiKeyFromEnv;
-
-  const providerApiKeyLabel = config.llm.provider === 'qwen'
-    ? 'Qwen API Key'
-    : config.llm.provider === 'gemini'
-      ? 'Gemini API Key'
-      : 'Ollama API Key (optional)';
-
-
-  const fetchedProvidersRef = useRef(new Set<string>());
-
-  useEffect(() => {
-    if (!config || activeTab !== 1) {
-      return;
-    }
-
-    const provider = config.llm.provider;
-    if (fetchedProvidersRef.current.has(provider)) {
-      return;
-    }
-
-    let isCancelled = false;
-    const loadProviderModels = async () => {
-      const fetchedModels = await fetchModels(provider);
-      if (isCancelled) {
-        return;
-      }
-
-      fetchedProvidersRef.current.add(provider);
-
-      if (!fetchedModels || fetchedModels.length === 0) {
-        if (provider === 'ollama') {
-          updateNested('llm.ollamaModel', '', isRestarting);
-        }
-        return;
-      }
-
-      if (provider === 'gemini') {
-        const currentModel = config.llm.geminiModel;
-        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
-        if (nextModel !== currentModel) {
-          updateNested('llm.geminiModel', nextModel, isRestarting);
-        }
-        return;
-      }
-
-      if (provider === 'ollama') {
-        const currentModel = config.llm.ollamaModel;
-        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
-        if (nextModel !== currentModel) {
-          updateNested('llm.ollamaModel', nextModel, isRestarting);
-        }
-        return;
-      }
-
-      if (provider === 'qwen') {
-        const currentModel = config.llm.qwenModel;
-        const nextModel = fetchedModels.includes(currentModel) ? currentModel : fetchedModels[0];
-        if (nextModel !== currentModel) {
-          updateNested('llm.qwenModel', nextModel, isRestarting);
-        }
-      }
-    };
-
-    loadProviderModels();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [activeTab, config, fetchModels, isRestarting, updateNested]);
 
 
   if (loading)
