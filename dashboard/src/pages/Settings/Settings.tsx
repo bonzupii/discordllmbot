@@ -25,6 +25,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   IconButton,
+  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -57,6 +58,7 @@ function Settings() {
     updateArrayItem,
     fetchModels,
     clearMessage,
+    refetch,
   } = useGlobalConfig();
 
   const { isRestarting } = useSocket();
@@ -73,6 +75,44 @@ function Settings() {
 
   if (!config)
     return <Alert severity="error">Failed to load configuration.</Alert>;
+
+  /**
+   * Starts Qwen OAuth in a popup and reloads config when complete.
+   */
+  const handleConnectQwen = async () => {
+    const popup = window.open('/api/llm/qwen/oauth/start', 'qwen-oauth', 'width=700,height=800');
+    if (!popup) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/llm/qwen/oauth/start');
+      const data = await response.json();
+      if (!response.ok || !data.authUrl) {
+        throw new Error(data.error || 'Failed to start Qwen OAuth flow');
+      }
+      popup.location.href = data.authUrl;
+    } catch (err) {
+      popup.close();
+      console.error(err);
+      return;
+    }
+
+    const onMessage = async (event: MessageEvent) => {
+      const msg = event.data as { type?: string };
+      if (!msg || (msg.type !== 'qwen-oauth-success' && msg.type !== 'qwen-oauth-error')) {
+        return;
+      }
+
+      window.removeEventListener('message', onMessage);
+      if (msg.type === 'qwen-oauth-success') {
+        await refetch();
+        await fetchModels('qwen');
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+  };
 
   /**
    * Handles tab selection change.
@@ -97,23 +137,51 @@ function Settings() {
    */
   const handleProviderChange = async (e) => {
     const newProvider = e.target.value;
-    updateNested('api.provider', newProvider, isRestarting);
+    updateNested('llm.provider', newProvider, isRestarting);
     
     // Reset model selection when switching providers
     if (newProvider === 'gemini') {
-      updateNested('api.geminiModel', 'gemini-2.0-flash', isRestarting);
+      updateNested('llm.geminiModel', 'gemini-2.0-flash', isRestarting);
       await fetchModels(newProvider);
     } else if (newProvider === 'ollama') {
       const fetchedModels = await fetchModels(newProvider);
       if (fetchedModels && fetchedModels.length > 0) {
-        updateNested('api.ollamaModel', fetchedModels[0], isRestarting);
+        updateNested('llm.ollamaModel', fetchedModels[0], isRestarting);
       } else {
-        updateNested('api.ollamaModel', '', isRestarting);
+        updateNested('llm.ollamaModel', '', isRestarting);
       }
+    } else if (newProvider === 'qwen') {
+      updateNested('llm.qwenModel', 'qwen-plus', isRestarting);
+      await fetchModels(newProvider);
     } else {
       await fetchModels(newProvider);
     }
   };
+
+
+  const providerApiKeyPath = config.llm.provider === 'qwen'
+    ? 'llm.qwenApiKey'
+    : config.llm.provider === 'gemini'
+      ? 'llm.geminiApiKey'
+      : 'llm.ollamaApiKey';
+
+  const providerApiKeyValue = config.llm.provider === 'qwen'
+    ? config.llm.qwenApiKey
+    : config.llm.provider === 'gemini'
+      ? config.llm.geminiApiKey
+      : config.llm.ollamaApiKey;
+
+  const providerApiKeyLockedByEnv = config.llm.provider === 'qwen'
+    ? !!config.llm.qwenApiKeyFromEnv
+    : config.llm.provider === 'gemini'
+      ? !!config.llm.geminiApiKeyFromEnv
+      : !!config.llm.ollamaApiKeyFromEnv;
+
+  const providerApiKeyLabel = config.llm.provider === 'qwen'
+    ? 'Qwen API Key'
+    : config.llm.provider === 'gemini'
+      ? 'Gemini API Key'
+      : 'Ollama API Key (optional)';
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -213,21 +281,10 @@ function Settings() {
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
-                    label="Global Bot Name"
-                    helperText="The name used for the Discord application"
-                    value={config.bot.name}
-                    onChange={(e) => updateNested('bot.name', e.target.value, isRestarting)}
-                    variant="outlined"
-                    disabled={isRestarting}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
                     label="Global Username"
-                    helperText="The username used for the Discord application"
-                    value={config.bot.username}
-                    onChange={(e) => updateNested('bot.username', e.target.value, isRestarting)}
+                    helperText="The default username/persona name used in prompts"
+                    value={config.botPersona.username}
+                    onChange={(e) => updateNested('botPersona.username', e.target.value, isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -239,8 +296,8 @@ function Settings() {
                     helperText="Baseline description for new servers"
                     multiline
                     rows={3}
-                    value={config.bot.description}
-                    onChange={(e) => updateNested('bot.description', e.target.value, isRestarting)}
+                    value={config.botPersona.description}
+                    onChange={(e) => updateNested('botPersona.description', e.target.value, isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -285,21 +342,21 @@ function Settings() {
                         sx={{ pl: 2, pr: 2, pt: 2, pb: 2 }}
                         id="global-rules-content"
                       >
-                        {config.bot.globalRules.map((rule, index) => (
+                        {config.botPersona.globalRules.map((rule, index) => (
                           <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
                             <TextField
                               fullWidth
                               size="small"
                               value={rule}
                               onChange={(e) =>
-                                updateArrayItem('bot.globalRules', index, e.target.value, isRestarting)
+                                updateArrayItem('botPersona.globalRules', index, e.target.value, isRestarting)
                               }
                               variant="outlined"
                               disabled={isRestarting}
                             />
                             <IconButton
                               color="error"
-                              onClick={() => removeArrayItem('bot.globalRules', index)}
+                              onClick={() => removeArrayItem('botPersona.globalRules', index)}
                               disabled={isRestarting}
                               aria-label={`Remove rule ${index + 1}`}
                             >
@@ -310,7 +367,7 @@ function Settings() {
                         <Button
                           startIcon={<AddIcon />}
                           size="small"
-                          onClick={() => addArrayItem('bot.globalRules')}
+                          onClick={() => addArrayItem('botPersona.globalRules')}
                           disabled={isRestarting}
                           aria-label="Add new rule"
                         >
@@ -342,88 +399,109 @@ function Settings() {
                 LLM Settings
               </Typography>
               <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <FormControl fullWidth>
                     <InputLabel>Provider</InputLabel>
                     <Select
-                      value={config.api.provider || 'gemini'}
+                      value={config.llm.provider || 'gemini'}
                       label="Provider"
                       onChange={handleProviderChange}
                       disabled={isRestarting}
                     >
                       <MenuItem value="gemini">Google Gemini</MenuItem>
                       <MenuItem value="ollama">Ollama (Local)</MenuItem>
+                      <MenuItem value="qwen">Qwen</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  {config.api.provider === 'ollama' ? (
-                    <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
-                      <InputLabel>Ollama Model</InputLabel>
-                      <Select
-                        value={
-                          models.includes(config.api.ollamaModel)
-                            ? config.api.ollamaModel
-                            : ''
-                        }
-                        label="Ollama Model"
-                        onChange={(e) => updateNested('api.ollamaModel', e.target.value, isRestarting)}
-                      >
-                        {isFetchingModels ? (
-                          <MenuItem value="">
-                            <CircularProgress size={20} />
+                  <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
+                    <InputLabel>{config.llm.provider === 'ollama' ? 'Ollama Model' : config.llm.provider === 'qwen' ? 'Qwen Model' : 'Gemini Model'}</InputLabel>
+                    <Select
+                      value={
+                        models.includes(
+                          config.llm.provider === 'ollama'
+                            ? config.llm.ollamaModel
+                            : config.llm.provider === 'qwen'
+                              ? config.llm.qwenModel
+                              : config.llm.geminiModel
+                        )
+                          ? (config.llm.provider === 'ollama'
+                              ? config.llm.ollamaModel
+                              : config.llm.provider === 'qwen'
+                                ? config.llm.qwenModel
+                                : config.llm.geminiModel)
+                          : ''
+                      }
+                      label={config.llm.provider === 'ollama' ? 'Ollama Model' : config.llm.provider === 'qwen' ? 'Qwen Model' : 'Gemini Model'}
+                      onChange={(e) => updateNested(
+                        config.llm.provider === 'ollama'
+                          ? 'llm.ollamaModel'
+                          : config.llm.provider === 'qwen'
+                            ? 'llm.qwenModel'
+                            : 'llm.geminiModel',
+                        e.target.value,
+                        isRestarting
+                      )}
+                    >
+                      {isFetchingModels ? (
+                        <MenuItem value="">
+                          <CircularProgress size={20} />
+                        </MenuItem>
+                      ) : models.length === 0 ? (
+                        <MenuItem value="" disabled>
+                          No models available
+                        </MenuItem>
+                      ) : (
+                        models.map((m) => (
+                          <MenuItem key={m} value={m}>
+                            {m}
                           </MenuItem>
-                        ) : models.length === 0 ? (
-                          <MenuItem value="" disabled>
-                            No models available
-                          </MenuItem>
-                        ) : (
-                          models.map((m) => (
-                            <MenuItem key={m} value={m}>
-                              {m}
-                            </MenuItem>
-                          ))
-                        )}
-                      </Select>
-                    </FormControl>
-                  ) : (
-                    <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
-                      <InputLabel>Gemini Model</InputLabel>
-                      <Select
-                        value={
-                          models.includes(config.api.geminiModel)
-                            ? config.api.geminiModel
-                            : ''
-                        }
-                        label="Gemini Model"
-                        onChange={(e) => updateNested('api.geminiModel', e.target.value, isRestarting)}
-                      >
-                        {isFetchingModels ? (
-                          <MenuItem value="">
-                            <CircularProgress size={20} />
-                          </MenuItem>
-                        ) : models.length === 0 ? (
-                          <MenuItem value="" disabled>
-                            No models available
-                          </MenuItem>
-                        ) : (
-                          models.map((m) => (
-                            <MenuItem key={m} value={m}>
-                              {m}
-                            </MenuItem>
-                          ))
-                        )}
-                      </Select>
-                    </FormControl>
-                  )}
+                        ))
+                      )}
+                    </Select>
+                  </FormControl>
                 </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <TextField
+                      fullWidth
+                      type="password"
+                      label={providerApiKeyLabel}
+                      value={providerApiKeyValue}
+                      onChange={(e) => updateNested(providerApiKeyPath, e.target.value, isRestarting)}
+                      variant="outlined"
+                      disabled={isRestarting || providerApiKeyLockedByEnv}
+                      helperText={providerApiKeyLockedByEnv ? 'Managed by .env and cannot be overridden in dashboard.' : ''}
+                    />
+                    {config.llm.provider === 'qwen' && (
+                      <Button variant="outlined" onClick={handleConnectQwen} disabled={isRestarting || providerApiKeyLockedByEnv}>
+                        Connect OAuth
+                      </Button>
+                    )}
+                  </Box>
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Request Settings
+                  </Typography>
+                </Grid>
+
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
                     type="number"
                     label="Retry Attempts"
-                    value={config.api.retryAttempts}
-                    onChange={(e) => updateNested('api.retryAttempts', parseInt(e.target.value), isRestarting)}
+                    value={config.llm.retryAttempts}
+                    onChange={(e) => updateNested('llm.retryAttempts', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
@@ -433,8 +511,8 @@ function Settings() {
                     fullWidth
                     type="number"
                     label="Retry Backoff (ms)"
-                    value={config.api.retryBackoffMs}
-                    onChange={(e) => updateNested('api.retryBackoffMs', parseInt(e.target.value), isRestarting)}
+                    value={config.llm.retryBackoffMs}
+                    onChange={(e) => updateNested('llm.retryBackoffMs', parseInt(e.target.value), isRestarting)}
                     variant="outlined"
                     disabled={isRestarting}
                   />
