@@ -69,6 +69,17 @@ function pruneExpiredQwenOauthStates(): void {
     }
 }
 
+
+function readNonEmptyEnv(name: string): string | null {
+    const value = process.env[name];
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+}
+
 function getChangedFields(previousValue: unknown, nextValue: unknown, prefix = ''): JsonRecord {
     const previousObject = previousValue && typeof previousValue === 'object' ? previousValue as JsonRecord : null;
     const nextObject = nextValue && typeof nextValue === 'object' ? nextValue as JsonRecord : null;
@@ -464,10 +475,11 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
         try {
             pruneExpiredQwenOauthStates();
 
-            const clientId = process.env.QWEN_OAUTH_CLIENT_ID ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
-            const redirectUri = process.env.QWEN_OAUTH_REDIRECT_URI ?? `${req.protocol}://${req.get('host')}/api/llm/qwen/oauth/callback`;
-            const authUrlBase = process.env.QWEN_OAUTH_AUTH_URL ?? 'https://chat.qwen.ai/oauth/authorize';
-            const scope = process.env.QWEN_OAUTH_SCOPE ?? 'openid profile';
+            const clientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID') ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
+            const requestHost = req.get('host') ?? 'localhost:3000';
+            const redirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI') ?? `${req.protocol}://${requestHost}/api/llm/qwen/oauth/callback`;
+            const authUrlBase = readNonEmptyEnv('QWEN_OAUTH_AUTH_URL') ?? 'https://chat.qwen.ai/oauth/authorize';
+            const scope = readNonEmptyEnv('QWEN_OAUTH_SCOPE') ?? 'openid profile';
 
             const state = crypto.randomBytes(24).toString('hex');
             const codeVerifier = crypto.randomBytes(64).toString('base64url');
@@ -489,6 +501,12 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
                 code_challenge: codeChallenge,
                 code_challenge_method: 'S256',
             }).toString()}`;
+
+            logger.info('Initialized Qwen OAuth URL', {
+                clientId: clientId ? 'configured' : 'missing',
+                redirectUri,
+                authUrlBase,
+            });
 
             res.json({ authUrl });
         } catch (err) {
@@ -518,7 +536,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify('OAuth session expired. Please try again.')} }, '*');window.close();</script>`);
         }
 
-        const tokenUrl = process.env.QWEN_OAUTH_TOKEN_URL ?? 'https://chat.qwen.ai/oauth/token';
+        const tokenUrl = readNonEmptyEnv('QWEN_OAUTH_TOKEN_URL') ?? 'https://chat.qwen.ai/oauth/token';
 
         try {
             const tokenParams = new URLSearchParams({
