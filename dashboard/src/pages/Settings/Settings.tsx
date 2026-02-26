@@ -105,44 +105,6 @@ function Settings() {
   };
 
   /**
-   * Starts Qwen OAuth in a popup and reloads config when complete.
-   */
-  const handleConnectQwen = async () => {
-    const popup = window.open('/api/llm/qwen/oauth/start', 'qwen-oauth', 'width=700,height=800');
-    if (!popup) {
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/llm/qwen/oauth/start');
-      const data = await response.json();
-      if (!response.ok || !data.authUrl) {
-        throw new Error(data.error || 'Failed to start Qwen OAuth flow');
-      }
-      popup.location.href = data.authUrl;
-    } catch (err) {
-      popup.close();
-      console.error(err);
-      return;
-    }
-
-    const onMessage = async (event: MessageEvent) => {
-      const msg = event.data as { type?: string };
-      if (!msg || (msg.type !== 'qwen-oauth-success' && msg.type !== 'qwen-oauth-error')) {
-        return;
-      }
-
-      window.removeEventListener('message', onMessage);
-      if (msg.type === 'qwen-oauth-success') {
-        await refetch();
-        await fetchModels('qwen');
-      }
-    };
-
-    window.addEventListener('message', onMessage);
-  };
-
-  /**
    * Handles tab selection change.
    * @param event - Tab change event
    * @param newValue - New tab index
@@ -232,6 +194,17 @@ function Settings() {
   }, [activeTab, config, fetchModels, isRestarting, updateNested]);
 
 
+  if (loading)
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+
+  if (!config)
+    return <Alert severity="error">Failed to load configuration.</Alert>;
+
+
   const providerApiKeyPath = config.llm.provider === 'qwen'
     ? 'llm.qwenApiKey'
     : config.llm.provider === 'gemini'
@@ -249,16 +222,6 @@ function Settings() {
     : config.llm.provider === 'gemini'
       ? !!config.llm.geminiApiKeyFromEnv
       : !!config.llm.ollamaApiKeyFromEnv;
-
-  if (loading)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-
-  if (!config)
-    return <Alert severity="error">Failed to load configuration.</Alert>;
 
   const providerApiKeyLabel = config.llm.provider === 'qwen'
     ? 'Qwen API Key'
