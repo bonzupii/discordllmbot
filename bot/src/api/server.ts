@@ -121,7 +121,7 @@ function normalizeBaseUrl(input: string): string | null {
     }
 }
 
-function getPublicApiBaseUrl(req: Request): string {
+function _getPublicApiBaseUrl(req: Request): string {
     const configuredPublicBaseUrl = readNonEmptyEnv('PUBLIC_API_BASE_URL');
     const configuredQwenCallbackUrl = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
 
