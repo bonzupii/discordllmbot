@@ -27,6 +27,15 @@ export function useGlobalConfig() {
 
   /** Debounce timer for auto-save */
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modelCacheRef = useRef<Record<string, string[]>>({});
+
+  const getCachedModels = useCallback((provider: string): string[] => {
+    return modelCacheRef.current[provider] ?? [];
+  }, []);
+
+  const applyCachedModels = useCallback((provider: string): void => {
+    setModels(modelCacheRef.current[provider] ?? []);
+  }, []);
 
   /**
    * Fetch global configuration from API
@@ -59,6 +68,7 @@ export function useGlobalConfig() {
     try {
       const response = await modelsApi.getModels(provider);
       setModels(response.data);
+      modelCacheRef.current[provider] = response.data;
       return response.data;
     } catch {
       setMessage({
@@ -66,8 +76,9 @@ export function useGlobalConfig() {
         text: `Could not fetch models from the ${provider} API.`,
         severity: 'warning'
       });
-      setModels([]);
-      return [];
+      const cachedModels = modelCacheRef.current[provider] ?? [];
+      setModels(cachedModels);
+      return cachedModels;
     } finally {
       setIsFetchingModels(false);
     }
@@ -180,7 +191,11 @@ export function useGlobalConfig() {
       for (const key of keys) current = current[key] as Record<string, unknown>;
 
       const arr = current[lastKey] as unknown[];
-      current[lastKey] = arr.filter((item) => item !== itemToRemove);
+      if (typeof itemToRemove === 'number') {
+        current[lastKey] = arr.filter((_, index) => index !== itemToRemove);
+      } else {
+        current[lastKey] = arr.filter((item) => item !== itemToRemove);
+      }
       return newConfig;
     });
   }, []);
@@ -214,15 +229,9 @@ export function useGlobalConfig() {
     });
   }, [debouncedSave]);
 
-  // Fetch config and models on mount
+  // Fetch config on mount
   useEffect(() => {
-    const init = async () => {
-      const initialConfig = await fetchConfig();
-      if (initialConfig) {
-        await fetchModels(initialConfig.api?.provider || 'gemini');
-      }
-    };
-    init();
+    fetchConfig();
 
     // Cleanup debounce timer on unmount
     return () => {
@@ -230,7 +239,7 @@ export function useGlobalConfig() {
         clearTimeout(debounceTimer.current);
       }
     };
-  }, [fetchConfig, fetchModels]);
+  }, [fetchConfig]);
 
   /**
    * Close the notification message
@@ -252,6 +261,8 @@ export function useGlobalConfig() {
     removeArrayItem,
     updateArrayItem,
     fetchModels,
+    getCachedModels,
+    applyCachedModels,
     clearMessage,
     refetch: fetchConfig
   };
