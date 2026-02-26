@@ -2,7 +2,7 @@
  * Playground page for testing bot chat.
  * @module pages/Playground/Playground
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import {
   Box,
   Paper,
@@ -60,7 +60,7 @@ function Playground() {
   };
 
   // Handle key press (Enter to send, Shift+Enter for new line)
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -68,7 +68,7 @@ function Playground() {
   };
 
   // Get bot avatar color based on theme
-  const getAvatarColor = (role) => {
+  const getAvatarColor = (role: string) => {
     switch (role) {
       case 'user':
         return theme.palette.primary.main;
@@ -257,7 +257,7 @@ function Playground() {
               maxRows={4}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Type your message here..."
               disabled={isLoading}
               variant="outlined"

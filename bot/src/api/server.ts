@@ -25,6 +25,7 @@ import { loadGuildRelationships } from '../personality/relationships.js';
 import { generateReply, getAvailableModels } from '../llm/index.js';
 import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships, deleteServerConfig, saveGlobalConfig, getDb, getSqlLogEmitter } from '../../../shared/storage/persistence.js';
 import os from 'os';
+import crypto from 'crypto';
 
 const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
 
@@ -36,10 +37,134 @@ interface CpuTimes {
     total: number;
 }
 
+type JsonRecord = Record<string, unknown>;
+
 let prevCpuTimes: CpuTimes | null = null;
 let prevTimestamp: number | null = null;
 let isRestarting = false;
 let io: SocketIOServer;
+
+
+interface QwenOauthState {
+    codeVerifier: string;
+    redirectUri: string;
+    clientId: string;
+    createdAt: number;
+}
+
+const qwenOauthStateStore = new Map<string, QwenOauthState>();
+const QWEN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const QWEN_OAUTH_DEFAULT_CLIENT_ID = 'qwen-code';
+
+function createPkceChallenge(verifier: string): string {
+    return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
+
+function pruneExpiredQwenOauthStates(): void {
+    const now = Date.now();
+    for (const [state, value] of qwenOauthStateStore.entries()) {
+        if (now - value.createdAt > QWEN_OAUTH_STATE_TTL_MS) {
+            qwenOauthStateStore.delete(state);
+        }
+    }
+}
+
+
+function readNonEmptyEnv(name: string): string | null {
+    const value = process.env[name];
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim().replace(/^['"]|['"]$/g, '');
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
+        return null;
+    }
+
+    return trimmed;
+}
+
+function normalizeBaseUrl(input: string): string | null {
+    const trimmed = input.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    try {
+        const parsed = new URL(trimmed);
+        return parsed.origin;
+    } catch {
+        return null;
+    }
+}
+
+function getPublicApiBaseUrl(req: Request): string {
+    const configuredPublicBaseUrl = readNonEmptyEnv('PUBLIC_API_BASE_URL');
+    const configuredQwenCallbackUrl = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
+
+    if (configuredQwenCallbackUrl) {
+        try {
+            const parsed = new URL(configuredQwenCallbackUrl);
+            return parsed.origin;
+        } catch {
+            logger.warn('Invalid QWEN_OAUTH_REDIRECT_URI provided; falling back to request-derived URL');
+        }
+    }
+
+    if (configuredPublicBaseUrl) {
+        const normalizedConfiguredBase = normalizeBaseUrl(configuredPublicBaseUrl);
+        if (normalizedConfiguredBase) {
+            return normalizedConfiguredBase;
+        }
+        logger.warn('Invalid PUBLIC_API_BASE_URL provided; falling back to request-derived URL');
+    }
+
+    const forwardedProto = req.get('x-forwarded-proto')?.split(',')[0]?.trim();
+    const forwardedHost = req.get('x-forwarded-host')?.split(',')[0]?.trim();
+
+    if (forwardedProto && forwardedHost) {
+        return `${forwardedProto}://${forwardedHost}`;
+    }
+
+    const originHeader = req.get('origin');
+    if (originHeader) {
+        const normalizedOrigin = normalizeBaseUrl(originHeader);
+        if (normalizedOrigin) {
+            return normalizedOrigin;
+        }
+    }
+
+    const requestHost = req.get('host') ?? 'localhost:3000';
+    const isInternalHost = requestHost.startsWith('bot:') || requestHost === 'bot';
+    const fallbackHost = isInternalHost ? 'localhost:3000' : requestHost;
+    return `${req.protocol}://${fallbackHost}`;
+}
+
+function getChangedFields(previousValue: unknown, nextValue: unknown, prefix = ''): JsonRecord {
+    const previousObject = previousValue && typeof previousValue === 'object' ? previousValue as JsonRecord : null;
+    const nextObject = nextValue && typeof nextValue === 'object' ? nextValue as JsonRecord : null;
+
+    if (!previousObject || !nextObject || Array.isArray(previousObject) || Array.isArray(nextObject)) {
+        if (JSON.stringify(previousValue) === JSON.stringify(nextValue)) {
+            return {};
+        }
+
+        return {
+            [prefix || 'value']: nextValue,
+        };
+    }
+
+    const keys = new Set([...Object.keys(previousObject), ...Object.keys(nextObject)]);
+    const changes: JsonRecord = {};
+
+    for (const key of keys) {
+        const nextPrefix = prefix ? `${prefix}.${key}` : key;
+        const childChanges = getChangedFields(previousObject[key], nextObject[key], nextPrefix);
+        Object.assign(changes, childChanges);
+    }
+
+    return changes;
+}
 
 /**
  * Logs database query execution time to connected dashboard clients.
@@ -163,12 +288,31 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             if (!newConfig || typeof newConfig !== 'object') {
                 return res.status(400).json({ error: 'Invalid config format' });
             }
+
+            const previousConfig = await getServerConfig(guildId);
             
             const guild = client.guilds.cache.get(guildId);
             const guildName = guild ? guild.name : 'Unknown Guild';
             
             await updateServerConfig(guildId, newConfig);
-            console.log('Updated Server Config for guild', `${guildName} (${guildId}):`, JSON.stringify(newConfig, null, 2));
+
+            const changedFields = getChangedFields(previousConfig, newConfig);
+            logger.info(`Updated Server Config for guild ${guildName} (${guildId})`, changedFields);
+
+            if (guild) {
+                const nextNickname = typeof newConfig.nickname === 'string' ? newConfig.nickname.trim() : '';
+                const me = guild.members.me ?? await guild.members.fetchMe();
+                const targetNickname = nextNickname.length > 0 ? nextNickname : null;
+                if (me.nickname !== targetNickname) {
+                    try {
+                        await me.setNickname(targetNickname);
+                        logger.info(`Updated Discord nickname for guild ${guildName} (${guildId}) to ${targetNickname ?? 'default username'}`);
+                    } catch (nicknameErr) {
+                        logger.warn(`Failed to update Discord nickname for guild ${guildName} (${guildId})`, nicknameErr);
+                    }
+                }
+            }
+
             res.json({ message: 'Server config updated successfully' });
         } catch (err) {
             const guildId = req.params.guildId as string;
@@ -206,6 +350,8 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
                 return res.status(400).json({ error: 'Invalid config format' });
             }
 
+            const previousConfig = await loadConfig();
+
             await saveGlobalConfig(newConfig);
             logger.info('Global config updated via API and saved to database');
 
@@ -213,9 +359,22 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             io.emit('bot:status', { isRestarting });
 
             try {
-                await reloadConfig();
+                const reloadedConfig = await reloadConfig();
                 logger.info('Global configuration reloaded from database.');
-                console.log('Updated Global Config:', JSON.stringify(newConfig, null, 2));
+
+                const changedFields = getChangedFields(previousConfig, reloadedConfig);
+                logger.info('Updated Global Config fields', changedFields);
+
+                const previousUsername = previousConfig.botPersona?.username;
+                const nextUsername = reloadedConfig.botPersona?.username;
+                if (client.user && nextUsername && previousUsername !== nextUsername) {
+                    try {
+                        await client.user.setUsername(nextUsername);
+                        logger.info(`Updated Discord bot username to ${nextUsername}`);
+                    } catch (usernameErr) {
+                        logger.warn('Failed to update Discord bot username immediately', usernameErr);
+                    }
+                }
             } catch (reloadErr) {
                 logger.error('Failed to reload global config in memory', reloadErr);
             } finally {
@@ -363,20 +522,138 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     app.get('/api/models', async (req: Request, res: Response) => {
         try {
             const config = await loadConfig();
-            const requestedProvider = req.query.provider as string || config.api?.provider || 'gemini';
-
-            if (requestedProvider === 'gemini') {
-                const apiKey = process.env.GEMINI_API_KEY;
-                if (!apiKey) {
-                    return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
-                }
-            }
-
+            const requestedProvider = (req.query.provider as string) ?? config.llm?.provider ?? 'gemini';
             const models = await getAvailableModels(requestedProvider);
             res.json(models);
         } catch (err) {
             logger.error('Failed to fetch models:', err);
-            res.status(500).json({ error: `Failed to fetch models from ${req.query.provider || 'Gemini'} API` });
+            res.status(500).json({ error: `Failed to fetch models from ${(req.query.provider as string) ?? 'Gemini'} API` });
+        }
+    });
+
+    app.get('/api/llm/qwen/oauth/start', async (req: Request, res: Response) => {
+        try {
+            pruneExpiredQwenOauthStates();
+
+            const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
+            const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
+            const configuredRedirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
+            const publicApiBaseUrl = getPublicApiBaseUrl(req);
+            const redirectUri = configuredRedirectUri ?? `${publicApiBaseUrl}/api/llm/qwen/oauth/callback`;
+            const authUrlBase = readNonEmptyEnv('QWEN_OAUTH_AUTH_URL') ?? 'https://chat.qwen.ai/oauth/authorize';
+            const scope = readNonEmptyEnv('QWEN_OAUTH_SCOPE') ?? 'openid profile';
+
+            const state = crypto.randomBytes(24).toString('hex');
+            const codeVerifier = crypto.randomBytes(64).toString('base64url');
+            const codeChallenge = createPkceChallenge(codeVerifier);
+
+            qwenOauthStateStore.set(state, {
+                codeVerifier,
+                redirectUri,
+                clientId,
+                createdAt: Date.now(),
+            });
+
+            if (!clientId || !redirectUri) {
+                return res.status(500).json({ error: 'Qwen OAuth client_id/redirect_uri are not configured.' });
+            }
+
+            const authUrl = `${authUrlBase}?${new URLSearchParams({
+                response_type: 'code',
+                client_id: clientId,
+                redirect_uri: redirectUri,
+                scope,
+                state,
+                code_challenge: codeChallenge,
+                code_challenge_method: 'S256',
+            }).toString()}`;
+
+            logger.info('Initialized Qwen OAuth URL', {
+                clientIdSource: configuredClientId ? 'env' : 'default',
+                redirectUriSource: configuredRedirectUri ? 'env' : 'derived',
+                publicApiBaseUrl,
+                redirectUri,
+                authUrlBase,
+            });
+
+            res.json({ authUrl });
+        } catch (err) {
+            logger.error('Failed to initialize Qwen OAuth flow', err);
+            res.status(500).json({ error: 'Failed to initialize Qwen OAuth flow' });
+        }
+    });
+
+    app.get('/api/llm/qwen/oauth/callback', async (req: Request, res: Response) => {
+        const code = req.query.code as string | undefined;
+        const error = req.query.error as string | undefined;
+        const state = req.query.state as string | undefined;
+
+        if (error) {
+            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify(error)} }, '*');window.close();</script>`);
+        }
+
+        if (!code || !state) {
+            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify('Missing authorization code or state.')} }, '*');window.close();</script>`);
+        }
+
+        pruneExpiredQwenOauthStates();
+        const statePayload = qwenOauthStateStore.get(state);
+        qwenOauthStateStore.delete(state);
+
+        if (!statePayload) {
+            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify('OAuth session expired. Please try again.')} }, '*');window.close();</script>`);
+        }
+
+        const tokenUrl = readNonEmptyEnv('QWEN_OAUTH_TOKEN_URL') ?? 'https://chat.qwen.ai/oauth/token';
+
+        try {
+            const tokenParams = new URLSearchParams({
+                grant_type: 'authorization_code',
+                code,
+                client_id: statePayload.clientId,
+                redirect_uri: statePayload.redirectUri,
+                code_verifier: statePayload.codeVerifier,
+            });
+
+            const clientSecret = process.env.QWEN_OAUTH_CLIENT_SECRET;
+            if (clientSecret) {
+                tokenParams.set('client_secret', clientSecret);
+            }
+
+            const tokenResponse = await fetch(tokenUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: tokenParams,
+            });
+
+            if (!tokenResponse.ok) {
+                const body = await tokenResponse.text();
+                throw new Error(`Failed to exchange OAuth code (${tokenResponse.status}): ${body}`);
+            }
+
+            const tokenData = await tokenResponse.json() as { access_token?: string };
+            const accessToken = tokenData.access_token?.trim();
+            if (!accessToken) {
+                throw new Error('OAuth response did not include access_token');
+            }
+
+            const config = await loadConfig();
+            const updatedConfig = {
+                ...config,
+                llm: {
+                    ...config.llm,
+                    qwenApiKey: accessToken,
+                },
+            };
+
+            await saveGlobalConfig(updatedConfig);
+            await reloadConfig();
+
+            res.send('<script>window.opener?.postMessage({ type: \'qwen-oauth-success\' }, \'*\');window.close();</script>');
+        } catch (oauthErr) {
+            logger.error('Failed to complete Qwen OAuth flow', oauthErr);
+            const message = oauthErr instanceof Error ? oauthErr.message : 'Qwen OAuth failed';
+            res.status(500).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify(message)} }, '*');window.close();</script>`);
         }
     });
 
