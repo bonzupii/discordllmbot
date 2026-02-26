@@ -54,6 +54,7 @@ interface QwenOauthState {
 
 const qwenOauthStateStore = new Map<string, QwenOauthState>();
 const QWEN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const QWEN_OAUTH_DEFAULT_CLIENT_ID = 'qwen-code';
 
 function createPkceChallenge(verifier: string): string {
     return crypto.createHash('sha256').update(verifier).digest('base64url');
@@ -71,19 +72,6 @@ function pruneExpiredQwenOauthStates(): void {
 
 function readNonEmptyEnv(name: string): string | null {
     const value = process.env[name];
-    if (typeof value !== 'string') {
-        return null;
-    }
-
-    const trimmed = value.trim().replace(/^['"]|['"]$/g, '');
-    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
-        return null;
-    }
-
-    return trimmed;
-}
-
-function readNonEmptyString(value: unknown): string | null {
     if (typeof value !== 'string') {
         return null;
     }
@@ -548,14 +536,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             pruneExpiredQwenOauthStates();
 
             const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
-            const requestedClientId = readNonEmptyString(req.query.clientId);
-            const clientId = configuredClientId ?? requestedClientId;
-
-            if (!clientId) {
-                return res.status(400).json({
-                    error: 'QWEN OAuth client ID is required. Configure QWEN_OAUTH_CLIENT_ID or provide a clientId in the request.',
-                });
-            }
+            const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
             const configuredRedirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
             const publicApiBaseUrl = getPublicApiBaseUrl(req);
             const redirectUri = configuredRedirectUri ?? `${publicApiBaseUrl}/api/llm/qwen/oauth/callback`;
@@ -588,7 +569,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             }).toString()}`;
 
             logger.info('Initialized Qwen OAuth URL', {
-                clientIdSource: configuredClientId ? 'env' : 'request',
+                clientIdSource: configuredClientId ? 'env' : 'default',
                 redirectUriSource: configuredRedirectUri ? 'env' : 'derived',
                 publicApiBaseUrl,
                 redirectUri,

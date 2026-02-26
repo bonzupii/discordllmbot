@@ -81,19 +81,8 @@ function Settings() {
     }
 
     try {
-      let response = await fetch('/api/llm/qwen/oauth/start');
-      let data = await response.json();
-
-      if (!response.ok && typeof data?.error === 'string' && data.error.toLowerCase().includes('client id')) {
-        const promptedClientId = window.prompt('Enter your Qwen OAuth Client ID');
-        if (!promptedClientId || !promptedClientId.trim()) {
-          throw new Error('Qwen OAuth cancelled: client ID is required.');
-        }
-
-        const params = new URLSearchParams({ clientId: promptedClientId.trim() });
-        response = await fetch(`/api/llm/qwen/oauth/start?${params.toString()}`);
-        data = await response.json();
-      }
+      const response = await fetch('/api/llm/qwen/oauth/start');
+      const data = await response.json();
 
       if (!response.ok || !data?.authUrl) {
         throw new Error(data?.error || 'Failed to start Qwen OAuth flow');
