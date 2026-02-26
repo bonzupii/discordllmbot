@@ -52,9 +52,26 @@ interface QwenOauthState {
     createdAt: number;
 }
 
+interface QwenDeviceFlowState {
+    deviceCode: string;
+    userCode: string;
+    verificationUri: string;
+    verificationUriComplete: string;
+    expiresIn: number;
+    interval: number;
+    codeVerifier: string;
+    createdAt: number;
+}
+
 const qwenOauthStateStore = new Map<string, QwenOauthState>();
+const qwenDeviceFlowStore = new Map<string, QwenDeviceFlowState>();
 const QWEN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
-const QWEN_OAUTH_DEFAULT_CLIENT_ID = 'qwen-code';
+const QWEN_OAUTH_DEFAULT_CLIENT_ID = 'f0304373b74a44d2b584a3fb70ca9e56';
+const QWEN_OAUTH_BASE_URL = 'https://chat.qwen.ai';
+const QWEN_OAUTH_DEVICE_CODE_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/device/code`;
+const QWEN_OAUTH_TOKEN_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/token`;
+const QWEN_OAUTH_SCOPE = 'openid profile email model.completion';
+const QWEN_OAUTH_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
 
 function createPkceChallenge(verifier: string): string {
     return crypto.createHash('sha256').update(verifier).digest('base64url');
@@ -65,6 +82,12 @@ function pruneExpiredQwenOauthStates(): void {
     for (const [state, value] of qwenOauthStateStore.entries()) {
         if (now - value.createdAt > QWEN_OAUTH_STATE_TTL_MS) {
             qwenOauthStateStore.delete(state);
+        }
+    }
+    // Also prune expired device flow states
+    for (const [deviceCode, value] of qwenDeviceFlowStore.entries()) {
+        if (now - value.createdAt > value.expiresIn * 1000) {
+            qwenDeviceFlowStore.delete(deviceCode);
         }
     }
 }
@@ -531,112 +554,141 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
         }
     });
 
-    app.get('/api/llm/qwen/oauth/start', async (req: Request, res: Response) => {
+    app.post('/api/llm/qwen/oauth/start', async (req: Request, res: Response) => {
         try {
             pruneExpiredQwenOauthStates();
 
             const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
             const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
-            const configuredRedirectUri = readNonEmptyEnv('QWEN_OAUTH_REDIRECT_URI');
-            const publicApiBaseUrl = getPublicApiBaseUrl(req);
-            const redirectUri = configuredRedirectUri ?? `${publicApiBaseUrl}/api/llm/qwen/oauth/callback`;
-            const authUrlBase = readNonEmptyEnv('QWEN_OAUTH_AUTH_URL') ?? 'https://chat.qwen.ai/oauth/authorize';
-            const scope = readNonEmptyEnv('QWEN_OAUTH_SCOPE') ?? 'openid profile';
+            const scope = QWEN_OAUTH_SCOPE;
 
-            const state = crypto.randomBytes(24).toString('hex');
-            const codeVerifier = crypto.randomBytes(64).toString('base64url');
+            const codeVerifier = crypto.randomBytes(32).toString('base64url');
             const codeChallenge = createPkceChallenge(codeVerifier);
 
-            qwenOauthStateStore.set(state, {
+            // Request device code from Qwen
+            const deviceCodeResponse = await fetch(QWEN_OAUTH_DEVICE_CODE_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    client_id: clientId,
+                    scope,
+                    code_challenge: codeChallenge,
+                    code_challenge_method: 'S256',
+                }).toString(),
+            });
+
+            if (!deviceCodeResponse.ok) {
+                const errorText = await deviceCodeResponse.text();
+                throw new Error(`Failed to get device code (${deviceCodeResponse.status}): ${errorText}`);
+            }
+
+            const deviceData = await deviceCodeResponse.json() as {
+                device_code: string;
+                user_code: string;
+                verification_uri: string;
+                verification_uri_complete: string;
+                expires_in: number;
+                interval: number;
+            };
+
+            // Store device flow state
+            qwenDeviceFlowStore.set(deviceData.device_code, {
+                deviceCode: deviceData.device_code,
+                userCode: deviceData.user_code,
+                verificationUri: deviceData.verification_uri,
+                verificationUriComplete: deviceData.verification_uri_complete,
+                expiresIn: deviceData.expires_in,
+                interval: deviceData.interval,
                 codeVerifier,
-                redirectUri,
-                clientId,
                 createdAt: Date.now(),
             });
 
-            if (!clientId || !redirectUri) {
-                return res.status(500).json({ error: 'Qwen OAuth client_id/redirect_uri are not configured.' });
-            }
-
-            const authUrl = `${authUrlBase}?${new URLSearchParams({
-                response_type: 'code',
-                client_id: clientId,
-                redirect_uri: redirectUri,
-                scope,
-                state,
-                code_challenge: codeChallenge,
-                code_challenge_method: 'S256',
-            }).toString()}`;
-
-            logger.info('Initialized Qwen OAuth URL', {
-                clientIdSource: configuredClientId ? 'env' : 'default',
-                redirectUriSource: configuredRedirectUri ? 'env' : 'derived',
-                publicApiBaseUrl,
-                redirectUri,
-                authUrlBase,
+            logger.info('Initialized Qwen Device Authorization Flow', {
+                userCode: deviceData.user_code,
+                verificationUri: deviceData.verification_uri,
+                expiresIn: deviceData.expires_in,
             });
 
-            res.json({ authUrl });
+            res.json({
+                deviceCode: deviceData.device_code,
+                userCode: deviceData.user_code,
+                verificationUri: deviceData.verification_uri,
+                verificationUriComplete: deviceData.verification_uri_complete,
+                expiresIn: deviceData.expires_in,
+                interval: deviceData.interval,
+            });
         } catch (err) {
-            logger.error('Failed to initialize Qwen OAuth flow', err);
-            res.status(500).json({ error: 'Failed to initialize Qwen OAuth flow' });
+            logger.error('Failed to initialize Qwen Device Authorization flow', err);
+            res.status(500).json({ error: 'Failed to initialize Qwen Device Authorization flow' });
         }
     });
 
-    app.get('/api/llm/qwen/oauth/callback', async (req: Request, res: Response) => {
-        const code = req.query.code as string | undefined;
-        const error = req.query.error as string | undefined;
-        const state = req.query.state as string | undefined;
+    app.post('/api/llm/qwen/oauth/poll', async (req: Request, res: Response) => {
+        const { deviceCode } = req.body as { deviceCode?: string };
 
-        if (error) {
-            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify(error)} }, '*');window.close();</script>`);
+        if (!deviceCode) {
+            return res.status(400).json({ error: 'Missing device_code' });
         }
 
-        if (!code || !state) {
-            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify('Missing authorization code or state.')} }, '*');window.close();</script>`);
+        const deviceFlowState = qwenDeviceFlowStore.get(deviceCode);
+        if (!deviceFlowState) {
+            return res.status(400).json({ error: 'Device code not found or expired' });
         }
 
-        pruneExpiredQwenOauthStates();
-        const statePayload = qwenOauthStateStore.get(state);
-        qwenOauthStateStore.delete(state);
-
-        if (!statePayload) {
-            return res.status(400).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify('OAuth session expired. Please try again.')} }, '*');window.close();</script>`);
-        }
-
-        const tokenUrl = readNonEmptyEnv('QWEN_OAUTH_TOKEN_URL') ?? 'https://chat.qwen.ai/oauth/token';
+        const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
+        const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
 
         try {
-            const tokenParams = new URLSearchParams({
-                grant_type: 'authorization_code',
-                code,
-                client_id: statePayload.clientId,
-                redirect_uri: statePayload.redirectUri,
-                code_verifier: statePayload.codeVerifier,
-            });
-
-            const clientSecret = process.env.QWEN_OAUTH_CLIENT_SECRET;
-            if (clientSecret) {
-                tokenParams.set('client_secret', clientSecret);
-            }
-
-            const tokenResponse = await fetch(tokenUrl, {
+            const tokenResponse = await fetch(QWEN_OAUTH_TOKEN_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: tokenParams,
+                body: new URLSearchParams({
+                    grant_type: QWEN_OAUTH_GRANT_TYPE,
+                    client_id: clientId,
+                    device_code: deviceCode,
+                    code_verifier: deviceFlowState.codeVerifier,
+                }).toString(),
             });
 
             if (!tokenResponse.ok) {
-                const body = await tokenResponse.text();
-                throw new Error(`Failed to exchange OAuth code (${tokenResponse.status}): ${body}`);
+                const errorData = await tokenResponse.json().catch(() => ({ error: 'unknown' }));
+                
+                if (errorData.error === 'authorization_pending') {
+                    return res.json({ status: 'pending' });
+                }
+                
+                if (errorData.error === 'slow_down') {
+                    return res.json({ status: 'slow_down', interval: deviceFlowState.interval + 5 });
+                }
+                
+                if (errorData.error === 'access_denied') {
+                    qwenDeviceFlowStore.delete(deviceCode);
+                    return res.status(400).json({ error: 'Authorization denied' });
+                }
+                
+                if (errorData.error === 'expired_token') {
+                    qwenDeviceFlowStore.delete(deviceCode);
+                    return res.status(400).json({ error: 'Token expired' });
+                }
+
+                const errorText = await tokenResponse.text();
+                throw new Error(`Token exchange failed (${tokenResponse.status}): ${errorText}`);
             }
 
-            const tokenData = await tokenResponse.json() as { access_token?: string };
+            const tokenData = await tokenResponse.json() as {
+                access_token?: string;
+                refresh_token?: string;
+                id_token?: string;
+                expires_in?: number;
+                token_type?: string;
+            };
+
             const accessToken = tokenData.access_token?.trim();
             if (!accessToken) {
                 throw new Error('OAuth response did not include access_token');
             }
 
+            // Save token to config
             const config = await loadConfig();
             const updatedConfig = {
                 ...config,
@@ -649,11 +701,16 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             await saveGlobalConfig(updatedConfig);
             await reloadConfig();
 
-            res.send('<script>window.opener?.postMessage({ type: \'qwen-oauth-success\' }, \'*\');window.close();</script>');
+            // Clean up device flow state
+            qwenDeviceFlowStore.delete(deviceCode);
+
+            logger.info('Qwen Device Authorization completed successfully');
+
+            res.json({ status: 'success', accessToken });
         } catch (oauthErr) {
-            logger.error('Failed to complete Qwen OAuth flow', oauthErr);
+            logger.error('Failed to poll Qwen OAuth token', oauthErr);
             const message = oauthErr instanceof Error ? oauthErr.message : 'Qwen OAuth failed';
-            res.status(500).send(`<script>window.opener?.postMessage({ type: 'qwen-oauth-error', error: ${JSON.stringify(message)} }, '*');window.close();</script>`);
+            res.status(500).json({ error: message });
         }
     });
 

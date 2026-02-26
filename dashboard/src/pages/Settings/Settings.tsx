@@ -70,49 +70,83 @@ function Settings() {
   const [oauthError, setOauthError] = useState<string | null>(null);
 
   /**
-   * Starts Qwen OAuth in a popup and reloads config when complete.
+   * Starts Qwen OAuth using Device Authorization Flow.
    */
   const handleConnectQwen = async () => {
     setOauthError(null);
-    const popup = window.open('', 'qwen-oauth', 'width=700,height=800');
-    if (!popup) {
-      setOauthError('Popup was blocked. Please allow popups and try again.');
-      return;
-    }
 
     try {
-      const response = await fetch('/api/llm/qwen/oauth/start');
+      // Start device authorization flow
+      const response = await fetch('/api/llm/qwen/oauth/start', { method: 'POST' });
       const data = await response.json();
 
-      if (!response.ok || !data?.authUrl) {
-        throw new Error(data?.error || 'Failed to start Qwen OAuth flow');
+      if (!response.ok || !data?.verificationUriComplete) {
+        throw new Error(data?.error || 'Failed to start Qwen Device Authorization flow');
       }
 
-      popup.location.href = data.authUrl;
-    } catch (err) {
-      popup.close();
-      const message = err instanceof Error ? err.message : 'Failed to start Qwen OAuth flow';
-      setOauthError(message);
-      console.error(err);
-      return;
-    }
+      const { verificationUriComplete, userCode, expiresIn, interval } = data;
 
-    const onMessage = async (event: MessageEvent) => {
-      const msg = event.data as { type?: string };
-      if (!msg || (msg.type !== 'qwen-oauth-success' && msg.type !== 'qwen-oauth-error')) {
+      // Open authorization URL in a new window
+      const authWindow = window.open(verificationUriComplete, 'qwen-oauth', 'width=700,height=800');
+      
+      if (!authWindow) {
+        setOauthError('Popup was blocked. Please allow popups and try again.');
         return;
       }
 
-      window.removeEventListener('message', onMessage);
-      if (msg.type === 'qwen-oauth-success') {
-        await refetch();
-        await fetchModels('qwen');
-      } else {
-        setOauthError('Qwen OAuth failed. Check backend logs and OAuth app redirect/client settings.');
-      }
-    };
+      // Poll for token status
+      let pollInterval = interval * 1000 || 5000;
+      const maxPollingTime = expiresIn * 1000;
+      const startTime = Date.now();
 
-    window.addEventListener('message', onMessage);
+      const pollToken = async () => {
+        if (Date.now() - startTime > maxPollingTime) {
+          setOauthError('OAuth authorization timed out. Please try again.');
+          authWindow.close();
+          return;
+        }
+
+        try {
+          const pollResponse = await fetch('/api/llm/qwen/oauth/poll', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deviceCode: data.deviceCode }),
+          });
+
+          const pollData = await pollResponse.json();
+
+          if (!pollResponse.ok) {
+            throw new Error(pollData?.error || 'Polling failed');
+          }
+
+          if (pollData.status === 'success') {
+            await refetch();
+            await fetchModels('qwen');
+            authWindow.close();
+            return;
+          }
+
+          if (pollData.status === 'slow_down') {
+            pollInterval = (pollData.interval || interval + 5) * 1000;
+          }
+
+          // Continue polling
+          setTimeout(pollToken, pollInterval);
+        } catch (err) {
+          authWindow.close();
+          const message = err instanceof Error ? err.message : 'Failed to complete Qwen OAuth';
+          setOauthError(message);
+          console.error(err);
+        }
+      };
+
+      // Start polling after initial interval
+      setTimeout(pollToken, pollInterval);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start Qwen OAuth';
+      setOauthError(message);
+      console.error(err);
+    }
   };
 
   /**
