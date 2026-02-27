@@ -1,90 +1,17 @@
 /**
  * Socket.io connection for real-time bot status updates
  * @module hooks/useSocket
+ * @deprecated Use useSocketContext() from @contexts instead
  */
 
-import { useSyncExternalStore } from 'react';
-import { io } from 'socket.io-client';
-
-/** Singleton socket instance - reused across all hook usages */
-let socketInstance: ReturnType<typeof io> | null = null;
-
-/** Whether the bot is currently restarting */
-let isRestarting = false;
-
-/** Set of listeners to notify when state changes */
-const listeners = new Set<() => void>();
-
-/** Cleanup function for socket */
-let cleanupSocket: (() => void) | null = null;
-
-/**
- * Get or create the socket.io connection
- * Listens for bot:status events to track restart state
- */
-function getSocket(): ReturnType<typeof io> {
-  if (!socketInstance) {
-    const socketUrl = import.meta.env.VITE_API_URL || window.location.origin;
-    socketInstance = io(socketUrl);
-    socketInstance.on('bot:status', (status: { isRestarting: boolean }) => {
-      isRestarting = status.isRestarting;
-      notifyListeners();
-    });
-    
-    // Store cleanup function
-    cleanupSocket = () => {
-      if (socketInstance) {
-        socketInstance.off('bot:status');
-        socketInstance.disconnect();
-        socketInstance = null;
-      }
-      listeners.clear();
-      cleanupSocket = null;
-    };
-  }
-  return socketInstance;
-}
-
-/** Notify all subscribed listeners of state change */
-function notifyListeners() {
-  listeners.forEach((listener) => listener());
-}
-
-/**
- * Subscribe to store updates
- * @param listener - Callback to run when store changes
- * @returns Unsubscribe function
- */
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-    // Cleanup socket if no more listeners
-    if (listeners.size === 0 && cleanupSocket) {
-      cleanupSocket();
-    }
-  };
-}
+import { useSocketContext } from '@context/SocketContext';
 
 /**
  * Hook to access socket connection and bot restart status
- * Uses useSyncExternalStore for React 18 concurrent features compatibility
+ * @deprecated Use useSocketContext() from @contexts instead
  * @returns Socket instance, restarting state, and clear function
  */
 export function useSocket() {
-  const isRestartingValue = useSyncExternalStore(
-    subscribe,
-    () => isRestarting,
-    () => isRestarting
-  );
-
-  /**
-   * Clear the restarting flag (called after user acknowledges)
-   */
-  const clearRestarting = () => {
-    isRestarting = false;
-    notifyListeners();
-  };
-
-  return { socket: getSocket(), isRestarting: isRestartingValue, clearRestarting };
+  const { socket, isRestarting, clearRestarting } = useSocketContext();
+  return { socket, isRestarting, clearRestarting };
 }

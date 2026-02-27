@@ -3,7 +3,6 @@
  * @module pages/Logs/Logs
  */
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { io } from 'socket.io-client';
 import {
   Box,
   Paper,
@@ -29,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import type { SvgIconProps } from '@mui/material';
 
+import { useSocketContext } from '@context/SocketContext';
 import { parseLogLine, getLogType, getLevelColor } from '@utils';
 import type { LogType, ParsedLog } from '@types';
 
@@ -61,7 +61,7 @@ const iconMap: Record<LogType, React.ComponentType<SvgIconProps>> = {
  * @returns Rendered logs page
  */
 function Logs() {
-  const [logs, setLogs] = useState<string[]>([]);
+  const { logs, clearLogs } = useSocketContext();
   const [filters, setFilters] = useState<Filters>({
     ERROR: true,
     WARN: true,
@@ -73,33 +73,6 @@ function Logs() {
   });
   const [autoScroll, setAutoScroll] = useState(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const socket = io();
-
-    const handleInit = (initialLogs: string[]) => {
-      setLogs(initialLogs.filter((l) => l.trim()));
-    };
-
-    const handleLog = (line: string) => {
-      setLogs((prev: string[]) => [...prev.slice(-199), line]); // Keep last 200 lines
-    };
-
-    const handleDbLog = (line: string) => {
-      setLogs((prev: string[]) => [...prev.slice(-199), line]); // Keep last 200 lines
-    };
-
-    socket.on('logs:init', handleInit);
-    socket.on('log', handleLog);
-    socket.on('db:log', handleDbLog);
-
-    return () => {
-      socket.off('logs:init', handleInit);
-      socket.off('log', handleLog);
-      socket.off('db:log', handleDbLog);
-      socket.disconnect();
-    };
-  }, []);
 
   const scrollToBottom = useCallback(() => {
     if (autoScroll && scrollRef.current) {
@@ -123,8 +96,8 @@ function Logs() {
   }, [logs, filters]);
 
   const handleClearLogs = useCallback(() => {
-    setLogs([]);
-  }, []);
+    clearLogs();
+  }, [clearLogs]);
 
   const formatJsonForDisplay = (obj: unknown, depth = 0): React.ReactNode => {
     const indent = '\u00A0'.repeat(depth * 4); // Non-breaking space for indentation

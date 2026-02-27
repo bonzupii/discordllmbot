@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import { AddLink as AddLinkIcon } from '@mui/icons-material';
 
-import { useServers, useSocket } from '@hooks';
+import { useServers, useSocketContext } from '@hooks';
 import { serversApi, configApi } from '@services';
 import { isChannelIgnored, deepClone } from '@utils';
 import { EmptyState, ErrorBoundary } from '@components/common';
@@ -39,7 +39,7 @@ function Servers() {
   // HOOKS: Get server list and socket state
   // ===========================================================================
   const { servers, botInfo, loading, error, leaveServer } = useServers();
-  const { isRestarting } = useSocket();
+  const { isRestarting } = useSocketContext();
 
   // ===========================================================================
   // STATE: Server list and configuration

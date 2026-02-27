@@ -40,7 +40,7 @@ import {
   Extension as ExtensionIcon,
 } from '@mui/icons-material';
 
-import { useGlobalConfig, useSocket } from '@hooks';
+import { useGlobalConfig, useSocketContext } from '@hooks';
 
 /**
  * Settings page component for global bot configuration.
@@ -70,7 +70,7 @@ function Settings() {
     refetch,
   } = useGlobalConfig();
 
-  const { isRestarting } = useSocket();
+  const { isRestarting } = useSocketContext();
   const [activeTab, setActiveTab] = useState(initialTab >= 0 && initialTab < tabNames.length ? initialTab : 0);
   const [activeSpeakingSection, setActiveSpeakingSection] =
     useState('globalRules');

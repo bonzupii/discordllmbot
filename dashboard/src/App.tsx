@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 
 import theme from '@theme';
+import { SocketProvider } from '@context/SocketContext';
 import { Dashboard, Settings, Servers, Playground, Logs, Database, Analytics } from '@pages';
 import { ErrorBoundary } from '@components/common';
 import { Header, Sidebar, MainContent } from '@components/Layout';
@@ -64,9 +65,9 @@ function AppContent() {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <Header 
-        open={!mobileOpen} 
-        onMenuClick={handleDrawerToggle} 
+      <Header
+        open={!mobileOpen}
+        onMenuClick={handleDrawerToggle}
         drawerWidth={DRAWER_WIDTH}
       />
       <Sidebar
@@ -134,7 +135,9 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppContent />
+      <SocketProvider>
+        <AppContent />
+      </SocketProvider>
     </ThemeProvider>
   );
 }

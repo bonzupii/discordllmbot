@@ -3,7 +3,6 @@
  * @module pages/Database/Database
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { io } from 'socket.io-client';
 import {
   Box,
   Paper,
@@ -43,6 +42,7 @@ import {
 } from '@mui/icons-material';
 import type { Theme } from '@mui/material/styles';
 
+import { useSocketContext } from '@context/SocketContext';
 import { databaseApi } from '@services';
 import type { TableInfo, TableSchema, TableData, TableRelationship } from '@services';
 import { EmptyState } from '@components/common';
@@ -142,10 +142,10 @@ export default function Database() {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [currentTableForExpanded, setCurrentTableForExpanded] = useState<string>('');
   const [hasExpandableRows, setHasExpandableRows] = useState(false);
-  
+
   const [resizing, setResizing] = useState<{ col: string; startX: number; startWidth: number } | null>(null);
   const [dragging, setDragging] = useState<{ col: string; startX: number } | null>(null);
-  const [dbLogs, setDbLogs] = useState<string[]>([]);
+  const { dbLogs } = useSocketContext();
   const logsRef = useRef<HTMLDivElement>(null);
   
   const resizingRef = React.useRef(resizing);
@@ -337,27 +337,10 @@ export default function Database() {
   };
 
   useEffect(() => {
-    if (activeSection !== 'logs') return;
-
-    const socket = io();
-
-    const handleDbLog = (line: string) => {
-      setDbLogs(prev => [...prev.slice(-199), line]); // Keep last 200 lines
-    };
-
-    socket.on('db:log', handleDbLog);
-
-    return () => {
-      socket.off('db:log', handleDbLog);
-      socket.disconnect();
-    };
-  }, [activeSection]);
-
-  useEffect(() => {
     if (dbLogs.length > 0 && logsRef.current) {
       logsRef.current.scrollTop = logsRef.current.scrollHeight;
     }
-  }, [dbLogs, activeSection]);
+  }, [dbLogs]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}><CircularProgress /></Box>;
