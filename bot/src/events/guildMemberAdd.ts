@@ -33,7 +33,7 @@ export async function handleGuildMemberAdd(member: GuildMember): Promise<void> {
             username,
             displayName,
             attitude: 'neutral',
-            behavior: ['treat them like a normal server regular'],
+            behavior: 'treat them like a normal server regular',
             boundaries: []
         });
 

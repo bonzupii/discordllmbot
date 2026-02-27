@@ -144,9 +144,9 @@ function Relationships({
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    <Tooltip title={data.behavior.join(', ')}>
+                    <Tooltip title={data.behavior}>
                       <Typography variant="body2" noWrap>
-                        {data.behavior.join(', ') || 'None'}
+                        {data.behavior || 'None'}
                       </Typography>
                     </Tooltip>
                   </TableCell>

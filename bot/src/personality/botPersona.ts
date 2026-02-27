@@ -21,7 +21,7 @@ interface BotPersona {
     globalRules: string[];
     defaultRelationship: {
         attitude: string;
-        behavior: string[];
+        behavior: string;
         boundaries: string[];
     };
 }
@@ -61,9 +61,7 @@ export function getBotPersonaSync(): BotPersona {
         ],
         defaultRelationship: {
             attitude: 'neutral',
-            behavior: [
-                'treat them like a normal server regular'
-            ],
+            behavior: 'treat them like a normal server regular',
             boundaries: []
         }
     };

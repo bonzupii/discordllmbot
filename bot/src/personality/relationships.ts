@@ -18,7 +18,7 @@ interface Relationship {
     displayName: string;
     avatarUrl?: string;
     attitude: string;
-    behavior: string[];
+    behavior: string;
     boundaries: string[];
     ignored?: boolean;
 }
@@ -45,9 +45,7 @@ function createDefaultRelationship(): Relationship {
         username: '',
         displayName: '',
         attitude: 'neutral',
-        behavior: [
-            'treat them like a normal server regular'
-        ],
+        behavior: 'treat them like a normal server regular',
         boundaries: []
     };
 }
@@ -143,7 +141,7 @@ export async function initializeGuildRelationships(guild: Guild): Promise<void> 
                 displayName,
                 avatarUrl,
                 attitude: defaultRel.attitude,
-                behavior: Array.isArray(defaultRel.behavior) ? [...defaultRel.behavior] : [],
+                behavior: typeof defaultRel.behavior === 'string' ? defaultRel.behavior : '',
                 boundaries: Array.isArray(defaultRel.boundaries) ? [...defaultRel.boundaries] : [],
                 ignored: false
             };
