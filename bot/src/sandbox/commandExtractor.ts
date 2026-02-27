@@ -42,7 +42,15 @@ export async function extractDockerCommand(userMessage: string): Promise<string 
             return null;
         }
 
-        extracted = extracted.replace(/^Output:\s*/i, '').replace(/^Command:\s*/i, '').replace(/^```\w*\n?/g, '').replace(/```$/g, '').trim();
+        extracted = extracted
+            .replace(/^Output:\s*/i, '')
+            .replace(/^Command:\s*/i, '')
+            .replace(/^The user wants to run the command.*?"/i, '')
+            .replace(/^['"]?/i, '')
+            .replace(/['"]?\s*$/i, '')
+            .replace(/^```\w*\n?/g, '')
+            .replace(/```$/g, '')
+            .trim();
 
         if (!extracted || extracted.length < 2) {
             logger.warn('Extracted command is empty', { extracted });
