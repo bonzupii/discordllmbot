@@ -405,7 +405,7 @@ function Settings() {
                 Bot Persona
               </Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Global Username"
@@ -416,7 +416,7 @@ function Settings() {
                     disabled={isRestarting}
                   />
                 </Grid>
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <TextField
                     fullWidth
                     label="Default Persona Description"
@@ -429,7 +429,7 @@ function Settings() {
                     disabled={isRestarting}
                   />
                 </Grid>
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Accordion
                       expanded={activeSpeakingSection === 'globalRules'}
@@ -526,12 +526,12 @@ function Settings() {
                 LLM Settings
               </Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
                     Provider Settings
                   </Typography>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>Provider</InputLabel>
                     <Select
@@ -546,7 +546,7 @@ function Settings() {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   {config.llm.provider === 'qwen' ? (
                     isQwenConnected ? (
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -597,7 +597,7 @@ function Settings() {
                   })()}
                 </Grid>
 
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   {config.llm.provider !== 'qwen' && (
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                       <TextField
@@ -614,14 +614,14 @@ function Settings() {
                   )}
                 </Grid>
 
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
                   <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
                     Request Settings
                   </Typography>
                 </Grid>
 
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -632,7 +632,7 @@ function Settings() {
                     disabled={isRestarting}
                   />
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -665,7 +665,12 @@ function Settings() {
                 Memory Settings
               </Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -676,7 +681,7 @@ function Settings() {
                     disabled={isRestarting}
                   />
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -709,7 +714,12 @@ function Settings() {
                 Logger Settings
               </Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Provider Settings
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -720,7 +730,7 @@ function Settings() {
                     disabled={isRestarting}
                   />
                 </Grid>
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <FormControlLabel
                     control={
                       <Switch
@@ -733,7 +743,7 @@ function Settings() {
                     label="Log Reply Decisions"
                   />
                 </Grid>
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <FormControlLabel
                     control={
                       <Switch
@@ -768,12 +778,12 @@ function Settings() {
                 Sandbox Settings
               </Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <Alert severity="warning" sx={{ mb: 2 }}>
                     The sandbox runs Docker commands in an isolated container. Only enable if you understand the security implications.
                   </Alert>
                 </Grid>
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <FormControlLabel
                     control={
                       <Switch
@@ -786,7 +796,7 @@ function Settings() {
                     label="Enable Sandbox"
                   />
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     type="number"
@@ -798,7 +808,7 @@ function Settings() {
                     helperText="Maximum execution time for sandbox commands"
                   />
                 </Grid>
-                <Grid size={{ xs: 12 }}>
+                <Grid item xs={12}>
                   <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
                     Allowed Commands
                   </Typography>

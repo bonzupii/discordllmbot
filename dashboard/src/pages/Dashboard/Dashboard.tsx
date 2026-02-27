@@ -210,7 +210,7 @@ function Dashboard({ health }: DashboardProps) {
     <Box sx={{ p: 2 }}>
       <Grid container spacing={2}>
         {/* Left Column: Status Strip & Latest Activity */}
-        <Grid size={{ xs: 12, md: 9 }}>
+        <Grid item xs={12} md={9}>
           <Stack spacing={2}>
             {/* Status Strip */}
             <Paper
@@ -221,7 +221,7 @@ function Dashboard({ health }: DashboardProps) {
               }}
             >
               <Grid container spacing={1}>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid item xs={6} sm={3}>
                   <StatusItem
                     icon={<MessageIcon />}
                     label="Replies (24h)"
@@ -229,7 +229,7 @@ function Dashboard({ health }: DashboardProps) {
                     color="primary"
                   />
                 </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid item xs={6} sm={3}>
                   <StatusItem
                     icon={<DnsIcon />}
                     label="Active Servers"
@@ -237,7 +237,7 @@ function Dashboard({ health }: DashboardProps) {
                     color="secondary"
                   />
                 </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid item xs={6} sm={3}>
                   <StatusItem
                     icon={<PeopleIcon />}
                     label="Active Users"
@@ -245,7 +245,7 @@ function Dashboard({ health }: DashboardProps) {
                     color="success"
                   />
                 </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid item xs={6} sm={3}>
                   <StatusItem
                     icon={<TokenIcon />}
                     label="Tokens Used"
@@ -281,7 +281,7 @@ function Dashboard({ health }: DashboardProps) {
         </Grid>
 
         {/* Right Column: Metrics & Health */}
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid item xs={12} md={3}>
           <Stack spacing={2}>
             {/* Activity Table */}
             <Paper variant="outlined">

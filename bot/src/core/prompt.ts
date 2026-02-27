@@ -8,6 +8,8 @@
  */
 
 import { getBotPersona } from '../personality/botPersona.js';
+import { getContextualMemories, getUserFacts, recordMemoryAccess, getGlobalKnowledge } from '../../../shared/storage/hypergraphPersistence.js';
+import { logger } from '../../../shared/utils/logger.js';
 
 /**
  * Represents the relationship data for a user.
@@ -51,6 +53,8 @@ interface BuildPromptParams {
     username: string;
     botConfig?: BotPersonaConfig;
     guildId: string;
+    channelId: string;
+    userId: string;
 }
 
 /**
@@ -67,7 +71,9 @@ export async function buildPrompt({
     userMessage,
     username,
     botConfig,
-    guildId
+    guildId,
+    channelId,
+    userId
 }: BuildPromptParams): Promise<string> {
     const botPersona = botConfig || await getBotPersona(guildId);
 
@@ -79,6 +85,55 @@ export async function buildPrompt({
         const usernameNote = rel.username && rel.username !== display ? ` (${rel.username})` : '';
         return `${display}${usernameNote}: Attitude=${rel.attitude}; Behavior=${rel.behavior.join('; ') || 'none'}`;
     });
+
+    // Fetch hypergraph memories (primary memory system)
+    let hypergraphMemoriesSection = '';
+    try {
+        // Get contextual memories from current channel (prioritizing current user)
+        const channelMemories = await getContextualMemories(guildId, channelId, userId, 10);
+        // Get user facts that can be shared across channels
+        const userFacts = await getUserFacts(guildId, userId, 5);
+        // Get global knowledge facts from ingested documents/RSS
+        const globalKnowledge = await getGlobalKnowledge(guildId, 5);
+        
+        logger.info(`Fetched memories for prompt: ${channelMemories.length} channel, ${userFacts.length} user facts, ${globalKnowledge.length} global knowledge`);
+        
+        // Also fetch general stats/top entities for broader context
+        const { getHypergraphStats } = await import('../../../shared/storage/hypergraphPersistence.js');
+        const stats = await getHypergraphStats(guildId);
+        const topEntities = stats.topEntities?.slice(0, 5).map((e: any) => e.name).join(', ') || '';
+
+        const allMemories = [...channelMemories, ...userFacts, ...globalKnowledge];
+
+        // Record access for retrieved memories (boosts importance)
+        for (const memory of allMemories) {
+            await recordMemoryAccess(memory.id);
+        }
+
+        if (allMemories.length > 0 || topEntities) {
+            const memoryLines = allMemories.map(m => {
+                const members = m.members || [];
+                const memberInfo = members
+                    .filter((mem: any) => mem.role === 'participant' || mem.role === 'subject' || mem.role === 'topic')
+                    .map((mem: any) => mem.name)
+                    .join(', ');
+                
+                let line = `- ${m.summary}`;
+                if (memberInfo) line += ` (Keywords: ${memberInfo})`;
+                return line;
+            });
+            
+            hypergraphMemoriesSection = '\nRelevant memories and context:';
+            if (topEntities) {
+                hypergraphMemoriesSection += `\nTop entities in this server: ${topEntities}`;
+            }
+            if (memoryLines.length > 0) {
+                hypergraphMemoriesSection += `\nPast events and knowledge:\n${memoryLines.join('\n')}`;
+            }
+        }
+    } catch (err) {
+        logger.warn('Failed to fetch hypergraph memories (continuing without)', err);
+    }
 
     return `
 You are a human Discord user named ${botPersona.name}.
@@ -103,13 +158,14 @@ ${relationship.boundaries.map(b => `- ${b}`).join('\n')}
 
 Server user relationships (recent participants):
 ${relationshipLines.join('\n')}
+${hypergraphMemoriesSection}
 
-Recent conversation (context only):
+Recent conversation (for continuity):
 ${context.map(m => `${m.author}: ${m.content}`).join('\n')}
 
 Message you are replying to:
 ${username}: ${userMessage}
 
-Respond naturally. Stay in character.
+Respond naturally. Stay in character. Use your memories above to maintain coherence.
 `.trim();
 }

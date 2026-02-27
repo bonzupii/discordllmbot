@@ -12,10 +12,11 @@ import {
   Settings as SettingsIcon,
   ListAlt as ListAltIcon,
   Storage as StorageIcon,
+  Psychology as MemoryIcon,
 } from '@mui/icons-material';
 
 import theme from '@theme';
-import { Dashboard, Settings, Servers, Playground, Logs, Database } from '@pages';
+import { Dashboard, Settings, Servers, Playground, Logs, Database, Memory } from '@pages';
 import { ErrorBoundary } from '@components/common';
 import { Header, Sidebar, MainContent } from '@components/Layout';
 import { useHealth } from '@hooks';
@@ -23,6 +24,7 @@ import { useHealth } from '@hooks';
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
   { to: '/servers', label: 'Servers', icon: <DnsIcon /> },
+  { to: '/memory', label: 'Memory', icon: <MemoryIcon /> },
   { to: '/database', label: 'Database', icon: <StorageIcon /> },
   { to: '/playground', label: 'Playground', icon: <ChatIcon /> },
   { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
@@ -90,6 +92,7 @@ function AppContent() {
                 <Route path="/" element={<Dashboard health={health} />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/servers" element={<Servers />} />
+                <Route path="/memory" element={<Memory />} />
                 <Route path="/database" element={<Database />} />
                 <Route path="/playground" element={<Playground />} />
                 <Route path="/logs" element={<Logs />} />

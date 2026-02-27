@@ -26,6 +26,18 @@ import { generateReply, getAvailableModels } from '../llm/index.js';
 import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships, deleteServerConfig, saveGlobalConfig, getDb, getSqlLogEmitter } from '../../../shared/storage/persistence.js';
 import os from 'os';
 import crypto from 'crypto';
+import multer from 'multer';
+import { 
+    createRssFeed, 
+    getRssFeeds, 
+    updateRssFeed, 
+    deleteRssFeed,
+    createIngestedDocument,
+    getIngestedDocuments
+} from '../../../shared/storage/knowledgePersistence.js';
+import { processDocument, processRssFeed } from '../core/knowledgeIngestion.js';
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
 
@@ -811,9 +823,13 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
             const pageSize = parseInt(req.query.pageSize as string) || 20;
             const offset = (page - 1) * pageSize;
 
-            const validTables = ['bot_replies', 'global_config', 'guilds', 'messages',
+            const validTables = [
+                'bot_replies', 'global_config', 'guilds', 'messages',
                 'relationship_behaviors', 'relationship_boundaries',
-                'relationships', 'server_configs'];
+                'relationships', 'server_configs',
+                'hyper_nodes', 'hyperedges', 'hyperedge_memberships', 'hypergraph_config',
+                'rss_feeds', 'ingested_documents'
+            ];
             if (!validTables.includes(tableName)) {
                 return res.status(400).json({ error: 'Invalid table name' });
             }
@@ -868,6 +884,193 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
         } catch (err) {
             logger.error('Failed to fetch relationships', err);
             res.status(500).json({ error: 'Failed to fetch relationships' });
+        }
+    });
+
+    // ===========================================================================
+    // Hypergraph Memory System
+    // ===========================================================================
+
+    app.get('/api/hypergraph/:guildId/stats', async (req: Request, res: Response) => {
+        const startTime = Date.now();
+        try {
+            const { getHypergraphStats } = await import('../../../shared/storage/hypergraphPersistence.js');
+            const stats = await getHypergraphStats(req.params.guildId);
+            res.json(stats);
+        } catch (err) {
+            logger.error('Failed to fetch hypergraph stats', err);
+            res.status(500).json({ error: 'Failed to fetch hypergraph stats' });
+        }
+    });
+
+    app.get('/api/hypergraph/:guildId/nodes', async (req: Request, res: Response) => {
+        const startTime = Date.now();
+        try {
+            const { getNodesByType, getAllNodes } = await import('../../../shared/storage/hypergraphPersistence.js');
+            const nodeType = req.query.type as string;
+            const nodes = nodeType
+                ? await getNodesByType(req.params.guildId, nodeType)
+                : await getAllNodes(req.params.guildId);
+            res.json(nodes);
+        } catch (err) {
+            logger.error('Failed to fetch nodes', err);
+            res.status(500).json({ error: 'Failed to fetch nodes' });
+        }
+    });
+
+    app.get('/api/hypergraph/:guildId/memories', async (req: Request, res: Response) => {
+        const startTime = Date.now();
+        try {
+            const { queryMemoriesByNode, getChannelMemories } = await import('../../../shared/storage/hypergraphPersistence.js');
+            const nodeId = req.query.node as string;
+            const channelId = req.query.channelId as string;
+            const minUrgency = parseFloat(req.query.minUrgency as string) || 0.1;
+            const limit = parseInt(req.query.limit as string) || 20;
+
+            let memories;
+            if (nodeId) {
+                memories = await queryMemoriesByNode(req.params.guildId, nodeId, minUrgency, limit);
+            } else if (channelId) {
+                memories = await getChannelMemories(req.params.guildId, channelId, minUrgency, limit);
+            } else {
+                return res.status(400).json({ error: 'Either nodeId or channelId parameter required' });
+            }
+            res.json(memories);
+        } catch (err) {
+            logger.error('Failed to fetch memories', err);
+            res.status(500).json({ error: 'Failed to fetch memories' });
+        }
+    });
+
+    app.get('/api/hypergraph/:guildId/graph', async (req: Request, res: Response) => {
+        const startTime = Date.now();
+        try {
+            const { getGraphData } = await import('../../../shared/storage/hypergraphPersistence.js');
+            const channelId = req.query.channelId as string;
+            const limit = parseInt(req.query.limit as string) || 100;
+            const graph = await getGraphData(req.params.guildId, channelId || null, limit);
+            res.json(graph);
+        } catch (err) {
+            logger.error('Failed to fetch graph data', err);
+            res.status(500).json({ error: 'Failed to fetch graph data' });
+        }
+    });
+
+    app.post('/api/hypergraph/:guildId/memories', async (req: Request, res: Response) => {
+        const startTime = Date.now();
+        try {
+            const { createHyperedge } = await import('../../../shared/storage/hypergraphPersistence.js');
+            if (!req.body.channelId) {
+                return res.status(400).json({ error: 'channelId is required' });
+            }
+            const edgeId = await createHyperedge(req.params.guildId, req.body);
+            logger.info(`Created manual memory ${edgeId} for guild ${req.params.guildId}`);
+            res.json({ id: edgeId, message: 'Memory created successfully' });
+        } catch (err) {
+            logger.error('Failed to create memory', err);
+            res.status(500).json({ error: 'Failed to create memory' });
+        }
+    });
+
+    app.post('/api/hypergraph/:guildId/config', async (req: Request, res: Response) => {
+        const startTime = Date.now();
+        try {
+            const { updateHypergraphConfig } = await import('../../../shared/storage/hypergraphPersistence.js');
+            await updateHypergraphConfig(req.params.guildId, req.body);
+            res.json({ message: 'Config updated successfully' });
+        } catch (err) {
+            logger.error('Failed to update hypergraph config', err);
+            res.status(500).json({ error: 'Failed to update config' });
+        }
+    });
+
+    app.post('/api/hypergraph/:guildId/decay', async (req: Request, res: Response) => {
+        const startTime = Date.now();
+        try {
+            const { updateMemoryUrgency, pruneLowUrgencyMemories } = await import('../../../shared/storage/hypergraphPersistence.js');
+            const { decayRate, minUrgencyThreshold } = req.body;
+            const updated = await updateMemoryUrgency(req.params.guildId, decayRate || 0.1, 0.05);
+            const pruned = await pruneLowUrgencyMemories(req.params.guildId, minUrgencyThreshold || 0.1);
+            res.json({ message: 'Decay process complete', updated: updated.length, pruned });
+        } catch (err) {
+            logger.error('Failed to run decay process', err);
+            res.status(500).json({ error: 'Failed to run decay process' });
+        }
+    });
+
+    // ==================== Knowledge Ingestion ====================
+
+    app.get('/api/knowledge/:guildId/rss', async (req: Request, res: Response) => {
+        try {
+            const feeds = await getRssFeeds(req.params.guildId);
+            res.json(feeds);
+        } catch (err) {
+            logger.error('Failed to fetch RSS feeds', err);
+            res.status(500).json({ error: 'Failed to fetch RSS feeds' });
+        }
+    });
+
+    app.post('/api/knowledge/:guildId/rss', async (req: Request, res: Response) => {
+        try {
+            const feed = await createRssFeed(req.params.guildId, req.body);
+            // Trigger initial fetch
+            processRssFeed(req.params.guildId, feed.id, feed.url).catch(e => logger.error('Initial RSS fetch failed', e));
+            res.status(201).json(feed);
+        } catch (err) {
+            logger.error('Failed to create RSS feed', err);
+            res.status(500).json({ error: 'Failed to create RSS feed' });
+        }
+    });
+
+    app.patch('/api/knowledge/:guildId/rss/:id', async (req: Request, res: Response) => {
+        try {
+            const feed = await updateRssFeed(parseInt(req.params.id), req.body);
+            res.json(feed);
+        } catch (err) {
+            logger.error('Failed to update RSS feed', err);
+            res.status(500).json({ error: 'Failed to update RSS feed' });
+        }
+    });
+
+    app.delete('/api/knowledge/:guildId/rss/:id', async (req: Request, res: Response) => {
+        try {
+            await deleteRssFeed(parseInt(req.params.id));
+            res.status(204).send();
+        } catch (err) {
+            logger.error('Failed to delete RSS feed', err);
+            res.status(500).json({ error: 'Failed to delete RSS feed' });
+        }
+    });
+
+    app.get('/api/knowledge/:guildId/documents', async (req: Request, res: Response) => {
+        try {
+            const docs = await getIngestedDocuments(req.params.guildId);
+            res.json(docs);
+        } catch (err) {
+            logger.error('Failed to fetch documents', err);
+            res.status(500).json({ error: 'Failed to fetch documents' });
+        }
+    });
+
+    app.post('/api/knowledge/:guildId/upload', upload.single('document'), async (req: Request, res: Response) => {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        try {
+            const doc = await createIngestedDocument(req.params.guildId, {
+                filename: req.file.originalname,
+                fileType: req.file.mimetype
+            });
+
+            // Start processing in background
+            processDocument(req.params.guildId, doc.id, req.file.buffer, req.file.originalname)
+                .catch(e => logger.error(`Background processing failed for ${req.file?.originalname}`, e));
+
+            res.status(202).json(doc);
+        } catch (err) {
+            logger.error('Failed to upload document', err);
+            res.status(500).json({ error: 'Failed to upload document' });
         }
     });
 

@@ -23,6 +23,7 @@ import { logger, initializeLogger } from '../../shared/utils/logger.js';
 import { pruneOldMessages, resetPoolWrapper } from '../../shared/storage/persistence.js';
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 import { startApi } from './api/server.js';
+import { decayManager } from './memory/decay.js';
 
 /**
  * Initializes the logger with default settings before full config is loaded.
@@ -72,6 +73,21 @@ async function startBot(): Promise<void> {
 
         client.once('clientReady', async () => {
             handleClientReady(client, botConfig);
+
+            // Set client for decay manager
+            decayManager.setClient(client);
+
+            // Start memory decay manager (runs every hour)
+            decayManager.start(60);
+
+            // Start RSS ingestion checker (runs every 15 minutes)
+            const { startRssInformer } = await import('./core/knowledgeIngestion.js');
+            setInterval(async () => {
+                for (const [guildId] of client.guilds.cache) {
+                    await startRssInformer(guildId).catch(e => logger.error(`RSS informer failed for ${guildId}`, e));
+                }
+            }, 1000 * 60 * 15);
+
             cleanupInterval = setInterval(async () => {
                 try {
                     const memoryConfig = await getGlobalMemoryConfig();
@@ -90,6 +106,7 @@ async function startBot(): Promise<void> {
         process.on('SIGINT', async () => {
             logger.info('Received SIGINT, shutting down gracefully...');
             try {
+                decayManager.stop();
                 if (cleanupInterval) {
                     clearInterval(cleanupInterval);
                 }
@@ -104,6 +121,7 @@ async function startBot(): Promise<void> {
         process.on('SIGTERM', async () => {
             logger.info('Received SIGTERM, shutting down gracefully...');
             try {
+                decayManager.stop();
                 if (cleanupInterval) {
                     clearInterval(cleanupInterval);
                 }

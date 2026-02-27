@@ -1,0 +1,95 @@
+/**
+ * Knowledge Ingestion Persistence Layer
+ * Handles RSS feeds and document metadata
+ * @module shared/storage/knowledgePersistence
+ */
+
+import { getDb } from './persistence.js';
+import { logger } from '../utils/logger.js';
+
+// ==================== RSS Feed Operations ====================
+
+export async function createRssFeed(guildId, { url, name, intervalMinutes = 60 }) {
+    const db = await getDb();
+    const result = await db.query(
+        `INSERT INTO rss_feeds (guildId, url, name, intervalMinutes)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [guildId, url, name, intervalMinutes]
+    );
+    return result.rows[0];
+}
+
+export async function getRssFeeds(guildId) {
+    const db = await getDb();
+    const result = await db.query(
+        `SELECT * FROM rss_feeds WHERE guildId = $1 ORDER BY createdAt DESC`,
+        [guildId]
+    );
+    return result.rows;
+}
+
+export async function updateRssFeed(id, { url, name, intervalMinutes, enabled }) {
+    const db = await getDb();
+    const result = await db.query(
+        `UPDATE rss_feeds
+         SET url = COALESCE($1, url),
+             name = COALESCE($2, name),
+             intervalMinutes = COALESCE($3, intervalMinutes),
+             enabled = COALESCE($4, enabled),
+             updatedAt = CURRENT_TIMESTAMP
+         WHERE id = $5
+         RETURNING *`,
+        [url, name, intervalMinutes, enabled, id]
+    );
+    return result.rows[0];
+}
+
+export async function deleteRssFeed(id) {
+    const db = await getDb();
+    await db.query(`DELETE FROM rss_feeds WHERE id = $1`, [id]);
+}
+
+export async function updateRssLastFetched(id) {
+    const db = await getDb();
+    await db.query(
+        `UPDATE rss_feeds SET lastFetchedAt = CURRENT_TIMESTAMP WHERE id = $1`,
+        [id]
+    );
+}
+
+// ==================== Document Operations ====================
+
+export async function createIngestedDocument(guildId, { filename, fileType }) {
+    const db = await getDb();
+    const result = await db.query(
+        `INSERT INTO ingested_documents (guildId, filename, fileType, status)
+         VALUES ($1, $2, $3, 'pending')
+         RETURNING *`,
+        [guildId, filename, fileType]
+    );
+    return result.rows[0];
+}
+
+export async function updateDocumentStatus(id, { status, errorMessage = null, processedAt = null }) {
+    const db = await getDb();
+    const result = await db.query(
+        `UPDATE ingested_documents
+         SET status = $1,
+             errorMessage = $2,
+             processedAt = CASE WHEN $3 = true THEN CURRENT_TIMESTAMP ELSE processedAt END
+         WHERE id = $4
+         RETURNING *`,
+        [status, errorMessage, processedAt, id]
+    );
+    return result.rows[0];
+}
+
+export async function getIngestedDocuments(guildId) {
+    const db = await getDb();
+    const result = await db.query(
+        `SELECT * FROM ingested_documents WHERE guildId = $1 ORDER BY createdAt DESC`,
+        [guildId]
+    );
+    return result.rows;
+}

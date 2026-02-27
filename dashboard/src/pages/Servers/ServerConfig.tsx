@@ -116,7 +116,7 @@ function ServerConfig({
       </Box>
 
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
             <Typography
               variant="subtitle2"
@@ -179,7 +179,7 @@ function ServerConfig({
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
             <Typography
               variant="subtitle2"
