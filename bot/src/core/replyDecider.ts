@@ -7,8 +7,8 @@
  * @module bot/src/core/replyDecider
  */
 
-import { logger } from '../../../shared/utils/logger.js';
-import { loadConfig } from '../../../shared/config/configLoader.js';
+import { logger } from '@shared/utils/logger.js';
+import { loadConfig } from '@shared/config/configLoader.js';
 import { Message } from 'discord.js';
 
 interface Relationship {

@@ -7,7 +7,7 @@
  * @module bot/src/personality/botPersona
  */
 
-import { getBotConfig } from '../../../shared/config/configLoader.js';
+import { getBotConfig } from '@shared/config/configLoader.js';
 
 /**
  * Bot persona configuration.

@@ -8,3 +8,4 @@ export { default as Playground } from './Playground/Playground';
 export { default as Settings } from './Settings/Settings';
 export { default as Servers } from './Servers/Servers';
 export { default as Database } from './Database/Database';
+export { default as Analytics } from './Analytics/Analytics';

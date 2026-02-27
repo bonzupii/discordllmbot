@@ -4,8 +4,8 @@
  * Uses Qwen OAuth authentication via portal.qwen.ai
  */
 
-import { logger } from '../../../shared/utils/logger.js';
-import { getApiConfig } from '../../../shared/config/configLoader.js';
+import { logger } from '@shared/utils/logger.js';
+import { getApiConfig } from '@shared/config/configLoader.js';
 
 interface ApiConfig {
     qwenModel?: string;

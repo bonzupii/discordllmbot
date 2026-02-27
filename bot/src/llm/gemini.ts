@@ -7,8 +7,8 @@
  * @module bot/src/llm/gemini
  */
 
-import { logger } from '../../../shared/utils/logger.js';
-import { getApiConfig } from '../../../shared/config/configLoader.js';
+import { logger } from '@shared/utils/logger.js';
+import { getApiConfig } from '@shared/config/configLoader.js';
 
 /**
  * API configuration for Gemini.

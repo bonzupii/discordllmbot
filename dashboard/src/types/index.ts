@@ -149,3 +149,121 @@ export interface ParsedLog {
   text: string;
   json: Record<string, unknown> | null;
 }
+
+export interface AnalyticsOverview {
+  stats: {
+    total_replies: number;
+    total_declined: number;
+    total_messages: number;
+    active_servers: number;
+    active_users: number;
+    avg_latency: number;
+    total_prompt_tokens: number;
+    total_response_tokens: number;
+    total_errors: number;
+  };
+  replyRate: number;
+  errorRate: number;
+}
+
+export interface AnalyticsVolume {
+  daily: {
+    date: string;
+    messages: number;
+    reply_attempts: number;
+    replies_sent: number;
+    replies_declined: number;
+  }[];
+  hourly: {
+    hour: number;
+    messages: number;
+    replies: number;
+  }[];
+}
+
+export interface AnalyticsDecisions {
+  breakdown: {
+    reason: string;
+    count: number;
+  }[];
+  funnel: {
+    messages_received: number;
+    messages_mentioned: number;
+    reply_attempts: number;
+    replies_sent: number;
+  };
+}
+
+export interface AnalyticsProviders {
+  byProvider: {
+    provider: string;
+    model: string;
+    call_count: number;
+    avg_latency: number;
+    prompt_tokens: number;
+    response_tokens: number;
+    error_count: number;
+  }[];
+  errorTypes: {
+    error_type: string;
+    provider: string;
+    count: number;
+  }[];
+}
+
+export interface AnalyticsPerformance {
+  latencyTrend: {
+    date: string;
+    avg_latency: number;
+    min_latency: number;
+    max_latency: number;
+    p50_latency: number;
+    p95_latency: number;
+  }[];
+  tokenTrend: {
+    date: string;
+    prompt_tokens: number;
+    response_tokens: number;
+    call_count: number;
+  }[];
+}
+
+export interface AnalyticsUsers {
+  topUsers: {
+    userId: string;
+    username: string;
+    messages_sent: number;
+    replies_received: number;
+    channels_used: number;
+    first_seen: string;
+    last_seen: string;
+  }[];
+  userDistribution: {
+    message_range: string;
+    user_count: number;
+  }[];
+}
+
+export interface AnalyticsChannels {
+  channelActivity: {
+    channelId: string;
+    channel_name: string;
+    messages: number;
+    replies: number;
+    unique_users: number;
+  }[];
+}
+
+export interface AnalyticsErrors {
+  errors: {
+    eventType: string;
+    provider: string;
+    model: string;
+    error_type: string;
+    status_code: string;
+    message: string;
+    timestamp: string;
+    guildId: string;
+    userId: string;
+  }[];
+}

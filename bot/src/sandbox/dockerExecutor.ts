@@ -1,6 +1,6 @@
 import Docker, { Container, ContainerCreateOptions } from 'dockerode';
-import { logger } from '../../../shared/utils/logger.js';
-import { getSandboxConfig } from '../../../shared/config/configLoader.js';
+import { logger } from '@shared/utils/logger.js';
+import { getSandboxConfig } from '@shared/config/configLoader.js';
 
 const ALPINE_IMAGE = 'alpine:latest';
 

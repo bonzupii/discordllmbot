@@ -10,8 +10,8 @@
 import { generateReply as geminiGenerateReply, getAvailableModels as geminiGetAvailableModels } from './gemini.js';
 import { generateReply as ollamaGenerateReply, getAvailableModels as ollamaGetAvailableModels } from './ollama.js';
 import { generateReply as qwenGenerateReply, getAvailableModels as qwenGetAvailableModels } from './qwen.js';
-import { getApiConfig } from '../../../shared/config/configLoader.js';
-import { logger } from '../../../shared/utils/logger.js';
+import { getApiConfig } from '@shared/config/configLoader.js';
+import { logger } from '@shared/utils/logger.js';
 
 
 function maskSecret(value?: string): string {

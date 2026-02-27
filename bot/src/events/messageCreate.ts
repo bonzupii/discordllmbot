@@ -8,14 +8,14 @@
  */
 
 import { Message, Client } from 'discord.js';
-import { logger } from '../../../shared/utils/logger.js';
+import { logger } from '@shared/utils/logger.js';
 import { generateReply } from '../llm/index.js';
 import { getRelationship } from '../personality/relationships.js';
 import { addMessage } from '../memory/context.js';
-import { loadContexts, logBotReply } from '../../../shared/storage/persistence.js';
+import { loadContexts, logBotReply, logAnalyticsEvent } from '@shared/storage/persistence.js';
 import { buildPrompt } from '../core/prompt.js';
 import { shouldReply } from '../core/replyDecider.js';
-import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '../../../shared/config/configLoader.js';
+import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '@shared/config/configLoader.js';
 import { getAllRelationships } from '../personality/relationships.js';
 import { extractDockerCommand, executeInSandbox, isSandboxEnabled } from '../sandbox/index.js';
 
@@ -67,6 +67,33 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
 
     logger.message(`@mention from ${message.author.username} in #${channelName}: "${cleanMessage}"`);
 
+    const botUserId = client.user?.id;
+    const isMentioned = botUserId ? message.mentions.has(botUserId) : false;
+
+    logger.info(`Logging analytics event: message_received, isMentioned=${isMentioned}`);
+    await logAnalyticsEvent(
+        'message_received',
+        guildId,
+        message.channel.id,
+        message.author.id,
+        {
+            messageLength: message.content.length,
+            isMentioned: isMentioned,
+            channelName: channelName,
+            username: message.author.username
+        }
+    );
+
+    if (isMentioned) {
+        await logAnalyticsEvent(
+            'user_mentioned',
+            guildId,
+            message.channel.id,
+            message.author.id,
+            { channelName: channelName, username: message.author.username }
+        );
+    }
+
     try {
         const relationship = getRelationship(
             guildId,
@@ -108,9 +135,6 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
             guildId
         });
 
-        const botUserId = client.user?.id;
-        const isMentioned = botUserId ? message.mentions.has(botUserId) : false;
-        
         const hasSandboxKeyword = SANDBOX_KEYWORDS.some(keyword => 
             cleanMessage.toLowerCase().includes(keyword)
         );
@@ -178,11 +202,49 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
             reason: replyDecision.reason,
         });
 
+        await logAnalyticsEvent(
+            'reply_attempt',
+            guildId,
+            message.channel.id,
+            message.author.id,
+            {
+                reason: replyDecision.reason,
+                probability: replyBehavior.replyProbability,
+                contextLength: context.length,
+                username: message.author.username,
+                channelName: channelName
+            }
+        );
+
         if (!replyDecision.result) {
             logger.info(`Bot decided not to reply in guild ${message.guild.name}`, {
                 guildId,
                 reason: replyDecision.reason,
             });
+
+            let declineReason = 'unknown';
+            const reasonLower = replyDecision.reason.toLowerCase();
+            if (reasonLower.includes('ignore list')) declineReason = 'user_ignored';
+            else if (reasonLower.includes('channel')) declineReason = 'channel_ignored';
+            else if (reasonLower.includes('keyword')) declineReason = 'keyword';
+            else if (reasonLower.includes('relationship')) declineReason = 'relationship_ignored';
+            else if (reasonLower.includes('mention')) declineReason = 'mention_required';
+            else if (reasonLower.includes('probability')) declineReason = 'probability_fail';
+            else if (reasonLower.includes('roll')) declineReason = 'probability_fail';
+
+            logger.info(`Logging analytics event: reply_declined, reason=${declineReason}`);
+            await logAnalyticsEvent(
+                'reply_declined',
+                guildId,
+                message.channel.id,
+                message.author.id,
+                {
+                    reason: declineReason,
+                    fullReason: replyDecision.reason,
+                    username: message.author.username,
+                    channelName: channelName
+                }
+            );
             return;
         }
 
@@ -245,6 +307,39 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
                 : provider === 'qwen'
                     ? (apiConfig.qwenModel ?? 'qwen-plus')
                     : (apiConfig.geminiModel ?? 'gemini-2.0-flash');
+
+            await logAnalyticsEvent(
+                'reply_sent',
+                message.guild.id,
+                message.channel.id,
+                message.author.id,
+                {
+                    processingTimeMs: processingTimeMs,
+                    promptTokens: usageMetadata?.promptTokenCount ?? 0,
+                    responseTokens: usageMetadata?.candidatesTokenCount ?? 0,
+                    replyLength: finalReply.length,
+                    contextLength: context.length,
+                    provider: provider,
+                    model: providerModel,
+                    username: message.author.username,
+                    channelName: channelName
+                }
+            );
+
+            await logAnalyticsEvent(
+                'llm_call',
+                message.guild.id,
+                message.channel.id,
+                message.author.id,
+                {
+                    provider: provider,
+                    model: providerModel,
+                    latencyMs: processingTimeMs,
+                    promptTokens: usageMetadata?.promptTokenCount ?? 0,
+                    responseTokens: usageMetadata?.candidatesTokenCount ?? 0
+                }
+            );
+
             logger.api(`→ ${provider}(${providerModel}):generateReply() -> Discord API: message.reply()`);
 
             const replyPreview = finalReply.substring(0, 80).replace(/\n/g, ' ');
@@ -253,6 +348,47 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
             logger.warn('No reply text generated by LLM', { guildId });
         }
     } catch (err) {
+        const error = err as Error;
+        let errorType = 'unknown';
+        let statusCode: number | undefined;
+
+        if (error.message.includes('429') || error.message.includes('rate limit')) {
+            errorType = 'rate_limit';
+        } else if (error.message.includes('timeout')) {
+            errorType = 'timeout';
+        } else if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
+            errorType = 'server_error';
+        } else if (error.message.includes('400') || error.message.includes('invalid')) {
+            errorType = 'invalid_request';
+        }
+
+        const errorStatusMatch = error.message.match(/status[:\s]+(\d+)/i);
+        if (errorStatusMatch) {
+            statusCode = parseInt(errorStatusMatch[1], 10);
+        }
+
+        const errorApiConfig = await getApiConfig();
+        const errorProvider = errorApiConfig.provider ?? 'gemini';
+        const errorProviderModel = errorProvider === 'ollama'
+            ? (errorApiConfig.ollamaModel ?? 'llama3.2')
+            : errorProvider === 'qwen'
+                ? (errorApiConfig.qwenModel ?? 'qwen-plus')
+                : (errorApiConfig.geminiModel ?? 'gemini-2.0-flash');
+
+        await logAnalyticsEvent(
+            'llm_error',
+            guildId,
+            message.channel.id,
+            message.author.id,
+            {
+                provider: errorProvider,
+                model: errorProviderModel,
+                errorType: errorType,
+                statusCode: statusCode,
+                message: error.message.substring(0, 500)
+            }
+        ).catch(() => {});
+
         logger.error(`Error handling messageCreate event in guild ${message.guild.name} (${guildId})`, err);
     }
 }

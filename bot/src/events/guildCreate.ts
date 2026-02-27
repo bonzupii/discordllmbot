@@ -8,7 +8,7 @@
  */
 
 import { Guild } from 'discord.js';
-import { logger } from '../../../shared/utils/logger.js';
+import { logger } from '@shared/utils/logger.js';
 import { initializeGuildRelationships } from '../personality/relationships.js';
 import { loadGuildContexts } from '../memory/context.js';
 
