@@ -15,6 +15,9 @@ let isRestarting = false;
 /** Set of listeners to notify when state changes */
 const listeners = new Set<() => void>();
 
+/** Cleanup function for socket */
+let cleanupSocket: (() => void) | null = null;
+
 /**
  * Get or create the socket.io connection
  * Listens for bot:status events to track restart state
@@ -27,6 +30,17 @@ function getSocket(): ReturnType<typeof io> {
       isRestarting = status.isRestarting;
       notifyListeners();
     });
+    
+    // Store cleanup function
+    cleanupSocket = () => {
+      if (socketInstance) {
+        socketInstance.off('bot:status');
+        socketInstance.disconnect();
+        socketInstance = null;
+      }
+      listeners.clear();
+      cleanupSocket = null;
+    };
   }
   return socketInstance;
 }
@@ -43,7 +57,13 @@ function notifyListeners() {
  */
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+    // Cleanup socket if no more listeners
+    if (listeners.size === 0 && cleanupSocket) {
+      cleanupSocket();
+    }
+  };
 }
 
 /**

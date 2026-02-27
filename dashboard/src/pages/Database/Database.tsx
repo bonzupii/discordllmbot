@@ -278,7 +278,7 @@ export default function Database() {
     setColumnWidths(prev => ({ ...prev, [curr.col]: newWidth }));
   }, []);
 
-  const handleResizeEnd = () => setResizing(null);
+  const handleResizeEnd = useCallback(() => setResizing(null), []);
 
   const handleDragStart = (e: React.DragEvent, col: string) => {
     e.dataTransfer.setData('text/plain', col);
@@ -330,7 +330,7 @@ export default function Database() {
       window.removeEventListener('mousemove', handleResizeMove);
       window.removeEventListener('mouseup', handleResizeEnd);
     };
-  }, [resizing, handleResizeMove]);
+  }, [resizing, handleResizeMove, handleResizeEnd]);
 
   const getRelatedTables = (tableName: string) => {
     return relationships.filter(r => r.from_table === tableName || r.to_table === tableName);
@@ -338,11 +338,19 @@ export default function Database() {
 
   useEffect(() => {
     if (activeSection !== 'logs') return;
+
     const socket = io();
-    socket.on('db:log', (line: string) => {
-      setDbLogs(prev => [...prev.slice(-499), line]);
-    });
-    return () => { socket.disconnect(); };
+
+    const handleDbLog = (line: string) => {
+      setDbLogs(prev => [...prev.slice(-199), line]); // Keep last 200 lines
+    };
+
+    socket.on('db:log', handleDbLog);
+
+    return () => {
+      socket.off('db:log', handleDbLog);
+      socket.disconnect();
+    };
   }, [activeSection]);
 
   useEffect(() => {

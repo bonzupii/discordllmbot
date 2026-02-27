@@ -77,19 +77,26 @@ function Logs() {
   useEffect(() => {
     const socket = io();
 
-    socket.on('logs:init', (initialLogs: string[]) => {
+    const handleInit = (initialLogs: string[]) => {
       setLogs(initialLogs.filter((l) => l.trim()));
-    });
+    };
 
-    socket.on('log', (line: string) => {
-      setLogs((prev: string[]) => [...prev.slice(-499), line]); // Keep last 500 lines
-    });
+    const handleLog = (line: string) => {
+      setLogs((prev: string[]) => [...prev.slice(-199), line]); // Keep last 200 lines
+    };
 
-    socket.on('db:log', (line: string) => {
-      setLogs((prev: string[]) => [...prev.slice(-499), line]); // Keep last 500 lines
-    });
+    const handleDbLog = (line: string) => {
+      setLogs((prev: string[]) => [...prev.slice(-199), line]); // Keep last 200 lines
+    };
+
+    socket.on('logs:init', handleInit);
+    socket.on('log', handleLog);
+    socket.on('db:log', handleDbLog);
 
     return () => {
+      socket.off('logs:init', handleInit);
+      socket.off('log', handleLog);
+      socket.off('db:log', handleDbLog);
       socket.disconnect();
     };
   }, []);
