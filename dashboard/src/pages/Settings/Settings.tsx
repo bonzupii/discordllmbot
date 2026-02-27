@@ -36,6 +36,7 @@ import {
   Visibility as VisibilityIcon,
   KeyboardArrowDown as KeyboardArrowDownIcon,
   Gavel as GavelIcon,
+  Extension as ExtensionIcon,
 } from '@mui/icons-material';
 
 import { useGlobalConfig, useSocket } from '@hooks';
@@ -84,7 +85,7 @@ function Settings() {
         throw new Error(data?.error || 'Failed to start Qwen Device Authorization flow');
       }
 
-      const { verificationUriComplete, userCode, expiresIn, interval } = data;
+      const { verificationUriComplete, expiresIn, interval } = data;
 
       // Open authorization URL in a new window
       const authWindow = window.open(verificationUriComplete, 'qwen-oauth', 'width=700,height=800');
@@ -353,6 +354,16 @@ function Settings() {
             }
             id="logger-tab"
             aria-controls="logger-panel"
+          />
+          <Tab
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ExtensionIcon fontSize="small" />
+                <span>Sandbox</span>
+              </Box>
+            }
+            id="sandbox-tab"
+            aria-controls="sandbox-panel"
           />
         </Tabs>
 
@@ -636,11 +647,6 @@ function Settings() {
                 Memory Settings
               </Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12 }}>
-                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                    Provider Settings
-                  </Typography>
-                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
@@ -685,11 +691,6 @@ function Settings() {
                 Logger Settings
               </Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12 }}>
-                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
-                    Provider Settings
-                  </Typography>
-                </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
@@ -725,6 +726,76 @@ function Settings() {
                       />
                     }
                     label="Log SQL Queries"
+                  />
+                </Grid>
+              </Grid>
+            </>
+          )}
+
+          {/* Sandbox Settings Tab */}
+          {activeTab === 4 && (
+            <>
+              <Typography
+                variant="h6"
+                gutterBottom
+                component="div"
+                sx={{
+                  fontSize: '0.9rem',
+                  color: 'text.secondary',
+                  mb: 2,
+                }}
+                id="sandbox-panel"
+                role="tabpanel"
+              >
+                Sandbox Settings
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    The sandbox runs Docker commands in an isolated container. Only enable if you understand the security implications.
+                  </Alert>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={config.sandbox.enabled}
+                        onChange={(e) => updateNested('sandbox.enabled', e.target.checked, isRestarting)}
+                        color="primary"
+                        disabled={isRestarting}
+                      />
+                    }
+                    label="Enable Sandbox"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Timeout (ms)"
+                    value={config.sandbox.timeoutMs}
+                    onChange={(e) => updateNested('sandbox.timeoutMs', parseInt(e.target.value), isRestarting)}
+                    variant="outlined"
+                    disabled={isRestarting}
+                    helperText="Maximum execution time for sandbox commands"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>
+                    Allowed Commands
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    value={config.sandbox.allowedCommands.join(', ')}
+                    onChange={(e) => {
+                      const commands = e.target.value.split(',').map(c => c.trim()).filter(Boolean);
+                      updateNested('sandbox.allowedCommands', commands, isRestarting);
+                    }}
+                    variant="outlined"
+                    disabled={isRestarting}
+                    helperText="Comma-separated list of allowed Docker subcommands"
                   />
                 </Grid>
               </Grid>

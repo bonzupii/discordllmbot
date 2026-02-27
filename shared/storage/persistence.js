@@ -263,7 +263,8 @@ export async function getGlobalConfig() {
                llmGeminiApiKey, llmOllamaApiKey, llmQwenApiKey,
                llmRetryAttempts, llmRetryBackoffMs,
                memoryMaxMessages, memoryMaxMessageAgeDays,
-               loggerMaxLogLines, loggerLogReplyDecisions, loggerLogSql
+               loggerMaxLogLines, loggerLogReplyDecisions, loggerLogSql,
+               sandboxEnabled, sandboxTimeoutMs, sandboxAllowedCommands
         FROM global_config
         WHERE id = $1
     `, ['global']);
@@ -298,6 +299,11 @@ export async function getGlobalConfig() {
             maxLogLines: row.loggermaxloglines,
             logReplyDecisions: row.loggerlogreplydecisions,
             logSql: row.loggerlogsql,
+        },
+        sandbox: {
+            enabled: row.sandboxenabled ?? false,
+            timeoutMs: row.sandboxtimeoutms ?? 30000,
+            allowedCommands: row.sandboxallowedcommands ?? ['ps', 'stats', 'images', 'top', 'logs', 'inspect', 'version', 'info'],
         },
     };
 }

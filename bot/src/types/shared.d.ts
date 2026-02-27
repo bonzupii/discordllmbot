@@ -7,6 +7,13 @@ export interface GlobalConfig {
     llm: ApiConfig;
     memory: MemoryConfig;
     logger: LoggerConfig;
+    sandbox: SandboxConfig;
+}
+
+export interface SandboxConfig {
+    enabled: boolean;
+    timeoutMs: number;
+    allowedCommands: string[];
 }
 
 export interface BotPersonaConfig {
@@ -72,6 +79,7 @@ export async function getGlobalMemoryConfig(): Promise<MemoryConfig>;
 export async function getApiConfig(): Promise<ApiConfig>;
 export async function getReplyBehavior(guildId: string): Promise<ReplyBehaviorConfig>;
 export async function getLoggerConfig(guildId: string): Promise<LoggerConfig>;
+export async function getSandboxConfig(): Promise<SandboxConfig>;
 export function setSqlLoggingEnabled(enabled: boolean): void;
 export function isSqlLoggingEnabled(): boolean;
 export function clearServerConfigCache(guildId: string): void;

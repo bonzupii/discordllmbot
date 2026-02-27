@@ -31,6 +31,7 @@ Use the current normalized schema:
 - `llm`: `provider`, `geminiModel`, `ollamaModel`, `retryAttempts`, `retryBackoffMs`
 - `memory`: `maxMessages`, `maxMessageAgeDays`
 - `logger`: `maxLogLines`, `logReplyDecisions`, `logSql`
+- `sandbox`: `enabled`, `timeoutMs`, `allowedCommands[]`
 
 ### Server config (`server_configs`)
 - `nickname`
@@ -200,6 +201,7 @@ bot/src/
     index.ts                        # Unified LLM provider interface
     gemini.ts                       # Google Gemini API with retry logic
     ollama.ts                       # Ollama local models with retry logic
+    qwen.ts                         # Qwen API with OAuth support
   memory/
     context.ts                      # Channel-specific history + persistence
   personality/
@@ -207,8 +209,12 @@ bot/src/
     relationships.ts                # Per-user relationship management
   core/
     prompt.ts                       # Builds prompts for LLM
-    replyDecider.ts                  # Reply decision logic
+    replyDecider.ts                 # Reply decision logic
     responseDelay.ts                # Human-like delay calculation
+  sandbox/
+    dockerExecutor.ts               # Docker container executor for sandbox commands
+    commandExtractor.ts              # LLM-based command extraction
+    index.ts                        # Sandbox module exports
   events/
     messageCreate.ts                # Message handling and reply logic
     guildCreate.ts                  # Guild join event handler
@@ -239,10 +245,12 @@ dashboard/src/
 
 - **`bot/src/index.ts`**: Discord client setup, event registration, graceful shutdown
 - **`bot/src/api/server.ts`**: Express + Socket.io API serving the dashboard
-- **`bot/src/llm/index.ts`**: Unified interface for Gemini and Ollama providers
+- **`bot/src/llm/index.ts`**: Unified interface for Gemini, Ollama, and Qwen providers
 - **`bot/src/memory/context.ts`**: Per-channel message history (in-memory cache + PostgreSQL persistence)
 - **`bot/src/personality/relationships.ts`**: Per-user relationship management
 - **`bot/src/core/replyDecider.ts`**: Reply decision logic with configurable checks
+- **`bot/src/sandbox/dockerExecutor.ts`**: Executes commands in isolated Docker containers
+- **`bot/src/sandbox/commandExtractor.ts`**: Uses LLM to extract shell commands from user requests
 - **`shared/storage/persistence.ts`**: All database CRUD operations
 - **`shared/config/configLoader.ts`**: Loads global and per-server configuration from PostgreSQL
 - **`shared/utils/logger.ts`**: Multi-level logging to file and console
@@ -256,6 +264,7 @@ dashboard/src/
 - **Exponential Backoff:** Retry logic with jitter in LLM calls
 - **In-memory Cache:** `guildRelationships` and `guildContexts` with DB persistence
 - **Debounced Auto-save:** Dashboard settings save after 1-second delay to prevent API spam
+- **Docker Sandbox:** Commands run in isolated containers via Docker-in-Docker (DinD) for security
 
 ---
 
@@ -264,7 +273,7 @@ dashboard/src/
 | Page | Features |
 |------|----------|
 | **Dashboard** | Stats (replies, active servers/users), activity volume, system health |
-| **Settings** | Global config with tabs (Bot Persona, LLM, Memory, Logger), auto-save debouncing |
+| **Settings** | Global config with tabs (Bot Persona, LLM, Memory, Logger, Sandbox), auto-save debouncing |
 | **Servers** | Server list with per-server config, user relationships, channel monitoring |
 | **Logs** | Real-time Socket.io streaming, filter by level, auto-scroll toggle |
 | **Playground** | Chat interface to test bot responses |

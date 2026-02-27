@@ -103,6 +103,11 @@ export interface BotConfig {
     logReplyDecisions: boolean;
     logSql: boolean;
   };
+  sandbox: {
+    enabled: boolean;
+    timeoutMs: number;
+    allowedCommands: string[];
+  };
 }
 
 export interface ChatMessage {

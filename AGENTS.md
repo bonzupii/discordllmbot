@@ -62,6 +62,7 @@ Represents system-wide config and maps to:
 - `llm`: `provider`, `geminiModel`, `ollamaModel`, `retryAttempts`, `retryBackoffMs`
 - `memory`: `maxMessages`, `maxMessageAgeDays`
 - `logger`: `maxLogLines`, `logReplyDecisions`, `logSql`
+- `sandbox`: `enabled`, `timeoutMs`, `allowedCommands[]`
 
 ### Server config (`server_configs`)
 
@@ -92,10 +93,11 @@ Represents per-guild settings and maps to:
 bot/src/
   index.ts              # Main entry, Discord client setup
   api/server.ts         # Express + Socket.io API (port 3000)
-  llm/                  # LLM providers (gemini, ollama)
+  llm/                  # LLM providers (gemini, ollama, qwen)
   memory/               # Per-channel message history
   personality/          # Bot persona + relationships
   core/                 # Prompt building, reply decisions
+  sandbox/              # Docker sandbox executor for isolated command execution
   events/               # Discord event handlers
   utils/                # Utility functions
 
@@ -179,6 +181,7 @@ import { useHealth } from '@hooks';
 3. **In-memory Cache + DB Persistence** - `guildRelationships` and `guildContexts` cached in memory, persisted to PostgreSQL
 4. **Lock Mechanism** - Prevents race conditions during schema setup
 5. **Configuration** - All config in PostgreSQL (`global_config`, `server_configs` tables)
+6. **Docker Sandbox** - Isolated container execution for user commands via Docker-in-Docker (DinD)
 
 ---
 

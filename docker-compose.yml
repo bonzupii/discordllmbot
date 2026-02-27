@@ -89,3 +89,26 @@ services:
         condition: service_healthy
     env_file:
       - ./.env
+
+  sandbox:
+    container_name: discordllmbot-sandbox
+    image: docker:24-dind
+    restart: always
+    privileged: true
+    volumes:
+      - sandbox-data:/var/lib/docker
+      - sandbox-containerd:/var/lib/containerd
+    ports:
+      - "2376:2375"
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+      DOCKER_HOST: "tcp://localhost:2375"
+    healthcheck:
+      test: ["CMD-SHELL", "docker info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  sandbox-data:
+  sandbox-containerd:

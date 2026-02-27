@@ -17,6 +17,9 @@ import { buildPrompt } from '../core/prompt.js';
 import { shouldReply } from '../core/replyDecider.js';
 import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '../../../shared/config/configLoader.js';
 import { getAllRelationships } from '../personality/relationships.js';
+import { extractDockerCommand, executeInSandbox, isSandboxEnabled } from '../sandbox/index.js';
+
+const SANDBOX_KEYWORDS = ['docker', 'sandbox', 'container', 'docker command'];
 
 /**
  * Handles the messageCreate Discord event.
@@ -105,7 +108,63 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
             guildId
         });
 
-        const isMentioned = message.mentions.has(client.user);
+        const botUserId = client.user?.id;
+        const isMentioned = botUserId ? message.mentions.has(botUserId) : false;
+        
+        const hasSandboxKeyword = SANDBOX_KEYWORDS.some(keyword => 
+            cleanMessage.toLowerCase().includes(keyword)
+        );
+        
+        const hasDockerCommandIntent = cleanMessage.toLowerCase().includes('docker command');
+        const requiresMention = replyBehavior.mentionOnly;
+        
+        const isSandboxRequest = !requiresMention 
+            ? (hasSandboxKeyword || hasDockerCommandIntent)
+            : (isMentioned && (hasSandboxKeyword || hasDockerCommandIntent));
+
+        logger.info('Mention and sandbox detection', { isMentioned, hasSandboxKeyword, isSandboxRequest, requiresMention, cleanMessage: cleanMessage.substring(0, 50) });
+
+        if (isSandboxRequest) {
+            logger.info('Detected sandbox request', { guildId, cleanMessage });
+            
+            const sandboxEnabled = await isSandboxEnabled();
+            
+            if (!sandboxEnabled) {
+                await message.reply('Sandbox is currently disabled. Enable it in the bot settings.');
+                return;
+            }
+
+            try {
+                const dockerCommand = await extractDockerCommand(cleanMessage);
+                
+                if (!dockerCommand) {
+                    await message.reply('I couldn\'t understand that as a Docker command. Try something like "docker ps" or "check container stats".');
+                    return;
+                }
+
+                logger.info('Executing docker command in sandbox', { command: dockerCommand });
+                const result = await executeInSandbox(dockerCommand);
+                
+                let response: string;
+                if (result.success) {
+                    response = `\`$ ${dockerCommand}\`\n\n${result.stdout || result.stderr || '(no output)'}`;
+                } else {
+                    response = `Command failed: ${result.error || `Exit code: ${result.exitCode}`}`;
+                }
+
+                if (response.length > 1900) {
+                    response = response.substring(0, 1897) + '...';
+                }
+
+                await message.reply(response);
+                return;
+            } catch (sandboxErr) {
+                logger.error('Sandbox execution failed', sandboxErr);
+                await message.reply(`Sandbox error: ${sandboxErr instanceof Error ? sandboxErr.message : String(sandboxErr)}`);
+                return;
+            }
+        }
+
         logger.info('Evaluating reply decision', {
             guildId,
             isMentioned,
@@ -174,7 +233,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
             await addMessage(
                 guildId,
                 message.channel.id,
-                client.user.id,
+                client.user?.id ?? 'bot',
                 botConfig.name,
                 finalReply
             );

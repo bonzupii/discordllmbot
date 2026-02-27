@@ -39,12 +39,14 @@ The API server lives inside the bot process (`bot/src/api/server.ts`) and serves
   - `guildSpecificChannels` - Per-guild channel allowed/ignored lists
 
 - **Web Dashboard**: React-based dashboard (port 5173) with:
-  - **Settings Page**: Global config with tabs (Bot Persona, LLM, Memory, Logger), auto-save with debouncing
+  - **Settings Page**: Global config with tabs (Bot Persona, LLM, Memory, Logger, Sandbox), auto-save with debouncing
   - **Servers Page**: Per-server configuration, user relationships, channel monitoring
   - **Logs Page**: Real-time Socket.io log streaming with filtering
   - **Playground Page**: Test bot responses without Discord
 
-- **Multi-provider LLM support**: Unified interface for Google's Gemini API and local Ollama models.
+- **Multi-provider LLM support**: Unified interface for Google's Gemini API, local Ollama models, and Qwen API with OAuth.
+
+- **Docker Sandbox**: Execute shell commands in isolated containers via Docker-in-Docker. Users can trigger sandbox execution with messages containing "docker command". Commands are extracted via LLM and run in ephemeral Alpine containers within the sandbox Docker daemon.
 
 ---
 

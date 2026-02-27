@@ -49,6 +49,11 @@ const DEFAULT_GLOBAL_CONFIG = {
         logReplyDecisions: false,
         logSql: false,
     },
+    sandbox: {
+        enabled: false,
+        timeoutMs: 30000,
+        allowedCommands: ['ps', 'stats', 'images', 'top', 'logs', 'inspect', 'version', 'info', 'df', 'free', 'uname'],
+    },
 };
 
 const DEFAULT_SERVER_CONFIG = {
@@ -96,6 +101,13 @@ function normalizeGlobalConfig(config) {
             maxLogLines: source.logger?.maxLogLines ?? DEFAULT_GLOBAL_CONFIG.logger.maxLogLines,
             logReplyDecisions: source.logger?.logReplyDecisions ?? DEFAULT_GLOBAL_CONFIG.logger.logReplyDecisions,
             logSql: source.logger?.logSql ?? DEFAULT_GLOBAL_CONFIG.logger.logSql,
+        },
+        sandbox: {
+            enabled: source.sandbox?.enabled ?? DEFAULT_GLOBAL_CONFIG.sandbox.enabled,
+            timeoutMs: source.sandbox?.timeoutMs ?? DEFAULT_GLOBAL_CONFIG.sandbox.timeoutMs,
+            allowedCommands: Array.isArray(source.sandbox?.allowedCommands)
+                ? source.sandbox.allowedCommands
+                : DEFAULT_GLOBAL_CONFIG.sandbox.allowedCommands,
         },
     };
 
@@ -253,6 +265,11 @@ export async function getReplyBehavior(guildId) {
 export async function getLoggerConfig() {
     const config = await loadConfig();
     return config.logger ?? {};
+}
+
+export async function getSandboxConfig() {
+    const config = await loadConfig();
+    return config.sandbox ?? {};
 }
 
 let sqlLoggingEnabled = false;
