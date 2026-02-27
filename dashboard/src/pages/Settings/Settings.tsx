@@ -3,6 +3,7 @@
  * @module pages/Settings/Settings
  */
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -46,6 +47,11 @@ import { useGlobalConfig, useSocket } from '@hooks';
  * @returns Rendered settings page
  */
 function Settings() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tabNames = ['persona', 'llm', 'memory', 'logger', 'sandbox'];
+  const initialTab = tabParam ? tabNames.indexOf(tabParam) : 0;
+
   const {
     config,
     models,
@@ -65,7 +71,7 @@ function Settings() {
   } = useGlobalConfig();
 
   const { isRestarting } = useSocket();
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(initialTab >= 0 && initialTab < tabNames.length ? initialTab : 0);
   const [activeSpeakingSection, setActiveSpeakingSection] =
     useState('globalRules');
   const [oauthError, setOauthError] = useState<string | null>(null);
@@ -151,12 +157,31 @@ function Settings() {
   };
 
   /**
+   * Clears the Qwen OAuth credentials.
+   */
+  const handleClearQwenOAuth = async () => {
+    setOauthError(null);
+    try {
+      await updateNested('llm.qwenApiKey', '', isRestarting);
+      await refetch();
+      await fetchModels('qwen');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to clear Qwen OAuth';
+      setOauthError(message);
+      console.error(err);
+    }
+  };
+
+  /**
    * Handles tab selection change.
    * @param event - Tab change event
    * @param newValue - New tab index
    */
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', tabNames[newValue]);
+    setSearchParams(newParams, { replace: true });
   };
 
   /**
@@ -257,29 +282,23 @@ function Settings() {
     return <Alert severity="error">Failed to load configuration.</Alert>;
 
 
-  const providerApiKeyPath = config.llm.provider === 'qwen'
-    ? 'llm.qwenApiKey'
-    : config.llm.provider === 'gemini'
-      ? 'llm.geminiApiKey'
-      : 'llm.ollamaApiKey';
+  const providerApiKeyPath = config.llm.provider === 'gemini'
+    ? 'llm.geminiApiKey'
+    : 'llm.ollamaApiKey';
 
-  const providerApiKeyValue = config.llm.provider === 'qwen'
-    ? config.llm.qwenApiKey
-    : config.llm.provider === 'gemini'
-      ? config.llm.geminiApiKey
-      : config.llm.ollamaApiKey;
+  const providerApiKeyValue = config.llm.provider === 'gemini'
+    ? config.llm.geminiApiKey
+    : config.llm.ollamaApiKey;
 
-  const providerApiKeyLockedByEnv = config.llm.provider === 'qwen'
-    ? !!config.llm.qwenApiKeyFromEnv
-    : config.llm.provider === 'gemini'
-      ? !!config.llm.geminiApiKeyFromEnv
-      : !!config.llm.ollamaApiKeyFromEnv;
+  const providerApiKeyLockedByEnv = config.llm.provider === 'gemini'
+    ? !!config.llm.geminiApiKeyFromEnv
+    : !!config.llm.ollamaApiKeyFromEnv;
 
-  const providerApiKeyLabel = config.llm.provider === 'qwen'
-    ? 'Qwen API Key'
-    : config.llm.provider === 'gemini'
-      ? 'Gemini API Key'
-      : 'Ollama API Key (optional)';
+  const isQwenConnected = config.llm.provider === 'qwen' && !!config.llm.qwenApiKey;
+
+  const providerApiKeyLabel = config.llm.provider === 'gemini'
+    ? 'Gemini API Key'
+    : 'Ollama API Key (optional)';
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -528,72 +547,71 @@ function Settings() {
                   </FormControl>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
-                    <InputLabel>{config.llm.provider === 'ollama' ? 'Ollama Model' : config.llm.provider === 'qwen' ? 'Qwen Model' : 'Gemini Model'}</InputLabel>
-                    <Select
-                      value={
-                        models.includes(
-                          config.llm.provider === 'ollama'
-                            ? config.llm.ollamaModel
-                            : config.llm.provider === 'qwen'
-                              ? config.llm.qwenModel
-                              : config.llm.geminiModel
-                        )
-                          ? (config.llm.provider === 'ollama'
-                              ? config.llm.ollamaModel
-                              : config.llm.provider === 'qwen'
-                                ? config.llm.qwenModel
-                                : config.llm.geminiModel)
-                          : ''
-                      }
-                      label={config.llm.provider === 'ollama' ? 'Ollama Model' : config.llm.provider === 'qwen' ? 'Qwen Model' : 'Gemini Model'}
-                      onChange={(e) => updateNested(
-                        config.llm.provider === 'ollama'
-                          ? 'llm.ollamaModel'
-                          : config.llm.provider === 'qwen'
-                            ? 'llm.qwenModel'
-                            : 'llm.geminiModel',
-                        e.target.value,
-                        isRestarting
-                      )}
-                    >
-                      {isFetchingModels ? (
-                        <MenuItem value="">
-                          <CircularProgress size={20} />
-                        </MenuItem>
-                      ) : models.length === 0 ? (
-                        <MenuItem value="" disabled>
-                          No models available
-                        </MenuItem>
-                      ) : (
-                        models.map((m) => (
-                          <MenuItem key={m} value={m}>
-                            {m}
-                          </MenuItem>
-                        ))
-                      )}
-                    </Select>
-                  </FormControl>
+                  {config.llm.provider === 'qwen' ? (
+                    isQwenConnected ? (
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
+                          <InputLabel>Qwen Model</InputLabel>
+                          <Select
+                            value={config.llm.qwenModel || ''}
+                            label="Qwen Model"
+                            onChange={(e) => updateNested('llm.qwenModel', e.target.value, isRestarting)}
+                          >
+                            {models.map((m) => (
+                              <MenuItem key={m} value={m}>
+                                {m}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <Button variant="outlined" color="error" onClick={handleClearQwenOAuth} disabled={isRestarting}>
+                          Disconnect
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Button variant="contained" onClick={handleConnectQwen} disabled={isRestarting}>
+                        Connect Qwen OAuth
+                      </Button>
+                    )
+                  ) : (() => {
+                    const provider = config.llm.provider;
+                    const modelKey = provider === 'ollama' ? 'ollamaModel' : 'geminiModel';
+                    const modelValue = provider === 'ollama' ? config.llm.ollamaModel : config.llm.geminiModel;
+                    const label = provider === 'ollama' ? 'Ollama Model' : 'Gemini Model';
+                    return (
+                      <FormControl fullWidth disabled={isFetchingModels || isRestarting}>
+                        <InputLabel>{label}</InputLabel>
+                        <Select
+                          value={models.includes(modelValue) ? modelValue : ''}
+                          label={label}
+                          onChange={(e) => updateNested(`llm.${modelKey}`, e.target.value, isRestarting)}
+                        >
+                          {models.map((m) => (
+                            <MenuItem key={m} value={m}>
+                              {m}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    );
+                  })()}
                 </Grid>
 
                 <Grid size={{ xs: 12 }}>
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <TextField
-                      fullWidth
-                      type="password"
-                      label={providerApiKeyLabel}
-                      value={providerApiKeyValue}
-                      onChange={(e) => updateNested(providerApiKeyPath, e.target.value, isRestarting)}
-                      variant="outlined"
-                      disabled={isRestarting || providerApiKeyLockedByEnv}
-                      helperText={providerApiKeyLockedByEnv ? 'Managed by .env and cannot be overridden in dashboard.' : ''}
-                    />
-                    {config.llm.provider === 'qwen' && (
-                      <Button variant="outlined" onClick={handleConnectQwen} disabled={isRestarting || providerApiKeyLockedByEnv}>
-                        Connect OAuth
-                      </Button>
-                    )}
-                  </Box>
+                  {config.llm.provider !== 'qwen' && (
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <TextField
+                        fullWidth
+                        type="password"
+                        label={providerApiKeyLabel}
+                        value={providerApiKeyValue}
+                        onChange={(e) => updateNested(providerApiKeyPath, e.target.value, isRestarting)}
+                        variant="outlined"
+                        disabled={isRestarting || providerApiKeyLockedByEnv}
+                        helperText={providerApiKeyLockedByEnv ? 'Managed by .env and cannot be overridden in dashboard.' : ''}
+                      />
+                    </Box>
+                  )}
                 </Grid>
 
                 <Grid size={{ xs: 12 }}>

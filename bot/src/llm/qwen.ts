@@ -1,7 +1,7 @@
 /**
  * Qwen LLM Provider
  *
- * Uses Qwen's OpenAI-compatible API surface.
+ * Uses Qwen OAuth authentication via portal.qwen.ai
  */
 
 import { logger } from '../../../shared/utils/logger.js';
@@ -69,7 +69,7 @@ async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 10
 }
 
 function getQwenBaseUrl(): string {
-    return process.env.QWEN_API_URL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
+    return 'https://portal.qwen.ai/v1';
 }
 
 function resolveQwenApiKey(config: ApiConfig): string {
@@ -79,7 +79,7 @@ function resolveQwenApiKey(config: ApiConfig): string {
     const fromEnv = process.env.QWEN_API_KEY?.trim();
     if (fromEnv) return fromEnv;
 
-    throw new Error('Qwen API key is not configured. Set llm.qwenApiKey in dashboard or QWEN_API_KEY in env.');
+    throw new Error('Qwen API key is not configured. Complete OAuth flow in dashboard.');
 }
 
 export async function generateReply(prompt: string): Promise<QwenResponse> {
@@ -98,7 +98,10 @@ export async function generateReply(prompt: string): Promise<QwenResponse> {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
+                'Authorization': `Bearer ${apiKey}`,
+                'User-Agent': 'QwenCode/1.0 (DiscordBot)',
+                'X-DashScope-CacheControl': 'enable',
+                'X-DashScope-AuthType': 'qwen-oauth',
             },
             body: JSON.stringify({
                 model: qwenModel,
@@ -132,19 +135,5 @@ export async function generateReply(prompt: string): Promise<QwenResponse> {
 }
 
 export async function getAvailableModels(): Promise<string[]> {
-    const apiCfg: ApiConfig = await getApiConfig();
-    const apiKey = resolveQwenApiKey(apiCfg);
-
-    const res = await fetch(`${getQwenBaseUrl()}/models`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${apiKey}` },
-    });
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        throw new QwenAPIError(`Qwen API error fetching models: ${res.status}${errorText ? `: ${errorText}` : ''}`, res.status, res.status >= 500 || res.status === 429);
-    }
-
-    const data = await res.json() as { data?: Array<{ id?: string }> };
-    return (data?.data ?? []).map(model => model.id || '').filter(Boolean);
+    return ['coder-model', 'vision-model'];
 }

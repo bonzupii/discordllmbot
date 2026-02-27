@@ -76,35 +76,35 @@ function normalizeGlobalConfig(config) {
 
     const normalized = {
         botPersona: {
-            username: source.botPersona?.username ?? DEFAULT_GLOBAL_CONFIG.botPersona.username,
-            description: source.botPersona?.description ?? DEFAULT_GLOBAL_CONFIG.botPersona.description,
+            username: source.botPersona?.username || DEFAULT_GLOBAL_CONFIG.botPersona.username,
+            description: source.botPersona?.description || DEFAULT_GLOBAL_CONFIG.botPersona.description,
             globalRules: Array.isArray(source.botPersona?.globalRules)
                 ? source.botPersona.globalRules
                 : DEFAULT_GLOBAL_CONFIG.botPersona.globalRules,
         },
         llm: {
-            provider: source.llm?.provider ?? DEFAULT_GLOBAL_CONFIG.llm.provider,
-            geminiModel: source.llm?.geminiModel ?? DEFAULT_GLOBAL_CONFIG.llm.geminiModel,
-            ollamaModel: source.llm?.ollamaModel ?? DEFAULT_GLOBAL_CONFIG.llm.ollamaModel,
-            qwenModel: source.llm?.qwenModel ?? DEFAULT_GLOBAL_CONFIG.llm.qwenModel,
-            geminiApiKey: source.llm?.geminiApiKey ?? DEFAULT_GLOBAL_CONFIG.llm.geminiApiKey,
-            ollamaApiKey: source.llm?.ollamaApiKey ?? DEFAULT_GLOBAL_CONFIG.llm.ollamaApiKey,
-            qwenApiKey: source.llm?.qwenApiKey ?? DEFAULT_GLOBAL_CONFIG.llm.qwenApiKey,
-            retryAttempts: source.llm?.retryAttempts ?? DEFAULT_GLOBAL_CONFIG.llm.retryAttempts,
-            retryBackoffMs: source.llm?.retryBackoffMs ?? DEFAULT_GLOBAL_CONFIG.llm.retryBackoffMs,
+            provider: source.llm?.provider || DEFAULT_GLOBAL_CONFIG.llm.provider,
+            geminiModel: source.llm?.geminiModel || DEFAULT_GLOBAL_CONFIG.llm.geminiModel,
+            ollamaModel: source.llm?.ollamaModel || DEFAULT_GLOBAL_CONFIG.llm.ollamaModel,
+            qwenModel: source.llm?.qwenModel || DEFAULT_GLOBAL_CONFIG.llm.qwenModel,
+            geminiApiKey: source.llm?.geminiApiKey || '',
+            ollamaApiKey: source.llm?.ollamaApiKey || '',
+            qwenApiKey: source.llm?.qwenApiKey || '',
+            retryAttempts: Number(source.llm?.retryAttempts) || DEFAULT_GLOBAL_CONFIG.llm.retryAttempts,
+            retryBackoffMs: Number(source.llm?.retryBackoffMs) || DEFAULT_GLOBAL_CONFIG.llm.retryBackoffMs,
         },
         memory: {
-            maxMessages: source.memory?.maxMessages ?? DEFAULT_GLOBAL_CONFIG.memory.maxMessages,
-            maxMessageAgeDays: source.memory?.maxMessageAgeDays ?? DEFAULT_GLOBAL_CONFIG.memory.maxMessageAgeDays,
+            maxMessages: Number(source.memory?.maxMessages) || DEFAULT_GLOBAL_CONFIG.memory.maxMessages,
+            maxMessageAgeDays: Number(source.memory?.maxMessageAgeDays) || DEFAULT_GLOBAL_CONFIG.memory.maxMessageAgeDays,
         },
         logger: {
-            maxLogLines: source.logger?.maxLogLines ?? DEFAULT_GLOBAL_CONFIG.logger.maxLogLines,
-            logReplyDecisions: source.logger?.logReplyDecisions ?? DEFAULT_GLOBAL_CONFIG.logger.logReplyDecisions,
-            logSql: source.logger?.logSql ?? DEFAULT_GLOBAL_CONFIG.logger.logSql,
+            maxLogLines: Number(source.logger?.maxLogLines) || DEFAULT_GLOBAL_CONFIG.logger.maxLogLines,
+            logReplyDecisions: Boolean(source.logger?.logReplyDecisions),
+            logSql: Boolean(source.logger?.logSql),
         },
         sandbox: {
-            enabled: source.sandbox?.enabled ?? DEFAULT_GLOBAL_CONFIG.sandbox.enabled,
-            timeoutMs: source.sandbox?.timeoutMs ?? DEFAULT_GLOBAL_CONFIG.sandbox.timeoutMs,
+            enabled: Boolean(source.sandbox?.enabled),
+            timeoutMs: Number(source.sandbox?.timeoutMs) || DEFAULT_GLOBAL_CONFIG.sandbox.timeoutMs,
             allowedCommands: Array.isArray(source.sandbox?.allowedCommands)
                 ? source.sandbox.allowedCommands
                 : DEFAULT_GLOBAL_CONFIG.sandbox.allowedCommands,

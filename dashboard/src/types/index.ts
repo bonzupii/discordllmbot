@@ -90,7 +90,6 @@ export interface BotConfig {
     qwenApiKey: string;
     geminiApiKeyFromEnv?: boolean;
     ollamaApiKeyFromEnv?: boolean;
-    qwenApiKeyFromEnv?: boolean;
     retryAttempts: number;
     retryBackoffMs: number;
   };

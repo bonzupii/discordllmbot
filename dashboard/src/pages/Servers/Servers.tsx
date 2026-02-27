@@ -3,6 +3,7 @@
  * @module pages/Servers/Servers
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Table,
@@ -31,6 +32,9 @@ import type { BotConfig } from '@types';
  * @returns Rendered servers page
  */
 function Servers() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const expandedParam = searchParams.get('expanded');
+
   // ===========================================================================
   // HOOKS: Get server list and socket state
   // ===========================================================================
@@ -44,7 +48,7 @@ function Servers() {
   const [config, setConfig] = useState<BotConfig | null>(null);
   
   // Currently expanded server (for collapsible row)
-  const [expandedServerId, setExpandedServerId] = useState(null);
+  const [expandedServerId, setExpandedServerId] = useState<string | null>(expandedParam);
   
   // Tab selection per server (0=Config, 1=Relationships, 2=Channels)
   const [serverTabs, setServerTabs] = useState({});
@@ -103,6 +107,19 @@ function Servers() {
     fetchConfig();
   }, [fetchConfig]);
 
+  // Sync expanded server with URL - clear if server no longer exists
+  useEffect(() => {
+    if (expandedServerId && servers.length > 0) {
+      const serverExists = servers.some((s) => s.id === expandedServerId);
+      if (!serverExists) {
+        setExpandedServerId(null);
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('expanded');
+        setSearchParams(newParams, { replace: true });
+      }
+    }
+  }, [expandedServerId, servers, searchParams, setSearchParams]);
+
   // ===========================================================================
   // HANDLERS: Server row expansion
   // ===========================================================================
@@ -110,11 +127,17 @@ function Servers() {
   const toggleExpand = useCallback((guildId) => {
     if (expandedServerId === guildId) {
       setExpandedServerId(null);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('expanded');
+      setSearchParams(newParams, { replace: true });
     } else {
       setExpandedServerId(guildId);
       setServerTabs((prev) => ({ ...prev, [guildId]: 0 }));
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('expanded', guildId);
+      setSearchParams(newParams, { replace: true });
     }
-  }, [expandedServerId]);
+  }, [expandedServerId, searchParams, setSearchParams]);
 
   // ===========================================================================
   // HANDLERS: Server actions

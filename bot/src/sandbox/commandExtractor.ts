@@ -45,6 +45,7 @@ export async function extractDockerCommand(userMessage: string): Promise<string 
         extracted = extracted
             .replace(/^Output:\s*/i, '')
             .replace(/^Command:\s*/i, '')
+            .replace(/^Command to run inside the container:\s*/i, '')
             .replace(/^The user wants to run the command.*?"/i, '')
             .replace(/^['"]?/i, '')
             .replace(/['"]?\s*$/i, '')
