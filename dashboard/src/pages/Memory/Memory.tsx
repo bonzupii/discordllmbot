@@ -78,9 +78,18 @@ export default function Memory() {
   const loadChannels = async (guildId: string) => {
     try {
       const response = await serversApi.getChannels(guildId);
-      setChannels(response.data.map((ch: any) => ({ id: ch.id, name: ch.name })));
-      if (response.data.length > 0) {
-        setSelectedChannel(response.data[0].id);
+      const serverChannels = response.data.map((ch: any) => ({ id: ch.id, name: ch.name }));
+      
+      // Always include the system ingestion channel for global knowledge
+      setChannels([
+        { id: 'system-ingestion', name: 'SYSTEM INGESTION (Global)' },
+        ...serverChannels
+      ]);
+      
+      if (serverChannels.length > 0) {
+        setSelectedChannel(serverChannels[0].id);
+      } else {
+        setSelectedChannel('system-ingestion');
       }
     } catch (error) {
       console.error('Failed to load channels', error);
@@ -98,6 +107,8 @@ export default function Memory() {
       </Box>
     );
   }
+
+  const isSystemChannel = selectedChannel === 'system-ingestion';
 
   return (
     <Box sx={{ p: 2 }}>
@@ -126,26 +137,30 @@ export default function Memory() {
             </Select>
           </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Select Channel</InputLabel>
+          <FormControl size="small" sx={{ minWidth: 250 }}>
+            <InputLabel>Select Channel Source</InputLabel>
             <Select
               value={selectedChannel}
-              label="Select Channel"
+              label="Select Channel Source"
               onChange={(e) => setSelectedChannel(e.target.value)}
               disabled={!selectedServer}
             >
               {channels.map((channel) => (
-                <MenuItem key={channel.id} value={channel.id}>
-                  #{channel.name}
+                <MenuItem 
+                  key={channel.id} 
+                  value={channel.id}
+                  sx={{ color: channel.id === 'system-ingestion' ? 'secondary.main' : 'inherit', fontWeight: channel.id === 'system-ingestion' ? 'bold' : 'normal' }}
+                >
+                  {channel.id === 'system-ingestion' ? channel.name : `#${channel.name}`}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
 
           <Chip
-            label={`Channel-scoped view`}
+            label={isSystemChannel ? 'Ingested Knowledge' : 'Channel-scoped Memory'}
             size="small"
-            color="info"
+            color={isSystemChannel ? 'secondary' : 'info'}
             variant="outlined"
           />
         </Stack>

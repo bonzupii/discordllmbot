@@ -3,7 +3,7 @@
  * Browse and search through stored memories
  * @module pages/Memory/MemoryBrowser
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   TextField,
@@ -17,10 +17,24 @@ import {
   Paper,
   IconButton,
   Collapse,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  ToggleButtonGroup,
+  ToggleButton,
+  Divider,
+  Grid,
+  CircularProgress,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  Sort as SortIcon,
+  FilterList as FilterIcon,
+  History as HistoryIcon,
+  TrendingUp as UrgencyIcon,
+  AutoAwesome as KnowledgeIcon,
 } from '@mui/icons-material';
 import api from '@services/api';
 
@@ -30,6 +44,9 @@ interface Memory {
   summary: string;
   content?: string;
   urgency: number;
+  createdat: string;
+  channelid: string;
+  metadata?: Record<string, any>;
   members?: Array<{
     nodetype: string;
     name: string;
@@ -42,25 +59,30 @@ interface MemoryBrowserProps {
   channelId: string;
 }
 
+type SortBy = 'newest' | 'urgency';
+
 export function MemoryBrowser({ guildId, channelId }: MemoryBrowserProps) {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('urgency');
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const memoriesPerPage = 20;
+  const memoriesPerPage = 15;
 
   useEffect(() => {
-    if (guildId && channelId) {
+    if (guildId) {
       loadMemories();
     }
-  }, [guildId, channelId, page]);
+  }, [guildId, channelId]);
 
   const loadMemories = async () => {
     setLoading(true);
     try {
+      // Fetch more memories to allow better local filtering/sorting
       const response = await api.get(`/hypergraph/${guildId}/memories`, {
-        params: { channelId, minUrgency: 0, limit: 100 }
+        params: { channelId, minUrgency: 0, limit: 200 }
       });
       setMemories(response.data);
     } catch (error) {
@@ -70,12 +92,25 @@ export function MemoryBrowser({ guildId, channelId }: MemoryBrowserProps) {
     }
   };
 
-  const filteredMemories = memories.filter(m =>
-    m.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.content?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const processedMemories = useMemo(() => {
+    let filtered = memories.filter(m =>
+      m.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.content?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  const paginatedMemories = filteredMemories.slice(
+    if (filterType !== 'all') {
+      filtered = filtered.filter(m => m.edgetype === filterType);
+    }
+
+    return filtered.sort((a, b) => {
+      if (sortBy === 'newest') {
+        return new Date(b.createdat).getTime() - new Date(a.createdat).getTime();
+      }
+      return (b.urgency || 0) - (a.urgency || 0);
+    });
+  }, [memories, searchTerm, filterType, sortBy]);
+
+  const paginatedMemories = processedMemories.slice(
     (page - 1) * memoriesPerPage,
     page * memoriesPerPage
   );
@@ -92,29 +127,76 @@ export function MemoryBrowser({ guildId, channelId }: MemoryBrowserProps) {
 
   return (
     <Box>
-      <TextField
-        fullWidth
-        label="Search memories..."
-        value={searchTerm}
-        onChange={(e) => {
-          setSearchTerm(e.target.value);
-          setPage(1);
-        }}
-        sx={{ mb: 2 }}
-        size="small"
-      />
+      <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'action.hover' }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Search keywords..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
+              size="small"
+              sx={{ bgcolor: 'background.paper' }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={filterType}
+                label="Type"
+                onChange={(e) => setFilterType(e.target.value)}
+                sx={{ bgcolor: 'background.paper' }}
+              >
+                <MenuItem value="all">All Memories</MenuItem>
+                <MenuItem value="fact">Facts (Ingested)</MenuItem>
+                <MenuItem value="observation">Observations</MenuItem>
+                <MenuItem value="conversation">Conversations</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={5}>
+            <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <Typography variant="caption" sx={{ alignSelf: 'center', color: 'text.secondary', fontWeight: 'bold' }}>SORT BY:</Typography>
+              <ToggleButtonGroup
+                value={sortBy}
+                exclusive
+                onChange={(_e, val) => val && setSortBy(val)}
+                size="small"
+                sx={{ bgcolor: 'background.paper' }}
+              >
+                <ToggleButton value="urgency">
+                  <UrgencyIcon sx={{ fontSize: 18, mr: 0.5 }} /> Urgency
+                </ToggleButton>
+                <ToggleButton value="newest">
+                  <HistoryIcon sx={{ fontSize: 18, mr: 0.5 }} /> Newest
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+          </Grid>
+        </Grid>
+      </Paper>
 
       {loading ? (
         <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography color="text.secondary">Loading memories...</Typography>
+          <CircularProgress size={30} sx={{ mb: 2 }} />
+          <Typography color="text.secondary">Retrieving neural records...</Typography>
         </Box>
-      ) : filteredMemories.length === 0 ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography color="text.secondary">No memories found</Typography>
-        </Box>
+      ) : processedMemories.length === 0 ? (
+        <Paper variant="outlined" sx={{ p: 6, textAlign: 'center', borderStyle: 'dashed' }}>
+          <Typography color="text.secondary">No memories match your criteria</Typography>
+        </Paper>
       ) : (
         <>
-          <List>
+          <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="caption" color="text.secondary">
+              Showing {paginatedMemories.length} of {processedMemories.length} memories
+            </Typography>
+          </Box>
+          <List sx={{ p: 0 }}>
             {paginatedMemories.map((memory) => (
               <MemoryListItem
                 key={memory.id}
@@ -126,12 +208,13 @@ export function MemoryBrowser({ guildId, channelId }: MemoryBrowserProps) {
             ))}
           </List>
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
             <Pagination
-              count={Math.ceil(filteredMemories.length / memoriesPerPage)}
+              count={Math.ceil(processedMemories.length / memoriesPerPage)}
               page={page}
               onChange={(_e, value) => setPage(value)}
-              size="small"
+              color="primary"
+              size="medium"
             />
           </Box>
         </>
@@ -148,44 +231,85 @@ interface MemoryListItemProps {
 }
 
 function MemoryListItem({ memory, expanded, onToggle, getEdgeTypeColor }: MemoryListItemProps) {
+  const isIngested = memory.channelid === 'system-ingestion';
+  const sourceInfo = memory.metadata?.source === 'rss' 
+    ? `RSS: ${memory.metadata?.url?.split('/')[2] || 'Feed'}`
+    : memory.metadata?.source === 'upload'
+    ? `Doc: ${memory.metadata?.filename}`
+    : null;
+
   return (
     <ListItem
       sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        mb: 1,
+        border: '1px solid',
+        borderColor: expanded ? 'primary.main' : 'divider',
+        borderRadius: 2,
+        mb: 1.5,
         flexDirection: 'column',
         alignItems: 'flex-start',
         bgcolor: 'background.paper',
+        transition: 'all 0.2s',
+        boxShadow: expanded ? 2 : 0,
+        '&:hover': {
+          borderColor: 'primary.light',
+          bgcolor: 'rgba(25, 118, 210, 0.02)'
+        }
       }}
     >
-      <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', gap: 1 }}>
+      <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-start', gap: 1, py: 1 }}>
         <Box sx={{ flex: 1 }}>
-          <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap' }}>
-            <Chip label={memory.edgetype} color={getEdgeTypeColor(memory.edgetype)} size="small" />
-            <Chip label={`Urgency: ${memory.urgency?.toFixed(2)}`} size="small" variant="outlined" />
-            <Chip label={`ID: ${memory.id}`} size="small" variant="outlined" sx={{ fontSize: '0.7rem' }} />
+          <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
+            <Chip 
+              label={memory.edgetype} 
+              color={getEdgeTypeColor(memory.edgetype)} 
+              size="small" 
+              sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem', textTransform: 'uppercase' }} 
+            />
+            {isIngested && (
+              <Chip 
+                icon={<KnowledgeIcon sx={{ fontSize: '12px !important' }} />}
+                label="Ingested" 
+                size="small" 
+                color="secondary"
+                variant="outlined"
+                sx={{ height: 20, fontSize: '0.65rem' }} 
+              />
+            )}
+            {sourceInfo && (
+              <Typography variant="caption" sx={{ color: 'text.secondary', alignSelf: 'center', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                {sourceInfo}
+              </Typography>
+            )}
+            <Box sx={{ flexGrow: 1 }} />
+            <Typography variant="caption" sx={{ color: 'text.disabled', alignSelf: 'center' }}>
+              {new Date(memory.createdat).toLocaleDateString()} {new Date(memory.createdat).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Typography>
           </Stack>
 
-          <Typography variant="body1" fontWeight="medium">
+          <Typography variant="body1" fontWeight={expanded ? 'bold' : 'medium'} sx={{ lineHeight: 1.4 }}>
             {memory.summary}
           </Typography>
         </Box>
 
-        <IconButton size="small" onClick={onToggle}>
+        <IconButton size="small" onClick={onToggle} sx={{ mt: -0.5 }}>
           {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </IconButton>
       </Box>
 
-      <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Box sx={{ mt: 1, width: '100%' }}>
+      <Collapse in={expanded} timeout="auto" unmountOnExit sx={{ width: '100%' }}>
+        <Divider sx={{ my: 1, borderStyle: 'dashed' }} />
+        <Box sx={{ pb: 2, width: '100%' }}>
           {memory.content && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1, fontStyle: 'italic' }}>
-              "{memory.content}"
-            </Typography>
+            <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1, borderLeft: '4px solid', borderLeftColor: 'divider' }}>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'text.primary', fontSize: '0.85rem' }}>
+                {memory.content}
+              </Typography>
+            </Box>
           )}
 
+          <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 1, textTransform: 'uppercase' }}>
+            Associated Entities
+          </Typography>
           <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
             {memory.members?.map((member, idx) => (
               <Chip
@@ -193,12 +317,40 @@ function MemoryListItem({ memory, expanded, onToggle, getEdgeTypeColor }: Memory
                 label={`${member.nodetype}: ${member.name}`}
                 size="small"
                 variant="outlined"
-                sx={{ fontSize: '0.7rem' }}
+                sx={{ 
+                  fontSize: '0.7rem', 
+                  bgcolor: 'background.default',
+                  borderColor: NODE_COLORS[member.nodetype] || 'divider',
+                  '& .MuiChip-label': { px: 1 }
+                }}
               />
             ))}
+            {(!memory.members || memory.members.length === 0) && (
+              <Typography variant="caption" color="text.disabled">No entities linked</Typography>
+            )}
+          </Stack>
+          
+          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+            <Box>
+              <Typography variant="caption" color="text.disabled" display="block">URGENCY</Typography>
+              <Typography variant="body2" fontWeight="bold">{memory.urgency?.toFixed(3)}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.disabled" display="block">MEMORY ID</Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>#{memory.id}</Typography>
+            </Box>
           </Stack>
         </Box>
       </Collapse>
     </ListItem>
   );
 }
+
+const NODE_COLORS: Record<string, string> = {
+  user: '#3b82f6',
+  channel: '#10b981',
+  topic: '#f59e0b',
+  emotion: '#ef4444',
+  event: '#8b5cf6',
+  concept: '#ec4899',
+};

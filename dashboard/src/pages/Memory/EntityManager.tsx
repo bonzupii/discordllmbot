@@ -3,10 +3,9 @@
  * View and manage entities in the hypergraph
  * @module pages/Memory/EntityManager
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
-  Grid,
   Paper,
   Typography,
   Table,
@@ -17,7 +16,22 @@ import {
   TableRow,
   Chip,
   Stack,
+  TextField,
+  InputAdornment,
+  TablePagination,
+  IconButton,
+  Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
 } from '@mui/material';
+import {
+  Search as SearchIcon,
+  InfoOutlined as InfoIcon,
+  FilterAlt as FilterIcon,
+} from '@mui/icons-material';
 import api from '@services/api';
 
 interface Node {
@@ -26,6 +40,8 @@ interface Node {
   nodetype: string;
   name: string;
   metadata: Record<string, unknown>;
+  createdat: string;
+  memorycount: string | number;
 }
 
 interface EntityManagerProps {
@@ -35,6 +51,10 @@ interface EntityManagerProps {
 export function EntityManager({ guildId }: EntityManagerProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [orderBy, setSortBy] = useState<'name' | 'type' | 'memories'>('memories');
 
   useEffect(() => {
     if (guildId) {
@@ -54,11 +74,26 @@ export function EntityManager({ guildId }: EntityManagerProps) {
     }
   };
 
-  const nodesByType = nodes.reduce((acc, node) => {
-    if (!acc[node.nodetype]) acc[node.nodetype] = [];
-    acc[node.nodetype].push(node);
-    return acc;
-  }, {} as Record<string, Node[]>);
+  const filteredNodes = useMemo(() => {
+    return nodes.filter(node => 
+      node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      node.nodeid.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      node.nodetype.toLowerCase().includes(searchTerm.toLowerCase())
+    ).sort((a, b) => {
+      if (orderBy === 'memories') {
+        return Number(b.memorycount) - Number(a.memorycount);
+      }
+      if (orderBy === 'type') {
+        return a.nodetype.localeCompare(b.nodetype);
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [nodes, searchTerm, orderBy]);
+
+  const paginatedNodes = filteredNodes.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
 
   const getNodeTypeColor = (nodeType: string): string => {
     const colors: Record<string, string> = {
@@ -82,74 +117,118 @@ export function EntityManager({ guildId }: EntityManagerProps) {
 
   return (
     <Box>
-      <Grid container spacing={2}>
-        {Object.entries(nodesByType).map(([type, typeNodes]) => (
-          <Grid item xs={12} md={6} key={type}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Stack direction="row" spacing={1} sx={{ mb: 2, alignItems: 'center' }}>
-                <Box
-                  sx={{
-                    width: 12,
-                    height: 12,
-                    borderRadius: '50%',
-                    bgcolor: getNodeTypeColor(type),
-                  }}
-                />
-                <Typography variant="h6">
-                  {type.charAt(0).toUpperCase() + type.slice(1)}s ({typeNodes.length})
-                </Typography>
-              </Stack>
+      <Paper variant="outlined" sx={{ p: 2, mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Search by name, ID or type..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setPage(0);
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: 'text.secondary' }} />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Sort By</InputLabel>
+          <Select
+            value={orderBy}
+            label="Sort By"
+            onChange={(e) => setSortBy(e.target.value as any)}
+          >
+            <MenuItem value="memories">Most Memories</MenuItem>
+            <MenuItem value="name">Name (A-Z)</MenuItem>
+            <MenuItem value="type">Type</MenuItem>
+          </Select>
+        </FormControl>
+      </Paper>
 
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell align="right">Node ID</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {typeNodes.slice(0, 10).map((node) => (
-                      <TableRow key={node.id}>
-                        <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Typography variant="body2">{node.name}</Typography>
-                            {node.nodetype === 'topic' && (
-                              <Chip label={node.nodetype} size="small" sx={{ height: 16, fontSize: '0.65rem' }} />
-                            )}
-                          </Stack>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.65rem' }}>
-                            {node.nodeid.slice(0, 8)}...
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {typeNodes.length > 10 && (
-                      <TableRow>
-                        <TableCell colSpan={2} align="center">
-                          <Typography variant="caption" color="text.secondary">
-                            +{typeNodes.length - 10} more...
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Grid>
-        ))}
-
-        {Object.keys(nodesByType).length === 0 && (
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
-              <Typography color="text.secondary">No entities found</Typography>
-            </Paper>
-          </Grid>
-        )}
-      </Grid>
+      <TableContainer component={Paper} variant="outlined">
+        <Table size="small">
+          <TableHead sx={{ bgcolor: 'action.hover' }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Entity Name</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }} align="center">Memories</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Internal ID</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }} align="right">Metadata</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedNodes.map((node) => (
+              <TableRow key={node.id} hover>
+                <TableCell>
+                  <Chip
+                    label={node.nodetype}
+                    size="small"
+                    sx={{ 
+                      bgcolor: `${getNodeTypeColor(node.nodetype)}15`,
+                      color: getNodeTypeColor(node.nodetype),
+                      border: `1px solid ${getNodeTypeColor(node.nodetype)}44`,
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      fontSize: '0.6rem',
+                      height: 20
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" fontWeight="medium">{node.name}</Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <Chip 
+                    label={node.memorycount} 
+                    size="small" 
+                    variant="outlined"
+                    sx={{ fontWeight: 'bold', height: 20 }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+                    {node.nodeid}
+                  </Typography>
+                </TableCell>
+                <TableCell align="right">
+                  {Object.keys(node.metadata || {}).length > 0 ? (
+                    <Tooltip title={JSON.stringify(node.metadata, null, 2)}>
+                      <IconButton size="small">
+                        <InfoIcon fontSize="inherit" />
+                      </IconButton>
+                    </Tooltip>
+                  ) : (
+                    <Typography variant="caption" color="text.disabled">—</Typography>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {filteredNodes.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="text.secondary">No entities found matching your search</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+        <TablePagination
+          component="div"
+          count={filteredNodes.length}
+          page={page}
+          onPageChange={(_e, newPage) => setPage(newPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[10, 25, 50]}
+        />
+      </TableContainer>
     </Box>
   );
 }
