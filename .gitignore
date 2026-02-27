@@ -1,6 +1,5 @@
 # Dependencies
 **/node_modules
-package-lock.json
 
 # Environment & Secrets
 .env
@@ -39,6 +38,7 @@ Thumbs.db
 !docs/package.json
 !dashboard/tsconfig.json
 !dashboard/tsconfig.node.json
+!dashboard/tsconfig.eslint.json
 !bot/tsconfig.json
 
 # Misc
