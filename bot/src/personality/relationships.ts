@@ -7,18 +7,18 @@
  * @module bot/src/personality/relationships
  */
 
-import { loadRelationships, saveRelationships, saveGuild } from '@shared/storage/persistence.js';
+import { loadRelationships, saveRelationships, saveGuild, Relationships } from '@shared/storage/persistence.js';
 import { Guild } from 'discord.js';
 
 /**
  * Represents relationship data for a user in a guild.
  */
-interface Relationship {
+export interface Relationship {
     username: string;
     displayName: string;
     avatarUrl?: string;
     attitude: string;
-    behavior: string;
+    behavior: string[];
     boundaries: string[];
     ignored?: boolean;
 }
@@ -26,7 +26,7 @@ interface Relationship {
 /**
  * Map of user IDs to their relationships in a guild.
  */
-interface GuildRelationships {
+export interface GuildRelationships {
     [userId: string]: Relationship;
 }
 
@@ -45,7 +45,7 @@ function createDefaultRelationship(): Relationship {
         username: '',
         displayName: '',
         attitude: 'neutral',
-        behavior: 'treat them like a normal server regular',
+        behavior: ['treat them like a normal server regular'],
         boundaries: []
     };
 }
@@ -82,7 +82,7 @@ export function setRelationship(guildId: string, guildName: string, userId: stri
  * @returns Promise resolving to the guild's relationships
  */
 export async function loadGuildRelationships(guildId: string): Promise<GuildRelationships> {
-    const rels = await loadRelationships(guildId);
+    const rels = await loadRelationships(guildId) as unknown as GuildRelationships;
     guildRelationships[guildId] = rels;
     return rels;
 }
@@ -95,7 +95,7 @@ export async function loadGuildRelationships(guildId: string): Promise<GuildRela
  */
 export async function saveGuildRelationships(guildId: string, _guildName: string): Promise<void> {
     if (guildRelationships[guildId]) {
-        await saveRelationships(guildId, guildRelationships[guildId]);
+        await saveRelationships(guildId, guildRelationships[guildId] as unknown as Relationships);
     }
 }
 
@@ -110,7 +110,7 @@ export async function initializeGuildRelationships(guild: Guild): Promise<void> 
 
     await saveGuild(guildId, guildName);
 
-    const existingRels = await loadRelationships(guildId);
+    const existingRels = await loadRelationships(guildId) as unknown as GuildRelationships;
     guildRelationships[guildId] = existingRels;
 
     const staleUsers = new Set(Object.keys(existingRels));
@@ -141,7 +141,7 @@ export async function initializeGuildRelationships(guild: Guild): Promise<void> 
                 displayName,
                 avatarUrl,
                 attitude: defaultRel.attitude,
-                behavior: typeof defaultRel.behavior === 'string' ? defaultRel.behavior : '',
+                behavior: typeof defaultRel.behavior === 'string' ? [defaultRel.behavior] : defaultRel.behavior ?? [],
                 boundaries: Array.isArray(defaultRel.boundaries) ? [...defaultRel.boundaries] : [],
                 ignored: false
             };
@@ -162,7 +162,7 @@ export async function initializeGuildRelationships(guild: Guild): Promise<void> 
     }
 
     if (changed) {
-        await saveRelationships(guildId, guildRelationships[guildId]);
+        await saveRelationships(guildId, guildRelationships[guildId] as unknown as Relationships);
     }
 }
 

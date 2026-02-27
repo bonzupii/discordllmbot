@@ -54,8 +54,8 @@ export async function addMessage(guildId: string, channelId: string, authorId: s
     guildContexts[guildId] ??= {};
     guildContexts[guildId][channelId] ??= [];
 
-    const memoryConfig = await getMemoryConfig(guildId);
-    const maxMessages = memoryConfig.maxContextMessages;
+    const memoryConfig = await getMemoryConfig();
+    const maxMessages = memoryConfig.maxMessages ?? 25;
 
     const message: Message = { authorId, author: authorName, content };
     guildContexts[guildId][channelId].push(message);

@@ -9,15 +9,15 @@
 
 import { Message, Client } from 'discord.js';
 import { logger } from '@shared/utils/logger.js';
-import { generateReply } from '../llm/index.js';
-import { getRelationship } from '../personality/relationships.js';
-import { addMessage } from '../memory/context.js';
+import { generateReply } from '@/llm/index.js';
+import { getRelationship, type Relationship, type GuildRelationships } from '@/personality/relationships.js';
+import { addMessage } from '@/memory/context.js';
 import { loadContexts, logBotReply, logAnalyticsEvent } from '@shared/storage/persistence.js';
-import { buildPrompt } from '../core/prompt.js';
-import { shouldReply } from '../core/replyDecider.js';
+import { buildPrompt } from '@/core/prompt.js';
+import { shouldReply, type ReplyBehaviorConfig, type Relationship as ReplyDeciderRelationship } from '@/core/replyDecider.js';
 import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '@shared/config/configLoader.js';
-import { getAllRelationships } from '../personality/relationships.js';
-import { extractDockerCommand, executeInSandbox, isSandboxEnabled } from '../sandbox/index.js';
+import { getAllRelationships } from '@/personality/relationships.js';
+import { extractDockerCommand, executeInSandbox, isSandboxEnabled } from '@/sandbox/index.js';
 
 const SANDBOX_KEYWORDS = ['docker', 'sandbox', 'container', 'docker command'];
 
@@ -43,7 +43,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
     });
 
     const botConfig = await getBotConfig(guildId);
-    const memoryConfig = await getMemoryConfig(guildId);
+    const memoryConfig = await getMemoryConfig();
     const replyBehavior = await getReplyBehavior(guildId);
 
     const guildSpecificChannels = (replyBehavior.guildSpecificChannels as Record<string, { ignored?: string[] }>) ?? {};
@@ -116,7 +116,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
 
         const { maxMessages } = memoryConfig;
         const context = (await loadContexts(guildId, message.channel.id, maxMessages)).slice(0, -1);
-        const guildRelationships = getAllRelationships()[guildId] ?? {};
+        const guildRelationships = getAllRelationships()[guildId] ?? ({} as GuildRelationships);
 
         logger.info('Loaded context for reply generation', {
             guildId,
@@ -125,7 +125,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
         });
 
         const prompt = await buildPrompt({
-            relationship,
+            relationship: relationship as unknown as Relationship,
             context,
             guildRelationships,
             guildName: message.guild.name,
@@ -195,7 +195,7 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
             replyBehavior,
         });
         
-        const replyDecision = await shouldReply({ message, isMentioned, replyBehavior, relationship, context, botName: botConfig.name });
+        const replyDecision = await shouldReply({ message, isMentioned, replyBehavior: replyBehavior as unknown as ReplyBehaviorConfig, relationship: relationship as unknown as ReplyDeciderRelationship, context, botName: botConfig.name });
         logger.info('Reply decision evaluated', {
             guildId,
             shouldReply: replyDecision.result,
@@ -288,8 +288,8 @@ export async function handleMessageCreate(message: Message, client: Client): Pro
                 cleanMessage,
                 finalReply,
                 processingTimeMs,
-                usageMetadata?.promptTokenCount ?? undefined,
-                usageMetadata?.candidatesTokenCount ?? undefined
+                usageMetadata?.promptTokenCount ?? 0,
+                usageMetadata?.candidatesTokenCount ?? 0
             );
 
             await addMessage(

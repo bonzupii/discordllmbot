@@ -88,7 +88,7 @@ async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 10
             if (i < totalAttempts - 1) {
                 let backoffMs: number | null = null;
                 if (lastError && typeof (lastError as GeminiAPIError).retryAfterMs === 'number') {
-                    backoffMs = (lastError as GeminiAPIError).retryAfterMs;
+                    backoffMs = (lastError as GeminiAPIError).retryAfterMs ?? null;
                 }
 
                 if (backoffMs === null || backoffMs === undefined) {

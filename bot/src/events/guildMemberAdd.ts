@@ -9,7 +9,7 @@
 
 import { GuildMember } from 'discord.js';
 import { logger } from '@shared/utils/logger.js';
-import { setRelationship } from '../personality/relationships.js';
+import { setRelationship } from '@/personality/relationships.js';
 
 /**
  * Default relationship configuration.
@@ -33,7 +33,7 @@ export async function handleGuildMemberAdd(member: GuildMember): Promise<void> {
             username,
             displayName,
             attitude: 'neutral',
-            behavior: 'treat them like a normal server regular',
+            behavior: ['treat them like a normal server regular'],
             boundaries: []
         });
 

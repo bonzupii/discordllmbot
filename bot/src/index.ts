@@ -21,8 +21,8 @@ const startTime = Date.now();
 import { validateEnvironment } from '@shared/config/validation.js';
 import { logger, initializeLogger } from '@shared/utils/logger.js';
 import { pruneOldMessages, resetPoolWrapper } from '@shared/storage/persistence.js';
-import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
-import { startApi } from './api/server.js';
+import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from '@/events/index.js';
+import { startApi } from '@/api/server.js';
 
 /**
  * Initializes the logger with default settings before full config is loaded.

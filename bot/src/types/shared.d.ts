@@ -171,5 +171,27 @@ export async function getAnalyticsData(): Promise<{
     volume: unknown[];
     topServers: unknown[];
 }>;
+export async function getAnalyticsOverview(days?: number): Promise<unknown>;
+export async function getAnalyticsVolume(days?: number): Promise<unknown>;
+export async function getAnalyticsDecisions(days?: number): Promise<unknown>;
+export async function getAnalyticsProviders(days?: number): Promise<unknown>;
+export async function getAnalyticsPerformance(days?: number): Promise<unknown>;
+export async function getAnalyticsUsers(days?: number): Promise<unknown>;
+export async function getAnalyticsChannels(days?: number): Promise<unknown>;
+export async function getAnalyticsErrors(days?: number): Promise<unknown>;
 
 export function initializeDatabase(): Promise<void>;
+export function connect(): Promise<unknown>;
+export function getPool(): Promise<unknown>;
+
+export interface LLMResponse {
+    text: string | null;
+    usageMetadata: {
+        promptTokenCount?: number | null;
+        candidatesTokenCount?: number | null;
+        totalTokenCount?: number;
+    } | null;
+}
+
+export function generateReply(prompt: string): Promise<LLMResponse>;
+export function getAvailableModels(overrideProvider?: string): Promise<string[]>;

@@ -77,7 +77,7 @@ async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 10
             if (i < totalAttempts - 1) {
                 let backoffMs: number | null = null;
                 if (lastError && typeof (lastError as OllamaAPIError).retryAfterMs === 'number') {
-                    backoffMs = (lastError as OllamaAPIError).retryAfterMs;
+                    backoffMs = (lastError as OllamaAPIError).retryAfterMs ?? null;
                 }
 
                 if (backoffMs === null || backoffMs === undefined) {

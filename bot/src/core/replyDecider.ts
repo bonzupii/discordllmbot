@@ -14,9 +14,11 @@ import { Message } from 'discord.js';
 interface Relationship {
     ignored?: boolean;
     attitude?: string;
-    behavior?: string;
+    behavior?: string[];
     boundaries?: string[];
 }
+
+export type { Relationship };
 
 interface MessageContext {
     authorId: string;
@@ -27,11 +29,22 @@ interface MessageContext {
 interface ShouldReplyParams {
     message: Message;
     isMentioned: boolean;
-    replyBehavior?: Record<string, unknown>;
+    replyBehavior?: ReplyBehaviorConfig;
     relationship?: Relationship;
     context?: MessageContext[];
     botName?: string;
 }
+
+interface ReplyBehaviorConfig {
+    mentionOnly?: boolean;
+    replyProbability?: number;
+    ignoreUsers?: string[];
+    ignoreChannels?: string[];
+    ignoreKeywords?: string[];
+    guildSpecificChannels?: Record<string, { allowed?: string[]; ignored?: string[] }>;
+}
+
+export type { ReplyBehaviorConfig };
 
 interface CheckResult {
     check: string;
@@ -43,8 +56,8 @@ interface CheckResult {
 }
 
 export async function shouldReply({ message, isMentioned, replyBehavior = {}, relationship = {}, context = [], botName = '' }: ShouldReplyParams): Promise<{ result: boolean; reason: string; checks: CheckResult[] }> {
-    const config = await loadConfig() as Record<string, unknown>;
-    const loggerConfig = config.logger as Record<string, unknown> | undefined;
+    const config = await loadConfig();
+    const loggerConfig = config.logger;
     const logDecisions = loggerConfig?.logReplyDecisions ?? false;
     const checks: CheckResult[] = [];
 
