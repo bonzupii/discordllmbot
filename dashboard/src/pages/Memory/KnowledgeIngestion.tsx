@@ -119,6 +119,16 @@ export function KnowledgeIngestion({ guildId }: KnowledgeIngestionProps) {
     }
   };
 
+  const deleteDoc = async (id: number) => {
+    if (!window.confirm('Delete this document and all its associated knowledge from the graph?')) return;
+    try {
+      await knowledgeApi.deleteDocument(guildId, id);
+      loadData();
+    } catch (error) {
+      console.error('Failed to delete document', error);
+    }
+  };
+
   const getStatusChip = (status: string) => {
     switch (status) {
       case 'completed': return <Chip size="small" icon={<SuccessIcon />} label="Ingested" color="success" variant="outlined" />;
@@ -152,7 +162,7 @@ export function KnowledgeIngestion({ guildId }: KnowledgeIngestionProps) {
             </Stack>
             
             <Alert severity="info" sx={{ mb: 2, fontSize: '0.75rem' }}>
-              Supported formats: PDF, Text, Markdown. Content is summarized by LLM and added to knowledge graph.
+              Supported formats: PDF, Text, Markdown. Content is automatically chunked and indexed into the knowledge graph.
             </Alert>
 
             <List sx={{ maxHeight: 400, overflow: 'auto' }}>
@@ -163,8 +173,11 @@ export function KnowledgeIngestion({ guildId }: KnowledgeIngestionProps) {
                     secondary={new Date(doc.createdat).toLocaleString()}
                     primaryTypographyProps={{ variant: 'body2', fontWeight: 'medium' }}
                   />
-                  <Box sx={{ ml: 2 }}>
+                  <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                     {getStatusChip(doc.status)}
+                    <IconButton size="small" color="error" onClick={() => deleteDoc(doc.id)} title="Delete document">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
                   </Box>
                 </ListItem>
               ))}

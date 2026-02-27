@@ -82,6 +82,12 @@ async function startBot(): Promise<void> {
 
             // Start RSS ingestion checker (runs every 15 minutes)
             const { startRssInformer } = await import('./core/knowledgeIngestion.js');
+            
+            // Run immediately on startup
+            for (const [guildId] of client.guilds.cache) {
+                startRssInformer(guildId).catch(e => logger.error(`Initial RSS informer failed for ${guildId}`, e));
+            }
+
             setInterval(async () => {
                 for (const [guildId] of client.guilds.cache) {
                     await startRssInformer(guildId).catch(e => logger.error(`RSS informer failed for ${guildId}`, e));

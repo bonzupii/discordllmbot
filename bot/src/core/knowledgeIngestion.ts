@@ -16,8 +16,41 @@ import {
 } from '../../../shared/storage/knowledgePersistence.js';
 import { generateReply } from '../llm/index.js';
 import { logger } from '../../../shared/utils/logger.js';
+import { extractKeywords } from '../memory/structuralExtractor.js';
 
 const rssParser = new Parser();
+
+/**
+ * Chunks text into smaller pieces for ingestion
+ */
+function chunkText(text: string, maxLength: number = 1500): string[] {
+    const chunks: string[] = [];
+    let remaining = text.trim();
+    
+    while (remaining.length > 0) {
+        if (remaining.length <= maxLength) {
+            chunks.push(remaining);
+            break;
+        }
+        
+        // Find a good breaking point (period, newline, or space)
+        let breakIndex = remaining.lastIndexOf('\n', maxLength);
+        if (breakIndex === -1 || breakIndex < maxLength * 0.5) {
+            breakIndex = remaining.lastIndexOf('. ', maxLength);
+        }
+        if (breakIndex === -1 || breakIndex < maxLength * 0.5) {
+            breakIndex = remaining.lastIndexOf(' ', maxLength);
+        }
+        if (breakIndex === -1) {
+            breakIndex = maxLength;
+        }
+        
+        chunks.push(remaining.substring(0, breakIndex).trim());
+        remaining = remaining.substring(breakIndex).trim();
+    }
+    
+    return chunks;
+}
 
 /**
  * Uses LLM to extract structured knowledge for ingestion
@@ -64,7 +97,21 @@ export async function processRssFeed(guildId: string, feedId: number, url: strin
         const feed = await rssParser.parseURL(url);
         logger.info(`Processing RSS feed: ${feed.title} (${url})`);
 
+        const { getDb } = await import('../../../shared/storage/persistence.js');
+        const db = await getDb();
+
         for (const item of feed.items.slice(0, 5)) {
+            // Check if this item has already been ingested
+            const existing = await db.query(
+                "SELECT id FROM hyperedges WHERE guildId = $1 AND metadata->>'url' = $2",
+                [guildId, item.link]
+            );
+
+            if (existing.rows.length > 0) {
+                logger.info(`Skipping already ingested RSS item: ${item.title}`);
+                continue;
+            }
+
             const { summary, entities } = await extractKnowledge(item.contentSnippet || item.content || item.title || '');
             
             await createHyperedge(guildId, {
@@ -109,21 +156,31 @@ export async function processDocument(guildId: string, docId: number, buffer: Bu
         
         logger.info(`Processing document: ${filename} (${text.length} chars)`);
 
-        const { summary, entities } = await extractKnowledge(text.substring(0, 5000));
-        
-        await createHyperedge(guildId, {
-            channelId: 'system-ingestion',
-            edgeType: 'fact',
-            summary: `Document: ${filename} - ${summary}`,
-            content: text.substring(0, 1000), // Store first 1k chars as content
-            importance: 0.8,
-            memberships: entities.map(entity => ({
-                entity,
-                role: 'subject',
-                weight: 0.9
-            })),
-            metadata: { source: 'upload', filename }
-        });
+        const chunks = chunkText(text);
+        logger.info(`Document ${filename} split into ${chunks.length} chunks`);
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const keywords = extractKeywords(chunk);
+            
+            await createHyperedge(guildId, {
+                channelId: 'system-ingestion',
+                edgeType: 'fact',
+                summary: `Document: ${filename} (Part ${i + 1}/${chunks.length})`,
+                content: chunk,
+                importance: 0.8,
+                memberships: keywords.map(keyword => ({
+                    entity: {
+                        id: keyword.toLowerCase(),
+                        name: keyword,
+                        type: 'topic'
+                    },
+                    role: 'subject',
+                    weight: 0.9
+                })),
+                metadata: { source: 'upload', filename, chunkIndex: i, totalChunks: chunks.length }
+            });
+        }
 
         await updateDocumentStatus(docId, { status: 'completed', processedAt: true });
     } catch (error) {
@@ -140,12 +197,12 @@ export async function startRssInformer(guildId: string) {
     const enabledFeeds = feeds.filter(f => f.enabled);
     
     for (const feed of enabledFeeds) {
-        // Simple check: if never fetched or interval passed
+        // Simple check: if never fetched or interval passed (with 10s leeway)
         const lastFetched = feed.lastFetchedAt ? new Date(feed.lastFetchedAt).getTime() : 0;
         const now = Date.now();
         const intervalMs = (feed.intervalMinutes || 60) * 60 * 1000;
         
-        if (now - lastFetched >= intervalMs) {
+        if (now - lastFetched >= intervalMs - 10000) {
             await processRssFeed(guildId, feed.id, feed.url);
         }
     }

@@ -371,10 +371,11 @@ export const knowledgeApi = {
     api.patch(`/knowledge/${guildId}/rss/${id}`, data),
   deleteRssFeed: (guildId: string, id: number): Promise<AxiosResponse<void>> =>
     api.delete(`/knowledge/${guildId}/rss/${id}`),
-  getDocuments: (guildId: string): Promise<AxiosResponse<IngestedDocument[]>> =>
-    api.get(`/knowledge/${guildId}/documents`),
-  uploadDocument: (guildId: string, file: File): Promise<AxiosResponse<IngestedDocument>> => {
-    const formData = new FormData();
+    getDocuments: (guildId: string): Promise<AxiosResponse<IngestedDocument[]>> => 
+      api.get(`/knowledge/${guildId}/documents`),
+    deleteDocument: (guildId: string, id: number): Promise<AxiosResponse<void>> =>
+      api.delete(`/knowledge/${guildId}/documents/${id}`),
+    uploadDocument: (guildId: string, file: File): Promise<AxiosResponse<IngestedDocument>> => {    const formData = new FormData();
     formData.append('document', file);
     return api.post(`/knowledge/${guildId}/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

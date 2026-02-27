@@ -93,3 +93,27 @@ export async function getIngestedDocuments(guildId) {
     );
     return result.rows;
 }
+
+export async function deleteIngestedDocument(id) {
+    const db = await getDb();
+    
+    // First get the document details to find associated hyperedges
+    const docResult = await db.query('SELECT filename, guildId FROM ingested_documents WHERE id = $1', [id]);
+    if (docResult.rows.length === 0) return;
+    
+    const { filename, guildId } = docResult.rows[0];
+    
+    // Delete hyperedges associated with this document
+    await db.query(
+        `DELETE FROM hyperedges 
+         WHERE guildId = $1 
+           AND metadata->>'source' = 'upload' 
+           AND metadata->>'filename' = $2`,
+        [guildId, filename]
+    );
+    
+    // Delete the document record
+    await db.query(`DELETE FROM ingested_documents WHERE id = $1`, [id]);
+    
+    logger.info(`Deleted ingested document ${filename} and its hyperedges`);
+}

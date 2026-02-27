@@ -33,7 +33,8 @@ import {
     updateRssFeed, 
     deleteRssFeed,
     createIngestedDocument,
-    getIngestedDocuments
+    getIngestedDocuments,
+    deleteIngestedDocument
 } from '../../../shared/storage/knowledgePersistence.js';
 import { processDocument, processRssFeed } from '../core/knowledgeIngestion.js';
 
@@ -1049,6 +1050,16 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
         } catch (err) {
             logger.error('Failed to fetch documents', err);
             res.status(500).json({ error: 'Failed to fetch documents' });
+        }
+    });
+
+    app.delete('/api/knowledge/:guildId/documents/:id', async (req: Request, res: Response) => {
+        try {
+            await deleteIngestedDocument(parseInt(req.params.id));
+            res.status(204).send();
+        } catch (err) {
+            logger.error('Failed to delete document', err);
+            res.status(500).json({ error: 'Failed to delete document' });
         }
     });
 

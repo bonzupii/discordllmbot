@@ -96,14 +96,19 @@ export async function buildPrompt({
         // Get global knowledge facts from ingested documents/RSS
         const globalKnowledge = await getGlobalKnowledge(guildId, 5);
         
+        const allMemories = [...channelMemories, ...userFacts, ...globalKnowledge];
+        
         logger.info(`Fetched memories for prompt: ${channelMemories.length} channel, ${userFacts.length} user facts, ${globalKnowledge.length} global knowledge`);
         
+        // Debug: Log summaries of fetched memories
+        if (allMemories.length > 0) {
+            logger.info('Memory summaries being added to prompt:', allMemories.map(m => `[${m.edgetype || 'fact'}] ${m.summary?.substring(0, 50)}...`));
+        }
+
         // Also fetch general stats/top entities for broader context
         const { getHypergraphStats } = await import('../../../shared/storage/hypergraphPersistence.js');
         const stats = await getHypergraphStats(guildId);
         const topEntities = stats.topEntities?.slice(0, 5).map((e: any) => e.name).join(', ') || '';
-
-        const allMemories = [...channelMemories, ...userFacts, ...globalKnowledge];
 
         // Record access for retrieved memories (boosts importance)
         for (const memory of allMemories) {
@@ -114,28 +119,37 @@ export async function buildPrompt({
             const memoryLines = allMemories.map(m => {
                 const members = m.members || [];
                 const memberInfo = members
-                    .filter((mem: any) => mem.role === 'participant' || mem.role === 'subject' || mem.role === 'topic')
+                    .filter((mem: any) => mem && (mem.role === 'participant' || mem.role === 'subject' || mem.role === 'topic'))
                     .map((mem: any) => mem.name)
                     .join(', ');
                 
-                let line = `- ${m.summary}`;
+                const dateStr = m.createdat ? new Date(m.createdat).toLocaleDateString() : '';
+                let line = `- [${dateStr}] ${m.summary}`;
                 if (memberInfo) line += ` (Keywords: ${memberInfo})`;
+                if (m.content && m.content.length > 10 && m.content !== m.summary) {
+                    // Include first 300 chars of content if it's different from summary
+                    const cleanContent = m.content.substring(0, 300).replace(/\n+/g, ' ').trim();
+                    line += `\n  Details: ${cleanContent}...`;
+                }
                 return line;
             });
             
-            hypergraphMemoriesSection = '\nRelevant memories and context:';
+            hypergraphMemoriesSection = '\n--- INTERNAL KNOWLEDGE & RECENT EVENTS ---';
+            hypergraphMemoriesSection += '\nThe following information is from your internal memory banks and covers recent news, documents, and past interactions. Use this as your primary source of truth for current events:';
             if (topEntities) {
                 hypergraphMemoriesSection += `\nTop entities in this server: ${topEntities}`;
             }
             if (memoryLines.length > 0) {
-                hypergraphMemoriesSection += `\nPast events and knowledge:\n${memoryLines.join('\n')}`;
+                hypergraphMemoriesSection += `\n\n${memoryLines.join('\n')}`;
             }
+            hypergraphMemoriesSection += '\n--- END OF KNOWLEDGE ---\n';
+            logger.info('Generated Hypergraph Memories Section:', { section: hypergraphMemoriesSection.substring(0, 100) + '...' });
         }
     } catch (err) {
         logger.warn('Failed to fetch hypergraph memories (continuing without)', err);
     }
 
-    return `
+    const finalPrompt = `
 You are a human Discord user named ${botPersona.name}.
 
 Who you are:
@@ -166,6 +180,9 @@ ${context.map(m => `${m.author}: ${m.content}`).join('\n')}
 Message you are replying to:
 ${username}: ${userMessage}
 
-Respond naturally. Stay in character. Use your memories above to maintain coherence.
+Respond naturally. Stay in character. Use your knowledge section above to maintain coherence and awareness of current events.
 `.trim();
+
+    logger.info('Final Prompt constructed (partial):', { prompt: finalPrompt.substring(0, 2000) });
+    return finalPrompt;
 }

@@ -227,7 +227,7 @@ export function extractStructuralMemory(message: Message): ExtractedMemory | nul
  * @param {string} text - Text to extract from
  * @returns {string[]} Keywords
  */
-function extractKeywords(text: string): string[] {
+export function extractKeywords(text: string): string[] {
     // Remove Discord mentions and links
     const cleanText = text
         .replace(/<@[!&]?\d+>/g, '') // Mentions
