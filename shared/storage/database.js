@@ -235,7 +235,19 @@ export async function setupSchema() {
             `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreUsers JSONB DEFAULT '[]'::jsonb;`,
             `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreChannels JSONB DEFAULT '[]'::jsonb;`,
             `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreKeywords JSONB DEFAULT '[]'::jsonb;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS guildSpecificChannels JSONB DEFAULT '{}'::jsonb;`
+            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS guildSpecificChannels JSONB DEFAULT '{}'::jsonb;`,
+            `CREATE TABLE IF NOT EXISTS analytics_events (
+                id SERIAL PRIMARY KEY,
+                eventType TEXT NOT NULL,
+                guildId TEXT,
+                channelId TEXT,
+                userId TEXT,
+                timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                metadata JSONB DEFAULT '{}'::jsonb
+            )`,
+            `CREATE INDEX IF NOT EXISTS idx_analytics_events_type ON analytics_events(eventType)`,
+            `CREATE INDEX IF NOT EXISTS idx_analytics_events_guild ON analytics_events(guildId)`,
+            `CREATE INDEX IF NOT EXISTS idx_analytics_events_timestamp ON analytics_events(timestamp)`
         ];
 
         logger.info('setupSchema: Verifying and updating schema...');
@@ -279,6 +291,34 @@ export async function setupSchema() {
 
         if (schemaUpdated) {
             logger.info('Updated bot_replies table for backward compatibility.');
+        }
+
+        const botRepliesColumns = await pool.query(`
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'bot_replies'
+        `);
+        const botRepliesColumnNames = botRepliesColumns.rows.map(r => r.column_name);
+
+        let analyticsColumnsUpdated = false;
+        const newBotRepliesColumns = [
+            { name: 'provider', sql: 'ADD COLUMN IF NOT EXISTS provider TEXT' },
+            { name: 'model', sql: 'ADD COLUMN IF NOT EXISTS model TEXT' },
+            { name: 'contextlength', sql: 'ADD COLUMN IF NOT EXISTS contextLength INTEGER' },
+            { name: 'retrycount', sql: 'ADD COLUMN IF NOT EXISTS retryCount INTEGER DEFAULT 0' },
+            { name: 'errormessage', sql: 'ADD COLUMN IF NOT EXISTS errorMessage TEXT' },
+            { name: 'replydecisionreason', sql: 'ADD COLUMN IF NOT EXISTS replyDecisionReason TEXT' }
+        ];
+
+        for (const col of newBotRepliesColumns) {
+            if (!botRepliesColumnNames.includes(col.name)) {
+                await pool.query(`ALTER TABLE bot_replies ${col.sql};`);
+                analyticsColumnsUpdated = true;
+            }
+        }
+
+        if (analyticsColumnsUpdated) {
+            logger.info('Updated bot_replies table with analytics columns.');
         }
 
         logger.info('✓ Database schema verified/created.');

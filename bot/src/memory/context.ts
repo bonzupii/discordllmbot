@@ -7,8 +7,8 @@
  * @module bot/src/memory/context
  */
 
-import { saveMessage } from '../../../shared/storage/persistence.js';
-import { getMemoryConfig } from '../../../shared/config/configLoader.js';
+import { saveMessage } from '@shared/storage/persistence.js';
+import { getMemoryConfig } from '@shared/config/configLoader.js';
 
 /**
  * Represents a single message in the context.

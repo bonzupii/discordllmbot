@@ -3,6 +3,7 @@
  * @module pages/Dashboard/Dashboard
  */
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '@mui/material';
 import {
   Box,
@@ -26,16 +27,16 @@ import {
   LinearProgress,
   alpha,
   Theme,
+  Button,
 } from '@mui/material';
 import {
   Message as MessageIcon,
-  People as PeopleIcon,
   Dns as DnsIcon,
-  Token as TokenIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   TrendingUp as TrendingUpIcon,
   EmojiEvents as EmojiEventsIcon,
+  Analytics as AnalyticsIcon,
 } from '@mui/icons-material';
 import type { SxProps } from '@mui/material';
 
@@ -119,8 +120,9 @@ interface DashboardProps {
 
 /** Main dashboard page displaying analytics, activity feed, and system health. */
 function Dashboard({ health }: DashboardProps) {
-  const { stats, replies, loading } = useAnalytics();
+  const { stats, replies, overview, volume, loading } = useAnalytics();
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
   
   // Limit replies to 5 on mobile
   const displayedReplies = isMobile ? limitArray(replies as Reply[], 5) : replies as Reply[];
@@ -208,6 +210,19 @@ function Dashboard({ health }: DashboardProps) {
 
   return (
     <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" fontWeight="bold">
+          Dashboard
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<AnalyticsIcon />}
+          onClick={() => navigate('/analytics')}
+        >
+          Detailed Analytics
+        </Button>
+      </Box>
       <Grid container spacing={2}>
         {/* Left Column: Status Strip & Latest Activity */}
         <Grid size={{ xs: 12, md: 9 }}>
@@ -221,36 +236,44 @@ function Dashboard({ health }: DashboardProps) {
               }}
             >
               <Grid container spacing={1}>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid size={{ xs: 6, sm: 2.4 }}>
                   <StatusItem
                     icon={<MessageIcon />}
-                    label="Replies (24h)"
-                    value={(stats as AnalyticsResponse)?.stats24h?.total_replies || 0}
+                    label="Messages"
+                    value={overview?.stats?.total_messages || (stats as AnalyticsResponse)?.stats24h?.total_replies || 0}
                     color="primary"
                   />
                 </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid size={{ xs: 6, sm: 2.4 }}>
                   <StatusItem
-                    icon={<DnsIcon />}
-                    label="Active Servers"
-                    value={(stats as AnalyticsResponse)?.stats24h?.active_servers || 0}
-                    color="secondary"
-                  />
-                </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
-                  <StatusItem
-                    icon={<PeopleIcon />}
-                    label="Active Users"
-                    value={(stats as AnalyticsResponse)?.stats24h?.active_users || 0}
+                    icon={<CheckCircleIcon />}
+                    label="Replies"
+                    value={overview?.stats?.total_replies || (stats as AnalyticsResponse)?.stats24h?.total_replies || 0}
                     color="success"
                   />
                 </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid size={{ xs: 6, sm: 2.4 }}>
                   <StatusItem
-                    icon={<TokenIcon />}
-                    label="Tokens Used"
-                    value={(stats as AnalyticsResponse)?.stats24h?.total_tokens || 0}
-                    color="warning"
+                    icon={<TrendingUpIcon />}
+                    label="Reply Rate"
+                    value={`${overview?.replyRate || 0}%`}
+                    color="info"
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 2.4 }}>
+                  <StatusItem
+                    icon={<DnsIcon />}
+                    label="Active Users"
+                    value={overview?.stats?.active_users || (stats as AnalyticsResponse)?.stats24h?.active_users || 0}
+                    color="secondary"
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 2.4 }}>
+                  <StatusItem
+                    icon={<ErrorIcon />}
+                    label="Error Rate"
+                    value={`${overview?.errorRate || 0}%`}
+                    color={overview?.errorRate && overview.errorRate > 5 ? 'error' : 'success'}
                   />
                 </Grid>
               </Grid>
@@ -306,14 +329,13 @@ function Dashboard({ health }: DashboardProps) {
                   <TableHead>
                     <TableRow>
                       <TableCell sx={{ py: 1, px: 2 }}>Date</TableCell>
-                      <TableCell align="right" sx={{ py: 1, px: 2 }}>
-                        Replies
-                      </TableCell>
+                      <TableCell align="right" sx={{ py: 1, px: 2 }}>Messages</TableCell>
+                      <TableCell align="right" sx={{ py: 1, px: 2 }}>Replies</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {(stats as AnalyticsResponse)?.volume &&
-                      [...(stats as AnalyticsResponse).volume].reverse().map((day) => (
+                    {volume?.daily && volume.daily.length > 0 ? (
+                      [...volume.daily].reverse().map((day) => (
                         <TableRow key={day.date}>
                           <TableCell sx={{ py: 1, px: 2, borderBottom: 'none' }}>
                             <Typography variant="caption" color="text.secondary">
@@ -323,19 +345,21 @@ function Dashboard({ health }: DashboardProps) {
                               })}
                             </Typography>
                           </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ py: 1, px: 2, borderBottom: 'none' }}
-                          >
+                          <TableCell align="right" sx={{ py: 1, px: 2, borderBottom: 'none' }}>
                             <Typography variant="caption" fontWeight="bold">
-                              {day.count}
+                              {day.messages}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right" sx={{ py: 1, px: 2, borderBottom: 'none' }}>
+                            <Typography variant="caption" fontWeight="bold" color="success.main">
+                              {day.replies_sent}
                             </Typography>
                           </TableCell>
                         </TableRow>
-                      ))}
-                    {(!(stats as AnalyticsResponse)?.volume || !(stats as AnalyticsResponse).volume.length) && (
+                      ))
+                    ) : (
                       <TableRow>
-                        <TableCell align="center" sx={{ py: 2, gridColumn: '1 / -1' }}>
+                        <TableCell align="center" sx={{ py: 2, gridColumn: '1 / -1' }} colSpan={3}>
                           <Typography variant="caption" color="text.secondary">
                             No activity data
                           </Typography>

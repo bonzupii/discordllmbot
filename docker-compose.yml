@@ -15,8 +15,8 @@ services:
       timeout: 5s
       retries: 5
   db-mcp:
+    container_name: discordllmbot-db-mcp
     image: crystaldba/postgres-mcp:latest
-    container_name: db-mcp
     depends_on:
       db:
         condition: service_healthy

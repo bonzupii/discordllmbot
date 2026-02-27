@@ -541,3 +541,386 @@ export async function getAnalyticsData() {
         topServers: topServers.rows
     };
 }
+
+export async function logAnalyticsEvent(eventType, guildId, channelId, userId, metadata = {}) {
+    const db = await getDb();
+    await db.query(
+        'INSERT INTO analytics_events (eventType, guildId, channelId, userId, metadata) VALUES ($1, $2, $3, $4, $5)',
+        [eventType, guildId, channelId, userId, JSON.stringify(metadata)]
+    );
+}
+
+export async function getAnalyticsOverview(days = 7) {
+    const db = await getDb();
+
+    const stats = await db.query(`
+        SELECT 
+            COUNT(*) FILTER (WHERE eventType = 'reply_sent') as total_replies,
+            COUNT(*) FILTER (WHERE eventType = 'reply_declined') as total_declined,
+            COUNT(*) FILTER (WHERE eventType = 'message_received') as total_messages,
+            COUNT(DISTINCT guildId) FILTER (WHERE eventType = 'reply_sent') as active_servers,
+            COUNT(DISTINCT userId) FILTER (WHERE eventType = 'message_received') as active_users,
+            ROUND(AVG((metadata->>'latencyMs')::numeric)) as avg_latency,
+            SUM((metadata->>'promptTokens')::int) as total_prompt_tokens,
+            SUM((metadata->>'responseTokens')::int) as total_response_tokens,
+            COUNT(*) FILTER (WHERE eventType = 'llm_error') as total_errors
+        FROM analytics_events 
+        WHERE timestamp > NOW() - INTERVAL '1 day' * $1
+    `, [days]);
+
+    const replyRate = await db.query(`
+        SELECT 
+            CASE 
+                WHEN COUNT(*) FILTER (WHERE eventType = 'message_received') > 0
+                THEN ROUND(100.0 * COUNT(*) FILTER (WHERE eventType = 'reply_sent') / COUNT(*) FILTER (WHERE eventType = 'message_received'), 2)
+                ELSE 0
+            END as reply_rate
+        FROM analytics_events
+        WHERE timestamp > NOW() - INTERVAL '1 day' * $1
+    `, [days]);
+
+    const errorRate = await db.query(`
+        SELECT 
+            CASE 
+                WHEN COUNT(*) FILTER (WHERE eventType = 'llm_call') > 0
+                THEN ROUND(100.0 * COUNT(*) FILTER (WHERE eventType = 'llm_error') / COUNT(*) FILTER (WHERE eventType = 'llm_call'), 2)
+                ELSE 0
+            END as error_rate
+        FROM analytics_events
+        WHERE timestamp > NOW() - INTERVAL '1 day' * $1
+    `, [days]);
+
+    return {
+        stats: stats.rows[0],
+        replyRate: replyRate.rows[0]?.reply_rate || 0,
+        errorRate: errorRate.rows[0]?.error_rate || 0
+    };
+}
+
+export async function getAnalyticsVolume(days = 7) {
+    const db = await getDb();
+
+    const daily = await db.query(`
+        SELECT 
+            DATE(timestamp) as date,
+            COUNT(*) FILTER (WHERE eventType = 'message_received') as messages,
+            COUNT(*) FILTER (WHERE eventType = 'reply_attempt') as reply_attempts,
+            COUNT(*) FILTER (WHERE eventType = 'reply_sent') as replies_sent,
+            COUNT(*) FILTER (WHERE eventType = 'reply_declined') as replies_declined
+        FROM analytics_events
+        WHERE timestamp > NOW() - INTERVAL '1 day' * $1
+        GROUP BY DATE(timestamp)
+        ORDER BY date ASC
+    `, [days]);
+
+    const hourly = await db.query(`
+        SELECT 
+            EXTRACT(HOUR FROM timestamp) as hour,
+            COUNT(*) FILTER (WHERE eventType = 'message_received') as messages,
+            COUNT(*) FILTER (WHERE eventType = 'reply_sent') as replies
+        FROM analytics_events
+        WHERE timestamp > NOW() - INTERVAL '1 day' * $1
+        GROUP BY EXTRACT(HOUR FROM timestamp)
+        ORDER BY hour
+    `, [days]);
+
+    return { daily: daily.rows, hourly: hourly.rows };
+}
+
+export async function getAnalyticsDecisions(days = 7) {
+    const db = await getDb();
+
+    logger.info(`getAnalyticsDecisions: querying for ${days} days`);
+
+    const totalEvents = await db.query(`
+        SELECT COUNT(*) as total FROM analytics_events 
+        WHERE timestamp > NOW() - INTERVAL '1 day' * $1
+    `, [days]);
+    logger.info(`getAnalyticsDecisions: total events in range = ${totalEvents.rows[0].total}`);
+
+    const eventTypeCounts = await db.query(`
+        SELECT eventType, COUNT(*) as count FROM analytics_events 
+        WHERE timestamp > NOW() - INTERVAL '1 day' * $1
+        GROUP BY eventType
+    `, []);
+    logger.info(`getAnalyticsDecisions: event type counts = ${JSON.stringify(eventTypeCounts.rows)}`);
+
+    const breakdown = await db.query(`
+        SELECT 
+            metadata->>'reason' as reason,
+            COUNT(*) as count
+        FROM analytics_events
+        WHERE eventType = 'reply_declined' 
+            AND timestamp > NOW() - INTERVAL '1 day' * $1
+        GROUP BY metadata->>'reason'
+        ORDER BY count DESC
+    `, [days]);
+    logger.info(`getAnalyticsDecisions: breakdown query returned ${breakdown.rows.length} rows`);
+
+    const funnel = await db.query(`
+        SELECT 
+            COUNT(*) FILTER (WHERE eventType = 'message_received') as messages_received,
+            COUNT(*) FILTER (WHERE (metadata->>'isMentioned')::boolean = true) as messages_mentioned,
+            COUNT(*) FILTER (WHERE eventType = 'reply_attempt') as reply_attempts,
+            COUNT(*) FILTER (WHERE eventType = 'reply_sent') as replies_sent
+        FROM analytics_events
+        WHERE timestamp > NOW() - INTERVAL '1 day' * $1
+    `, [days]);
+    logger.info(`getAnalyticsDecisions: funnel = ${JSON.stringify(funnel.rows[0])}`);
+
+    return { 
+        breakdown: breakdown.rows.map(r => ({ reason: r.reason, count: parseInt(r.count) })), 
+        funnel: funnel.rows[0] 
+    };
+}
+
+export async function getAnalyticsProviders(days = 7) {
+    const db = await getDb();
+
+    const byProvider = await db.query(`
+        SELECT 
+            metadata->>'provider' as provider,
+            metadata->>'model' as model,
+            COUNT(*) as call_count,
+            ROUND(AVG((metadata->>'latencyMs')::numeric)) as avg_latency,
+            SUM((metadata->>'promptTokens')::int) as prompt_tokens,
+            SUM((metadata->>'responseTokens')::int) as response_tokens,
+            COUNT(*) FILTER (WHERE eventType = 'llm_error') as error_count
+        FROM analytics_events
+        WHERE eventType = 'llm_call' AND timestamp > NOW() - INTERVAL '1 day' * $1
+        GROUP BY metadata->>'provider', metadata->>'model'
+        ORDER BY call_count DESC
+    `, [days]);
+
+    const errorTypes = await db.query(`
+        SELECT 
+            metadata->>'errorType' as error_type,
+            metadata->>'provider' as provider,
+            COUNT(*) as count
+        FROM analytics_events
+        WHERE eventType = 'llm_error' AND timestamp > NOW() - INTERVAL '1 day' * $1
+        GROUP BY metadata->>'errorType', metadata->>'provider'
+        ORDER BY count DESC
+    `, [days]);
+
+    return { byProvider: byProvider.rows, errorTypes: errorTypes.rows };
+}
+
+export async function getAnalyticsPerformance(days = 7) {
+    const db = await getDb();
+
+    const latencyTrend = await db.query(`
+        SELECT 
+            DATE(timestamp) as date,
+            ROUND(AVG((metadata->>'latencyMs')::numeric)) as avg_latency,
+            MIN((metadata->>'latencyMs')::numeric) as min_latency,
+            MAX((metadata->>'latencyMs')::numeric) as max_latency,
+            PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY (metadata->>'latencyMs')::numeric) as p50_latency,
+            PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY (metadata->>'latencyMs')::numeric) as p95_latency
+        FROM analytics_events
+        WHERE eventType = 'llm_call' AND metadata->>'latencyMs' IS NOT NULL
+            AND timestamp > NOW() - INTERVAL '1 day' * $1
+        GROUP BY DATE(timestamp)
+        ORDER BY date ASC
+    `, [days]);
+
+    const tokenTrend = await db.query(`
+        SELECT 
+            DATE(timestamp) as date,
+            SUM((metadata->>'promptTokens')::int) as prompt_tokens,
+            SUM((metadata->>'responseTokens')::int) as response_tokens,
+            COUNT(*) as call_count
+        FROM analytics_events
+        WHERE eventType = 'llm_call' AND timestamp > NOW() - INTERVAL '1 day' * $1
+        GROUP BY DATE(timestamp)
+        ORDER BY date ASC
+    `, [days]);
+
+    return { latencyTrend: latencyTrend.rows, tokenTrend: tokenTrend.rows };
+}
+
+export async function getAnalyticsUsers(days = 7, guildId = null, limit = 20) {
+    const db = await getDb();
+
+    const guildIdValue = guildId && guildId.trim() ? guildId.trim() : null;
+    
+    let topUsers;
+    let userDistribution;
+    
+    if (guildIdValue) {
+        topUsers = await db.query(`
+            SELECT 
+                userId,
+                metadata->>'username' as username,
+                COUNT(*) FILTER (WHERE eventType = 'message_received') as messages_sent,
+                COUNT(*) FILTER (WHERE eventType = 'reply_sent') as replies_received,
+                COUNT(DISTINCT channelId) as channels_used,
+                MIN(timestamp) as first_seen,
+                MAX(timestamp) as last_seen
+            FROM analytics_events
+            WHERE eventType IN ('message_received', 'reply_sent')
+                AND guildId = $2
+                AND timestamp > NOW() - INTERVAL '1 day' * $1
+            GROUP BY userId, metadata->>'username'
+            ORDER BY messages_sent DESC
+            LIMIT $3
+        `, [days, guildIdValue, limit]);
+
+        userDistribution = await db.query(`
+            SELECT 
+                CASE 
+                    WHEN cnt <= 5 THEN '1-5'
+                    WHEN cnt <= 10 THEN '6-10'
+                    WHEN cnt <= 20 THEN '11-20'
+                    WHEN cnt <= 50 THEN '21-50'
+                    ELSE '50+'
+                END as message_range,
+                COUNT(*) as user_count
+            FROM (
+                SELECT userId, COUNT(*) as cnt
+                FROM analytics_events
+                WHERE eventType = 'message_received'
+                    AND guildId = $2
+                    AND timestamp > NOW() - INTERVAL '1 day' * $1
+                GROUP BY userId
+            ) sub
+            GROUP BY 
+                CASE 
+                    WHEN cnt <= 5 THEN '1-5'
+                    WHEN cnt <= 10 THEN '6-10'
+                    WHEN cnt <= 20 THEN '11-20'
+                    WHEN cnt <= 50 THEN '21-50'
+                    ELSE '50+'
+                END
+            ORDER BY 
+                CASE 
+                    WHEN (CASE WHEN cnt <= 5 THEN '1-5' WHEN cnt <= 10 THEN '6-10' WHEN cnt <= 20 THEN '11-20' WHEN cnt <= 50 THEN '21-50' ELSE '50+' END) = '1-5' THEN 1
+                    WHEN (CASE WHEN cnt <= 5 THEN '1-5' WHEN cnt <= 10 THEN '6-10' WHEN cnt <= 20 THEN '11-20' WHEN cnt <= 50 THEN '21-50' ELSE '50+' END) = '6-10' THEN 2
+                    WHEN (CASE WHEN cnt <= 5 THEN '1-5' WHEN cnt <= 10 THEN '6-10' WHEN cnt <= 20 THEN '11-20' WHEN cnt <= 50 THEN '21-50' ELSE '50+' END) = '11-20' THEN 3
+                    WHEN (CASE WHEN cnt <= 5 THEN '1-5' WHEN cnt <= 10 THEN '6-10' WHEN cnt <= 20 THEN '11-20' WHEN cnt <= 50 THEN '21-50' ELSE '50+' END) = '21-50' THEN 4
+                    ELSE 5
+                END
+        `, [days, guildIdValue]);
+    } else {
+        topUsers = await db.query(`
+            SELECT 
+                userId,
+                metadata->>'username' as username,
+                COUNT(*) FILTER (WHERE eventType = 'message_received') as messages_sent,
+                COUNT(*) FILTER (WHERE eventType = 'reply_sent') as replies_received,
+                COUNT(DISTINCT channelId) as channels_used,
+                MIN(timestamp) as first_seen,
+                MAX(timestamp) as last_seen
+            FROM analytics_events
+            WHERE eventType IN ('message_received', 'reply_sent')
+                AND timestamp > NOW() - INTERVAL '1 day' * $1
+            GROUP BY userId, metadata->>'username'
+            ORDER BY messages_sent DESC
+            LIMIT $2
+        `, [days, limit]);
+
+        userDistribution = await db.query(`
+            SELECT 
+                CASE 
+                    WHEN cnt <= 5 THEN '1-5'
+                    WHEN cnt <= 10 THEN '6-10'
+                    WHEN cnt <= 20 THEN '11-20'
+                    WHEN cnt <= 50 THEN '21-50'
+                    ELSE '50+'
+                END as message_range,
+                COUNT(*) as user_count
+            FROM (
+                SELECT userId, COUNT(*) as cnt
+                FROM analytics_events
+                WHERE eventType = 'message_received'
+                    AND timestamp > NOW() - INTERVAL '1 day' * $1
+                GROUP BY userId
+            ) sub
+            GROUP BY 
+                CASE 
+                    WHEN cnt <= 5 THEN '1-5'
+                    WHEN cnt <= 10 THEN '6-10'
+                    WHEN cnt <= 20 THEN '11-20'
+                    WHEN cnt <= 50 THEN '21-50'
+                    ELSE '50+'
+                END
+            ORDER BY 
+                CASE 
+                    WHEN (CASE WHEN cnt <= 5 THEN '1-5' WHEN cnt <= 10 THEN '6-10' WHEN cnt <= 20 THEN '11-20' WHEN cnt <= 50 THEN '21-50' ELSE '50+' END) = '1-5' THEN 1
+                    WHEN (CASE WHEN cnt <= 5 THEN '1-5' WHEN cnt <= 10 THEN '6-10' WHEN cnt <= 20 THEN '11-20' WHEN cnt <= 50 THEN '21-50' ELSE '50+' END) = '6-10' THEN 2
+                    WHEN (CASE WHEN cnt <= 5 THEN '1-5' WHEN cnt <= 10 THEN '6-10' WHEN cnt <= 20 THEN '11-20' WHEN cnt <= 50 THEN '21-50' ELSE '50+' END) = '11-20' THEN 3
+                    WHEN (CASE WHEN cnt <= 5 THEN '1-5' WHEN cnt <= 10 THEN '6-10' WHEN cnt <= 20 THEN '11-20' WHEN cnt <= 50 THEN '21-50' ELSE '50+' END) = '21-50' THEN 4
+                    ELSE 5
+                END
+        `, [days]);
+    }
+
+    return { topUsers: topUsers.rows, userDistribution: userDistribution.rows };
+}
+
+export async function getAnalyticsChannels(days = 7, guildId = null) {
+    const db = await getDb();
+
+    const guildIdValue = guildId && guildId.trim() ? guildId.trim() : null;
+
+    let channelActivity;
+    
+    if (guildIdValue) {
+        channelActivity = await db.query(`
+            SELECT 
+                channelId,
+                metadata->>'channelName' as channel_name,
+                COUNT(*) FILTER (WHERE eventType = 'message_received') as messages,
+                COUNT(*) FILTER (WHERE eventType = 'reply_sent') as replies,
+                COUNT(DISTINCT userId) as unique_users
+            FROM analytics_events
+            WHERE eventType IN ('message_received', 'reply_sent')
+                AND guildId = $2
+                AND timestamp > NOW() - INTERVAL '1 day' * $1
+            GROUP BY channelId, metadata->>'channelName'
+            ORDER BY messages DESC
+            LIMIT 20
+        `, [days, guildIdValue]);
+    } else {
+        channelActivity = await db.query(`
+            SELECT 
+                channelId,
+                metadata->>'channelName' as channel_name,
+                COUNT(*) FILTER (WHERE eventType = 'message_received') as messages,
+                COUNT(*) FILTER (WHERE eventType = 'reply_sent') as replies,
+                COUNT(DISTINCT userId) as unique_users
+            FROM analytics_events
+            WHERE eventType IN ('message_received', 'reply_sent')
+                AND timestamp > NOW() - INTERVAL '1 day' * $1
+            GROUP BY channelId, metadata->>'channelName'
+            ORDER BY messages DESC
+            LIMIT 20
+        `, [days]);
+    }
+
+    return { channelActivity: channelActivity.rows };
+}
+
+export async function getAnalyticsErrors(days = 7, limit = 50) {
+    const db = await getDb();
+
+    const errors = await db.query(`
+        SELECT 
+            eventType,
+            metadata->>'provider' as provider,
+            metadata->>'model' as model,
+            metadata->>'errorType' as error_type,
+            metadata->>'statusCode' as status_code,
+            metadata->>'message' as message,
+            timestamp,
+            guildId,
+            userId
+        FROM analytics_events
+        WHERE eventType IN ('llm_error', 'reply_error') 
+            AND timestamp > NOW() - INTERVAL '1 day' * $1
+        ORDER BY timestamp DESC
+        LIMIT $1
+    `, [limit]);
+
+    return { errors: errors.rows };
+}

@@ -7,6 +7,80 @@
 import { createTheme } from '@mui/material/styles';
 
 /**
+ * Rainbow color palettes for charts and visualizations
+ * Each palette has multiple shades for different data lengths
+ */
+export const rainbowPalettes = {
+  palette5: [
+    '#f87171', // Red
+    '#fb923c', // Orange
+    '#facc15', // Yellow
+    '#4ade80', // Green
+    '#60a5fa', // Blue
+  ],
+  palette6: [
+    '#f87171', // Red
+    '#fb923c', // Orange
+    '#facc15', // Yellow
+    '#4ade80', // Green
+    '#60a5fa', // Blue
+    '#a78bfa', // Violet
+  ],
+  palette7: [
+    '#f87171', // Red
+    '#fb923c', // Orange
+    '#facc15', // Yellow
+    '#4ade80', // Green
+    '#60a5fa', // Blue
+    '#a78bfa', // Violet
+    '#f472b6', // Pink
+  ],
+  palette8: [
+    '#f87171', // Red
+    '#fb923c', // Orange
+    '#facc15', // Yellow
+    '#4ade80', // Green
+    '#2dd4bf', // Teal
+    '#60a5fa', // Blue
+    '#a78bfa', // Violet
+    '#f472b6', // Pink
+  ],
+  palette9: [
+    '#f87171', // Red
+    '#fb923c', // Orange
+    '#facc15', // Yellow
+    '#4ade80', // Green
+    '#2dd4bf', // Teal
+    '#60a5fa', // Blue
+    '#818cf8', // Indigo
+    '#a78bfa', // Violet
+    '#f472b6', // Pink
+  ],
+  palette10: [
+    '#ef4444', // Red-500
+    '#f97316', // Orange-500
+    '#eab308', // Yellow-500
+    '#22c55e', // Green-500
+    '#14b8a6', // Teal-500
+    '#3b82f6', // Blue-500
+    '#6366f1', // Indigo-500
+    '#8b5cf6', // Violet-500
+    '#ec4899', // Pink-500
+    '#f43f5e', // Rose-500
+  ],
+};
+
+export const chartColors = {
+  messages: '#60a5fa',
+  repliesSent: '#4ade80',
+  repliesDeclined: '#f87171',
+  latency: '#fb923c',
+  tokens: '#facc15',
+  users: '#a78bfa',
+  errors: '#f472b6',
+};
+
+/**
  * Custom dark theme for DiscordLLMBot dashboard
  * Uses violet as primary color and pink as secondary
  */

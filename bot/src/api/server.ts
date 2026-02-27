@@ -19,11 +19,9 @@ import path from 'path';
 import { createServer, Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Client } from 'discord.js';
-import { logger } from '../../../shared/utils/logger.js';
-import { loadConfig, reloadConfig, getServerConfig, updateServerConfig, clearServerConfigCache } from '../../../shared/config/configLoader.js';
-import { loadGuildRelationships } from '../personality/relationships.js';
-import { generateReply, getAvailableModels } from '../llm/index.js';
-import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships, deleteServerConfig, saveGlobalConfig, getDb, getSqlLogEmitter } from '../../../shared/storage/persistence.js';
+import { logger } from '@shared/utils/logger.js';
+import { loadConfig, reloadConfig, getServerConfig, updateServerConfig, clearServerConfigCache } from '@shared/config/configLoader.js';
+import { getLatestReplies, getAnalyticsData, loadRelationships, saveRelationships, deleteServerConfig, saveGlobalConfig, getDb, getSqlLogEmitter, getAnalyticsOverview, getAnalyticsVolume, getAnalyticsDecisions, getAnalyticsProviders, getAnalyticsPerformance, getAnalyticsUsers, getAnalyticsChannels, getAnalyticsErrors } from '@shared/storage/persistence.js';
 import os from 'os';
 import crypto from 'crypto';
 
@@ -706,6 +704,102 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
         }
     });
 
+    app.get('/api/analytics/overview', async (req: Request, res: Response) => {
+        try {
+            const days = req.query.days ? parseInt(req.query.days as string) : 7;
+            const data = await getAnalyticsOverview(days);
+            res.json(data);
+        } catch (err) {
+            logger.error('Failed to fetch analytics overview', err);
+            res.status(500).json({ error: 'Failed to fetch analytics overview' });
+        }
+    });
+
+    app.get('/api/analytics/volume', async (req: Request, res: Response) => {
+        try {
+            const days = req.query.days ? parseInt(req.query.days as string) : 7;
+            const data = await getAnalyticsVolume(days);
+            res.json(data);
+        } catch (err) {
+            logger.error('Failed to fetch volume analytics', err);
+            res.status(500).json({ error: 'Failed to fetch volume analytics' });
+        }
+    });
+
+    app.get('/api/analytics/decisions', async (req: Request, res: Response) => {
+        try {
+            const days = req.query.days ? parseInt(req.query.days as string) : 7;
+            logger.info(`Fetching decision analytics for ${days} days`);
+            const data = await getAnalyticsDecisions(days);
+            logger.info('Decision analytics result', { breakdown: data.breakdown, funnel: data.funnel });
+            res.json(data);
+        } catch (err) {
+            logger.error('Failed to fetch decision analytics', err);
+            res.status(500).json({ error: 'Failed to fetch decision analytics' });
+        }
+    });
+
+    app.get('/api/analytics/providers', async (req: Request, res: Response) => {
+        try {
+            const days = req.query.days ? parseInt(req.query.days as string) : 7;
+            const data = await getAnalyticsProviders(days);
+            res.json(data);
+        } catch (err) {
+            logger.error('Failed to fetch provider analytics', err);
+            res.status(500).json({ error: 'Failed to fetch provider analytics' });
+        }
+    });
+
+    app.get('/api/analytics/performance', async (req: Request, res: Response) => {
+        try {
+            const days = req.query.days ? parseInt(req.query.days as string) : 7;
+            const data = await getAnalyticsPerformance(days);
+            res.json(data);
+        } catch (err) {
+            logger.error('Failed to fetch performance analytics', err);
+            res.status(500).json({ error: 'Failed to fetch performance analytics' });
+        }
+    });
+
+    app.get('/api/analytics/users', async (req: Request, res: Response) => {
+        try {
+            const days = req.query.days ? parseInt(req.query.days as string) : 7;
+            const guildIdRaw = req.query.guildId as string | undefined;
+            const guildId = guildIdRaw && guildIdRaw.trim() ? guildIdRaw.trim() : null;
+            const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+            const data = await getAnalyticsUsers(days, guildId, limit);
+            res.json(data);
+        } catch (err) {
+            logger.error('Failed to fetch user analytics', err);
+            res.status(500).json({ error: 'Failed to fetch user analytics' });
+        }
+    });
+
+    app.get('/api/analytics/channels', async (req: Request, res: Response) => {
+        try {
+            const days = req.query.days ? parseInt(req.query.days as string) : 7;
+            const guildIdRaw = req.query.guildId as string | undefined;
+            const guildId = guildIdRaw && guildIdRaw.trim() ? guildIdRaw.trim() : null;
+            const data = await getAnalyticsChannels(days, guildId);
+            res.json(data);
+        } catch (err) {
+            logger.error('Failed to fetch channel analytics', err);
+            res.status(500).json({ error: 'Failed to fetch channel analytics' });
+        }
+    });
+
+    app.get('/api/analytics/errors', async (req: Request, res: Response) => {
+        try {
+            const days = req.query.days ? parseInt(req.query.days as string) : 7;
+            const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+            const data = await getAnalyticsErrors(days, limit);
+            res.json(data);
+        } catch (err) {
+            logger.error('Failed to fetch error analytics', err);
+            res.status(500).json({ error: 'Failed to fetch error analytics' });
+        }
+    });
+
     app.post('/api/chat', async (req: Request, res: Response) => {
         try {
             const { content } = req.body;
@@ -813,7 +907,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
 
             const validTables = ['bot_replies', 'global_config', 'guilds', 'messages',
                 'relationship_behaviors', 'relationship_boundaries',
-                'relationships', 'server_configs'];
+                'relationships', 'server_configs', 'analytics_events'];
             if (!validTables.includes(tableName)) {
                 return res.status(400).json({ error: 'Invalid table name' });
             }

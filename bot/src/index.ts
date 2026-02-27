@@ -18,9 +18,9 @@ import { Client, GatewayIntentBits, Partials } from 'discord.js';
 
 const startTime = Date.now();
 
-import { validateEnvironment } from '../../shared/config/validation.js';
-import { logger, initializeLogger } from '../../shared/utils/logger.js';
-import { pruneOldMessages, resetPoolWrapper } from '../../shared/storage/persistence.js';
+import { validateEnvironment } from '@shared/config/validation.js';
+import { logger, initializeLogger } from '@shared/utils/logger.js';
+import { pruneOldMessages, resetPoolWrapper } from '@shared/storage/persistence.js';
 import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from './events/index.js';
 import { startApi } from './api/server.js';
 
@@ -44,8 +44,8 @@ async function startBot(): Promise<void> {
     let cleanupInterval: NodeJS.Timeout | null = null;
 
     try {
-        const { setSqlLoggingEnabled } = await import('../../shared/config/configLoader.js');
-        const { loadConfig, getGlobalMemoryConfig } = await import('../../shared/config/configLoader.js');
+        const { setSqlLoggingEnabled } = await import('@shared/config/configLoader.js');
+        const { loadConfig, getGlobalMemoryConfig } = await import('@shared/config/configLoader.js');
         const fullConfig = await loadConfig();
 
         initializeLogger(fullConfig.logger?.maxLogLines);

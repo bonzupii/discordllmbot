@@ -15,6 +15,14 @@ import type {
   BotConfig,
   BotInfo,
   ChatResponse,
+  AnalyticsOverview,
+  AnalyticsVolume,
+  AnalyticsDecisions,
+  AnalyticsProviders,
+  AnalyticsPerformance,
+  AnalyticsUsers,
+  AnalyticsChannels,
+  AnalyticsErrors,
 } from '@types';
 
 /**
@@ -51,15 +59,19 @@ export const healthApi = {
  * Analytics and statistics endpoints
  */
 export const analyticsApi = {
-  /**
-   * Get 24-hour analytics summary
-   */
   getAnalytics: (): Promise<AxiosResponse<AnalyticsResponse>> => api.get('/analytics'),
-  /**
-   * Get recent bot replies
-   * @param limit - Maximum number of replies to return (default 50)
-   */
   getReplies: (limit = 50): Promise<AxiosResponse<Reply[]>> => api.get(`/replies?limit=${limit}`),
+  getOverview: (days = 7): Promise<AxiosResponse<AnalyticsOverview>> => api.get(`/analytics/overview?days=${days}`),
+  getVolume: (days = 7): Promise<AxiosResponse<AnalyticsVolume>> => api.get(`/analytics/volume?days=${days}`),
+  getDecisions: (days = 7): Promise<AxiosResponse<AnalyticsDecisions>> => api.get(`/analytics/decisions?days=${days}`),
+  getProviders: (days = 7): Promise<AxiosResponse<AnalyticsProviders>> => api.get(`/analytics/providers?days=${days}`),
+  getPerformance: (days = 7): Promise<AxiosResponse<AnalyticsPerformance>> => api.get(`/analytics/performance?days=${days}`),
+  getUsers: (days = 7, guildId?: string, limit = 20): Promise<AxiosResponse<AnalyticsUsers>> => 
+    api.get(`/analytics/users?days=${days}&limit=${limit}`, { params: { guildId } }),
+  getChannels: (days = 7, guildId?: string): Promise<AxiosResponse<AnalyticsChannels>> => 
+    api.get(`/analytics/channels?days=${days}`, { params: { guildId } }),
+  getErrors: (days = 7, limit = 50): Promise<AxiosResponse<AnalyticsErrors>> => 
+    api.get(`/analytics/errors?days=${days}&limit=${limit}`),
 };
 
 // ===========================================================================

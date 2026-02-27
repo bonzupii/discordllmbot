@@ -28,7 +28,7 @@ Use the current normalized schema:
 
 ### Global config (`global_config`)
 - `botPersona`: `username`, `description`, `globalRules[]`
-- `llm`: `provider`, `geminiModel`, `ollamaModel`, `retryAttempts`, `retryBackoffMs`
+- `llm`: `provider`, `geminiModel`, `ollamaModel`, `qwenModel`, `retryAttempts`, `retryBackoffMs`
 - `memory`: `maxMessages`, `maxMessageAgeDays`
 - `logger`: `maxLogLines`, `logReplyDecisions`, `logSql`
 - `sandbox`: `enabled`, `timeoutMs`, `allowedCommands[]`
@@ -45,6 +45,13 @@ Use the current normalized schema:
   - `ignoreChannels[]`
   - `ignoreKeywords[]`
   - `guildSpecificChannels`
+
+### Per-user relationships (`relationships`)
+- `username`, `displayName`, `avatarUrl`
+- `attitude` - string describing the user's attitude (e.g., "friendly", "hostile", "neutral")
+- `behavior` - string describing how the bot should behave toward the user (e.g., "treat them like a close friend")
+- `boundaries[]` - array of boundary strings
+- `ignored` - boolean flag to ignore this user
 
 ### Persistence Policy
 
@@ -290,6 +297,7 @@ DISCORD_CLIENT_ID=
 # LLM Provider
 GEMINI_API_KEY=
 OLLAMA_API_URL=
+QWEN_API_KEY=
 
 # PostgreSQL
 DATABASE_URL=
@@ -311,6 +319,8 @@ Key tables:
 - `server_configs` - Per-server overrides (typed columns)
 - `guilds` - Joined servers
 - `relationships` - Per-user relationship data
+- `relationship_behaviors` - Behavior definitions for relationships
+- `relationship_boundaries` - Boundary definitions for relationships
 - `messages` - Message history
 - `bot_replies` - Reply analytics
 

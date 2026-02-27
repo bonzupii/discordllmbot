@@ -8,7 +8,7 @@
  */
 
 import { GuildMember } from 'discord.js';
-import { logger } from '../../../shared/utils/logger.js';
+import { logger } from '@shared/utils/logger.js';
 import { setRelationship } from '../personality/relationships.js';
 
 /**

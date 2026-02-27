@@ -12,16 +12,18 @@ import {
   Settings as SettingsIcon,
   ListAlt as ListAltIcon,
   Storage as StorageIcon,
+  Analytics as AnalyticsIcon,
 } from '@mui/icons-material';
 
 import theme from '@theme';
-import { Dashboard, Settings, Servers, Playground, Logs, Database } from '@pages';
+import { Dashboard, Settings, Servers, Playground, Logs, Database, Analytics } from '@pages';
 import { ErrorBoundary } from '@components/common';
 import { Header, Sidebar, MainContent } from '@components/Layout';
-import { useHealth } from '@hooks';
+import { useHealth, useServers } from '@hooks';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
+  { to: '/analytics', label: 'Analytics', icon: <AnalyticsIcon /> },
   { to: '/servers', label: 'Servers', icon: <DnsIcon /> },
   { to: '/database', label: 'Database', icon: <StorageIcon /> },
   { to: '/playground', label: 'Playground', icon: <ChatIcon /> },
@@ -39,6 +41,7 @@ function AppContent() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { health, loading, error } = useHealth();
+  const { servers } = useServers();
   const isApiUnavailable = loading || !!error || !health;
   const apiConnectionState = health ? 'connected' : error ? 'error' : 'connecting';
 
@@ -88,6 +91,7 @@ function AppContent() {
             <ErrorBoundary>
               <Routes>
                 <Route path="/" element={<Dashboard health={health} />} />
+                <Route path="/analytics" element={<Analytics servers={servers.map(s => ({ id: s.id, name: s.name }))} />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/servers" element={<Servers />} />
                 <Route path="/database" element={<Database />} />

@@ -7,7 +7,7 @@
  */
 
 import { Client } from 'discord.js';
-import { logger } from '../../../shared/utils/logger.js';
+import { logger } from '@shared/utils/logger.js';
 
 /**
  * Bot profile configuration.
