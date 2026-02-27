@@ -27,7 +27,7 @@ The API server lives inside the bot process (`bot/src/api/server.ts`) and serves
 
 - **Persona-driven prompts**: Bot persona is defined in global config and injected into every prompt. Customize `username`, `description`, and `globalRules` to control behavior.
 
-- **Per-user relationships**: When the bot joins a guild it initializes database entries for each human member. Each relationship stores `username`, `displayName`, `attitude`, `behavior`, `boundaries`, and `ignored` flag. These entries are included in prompts so the LLM can tailor replies.
+- **Per-user relationships**: When the bot joins a guild it initializes database entries for each human member. Each relationship stores `username`, `displayName`, `attitude`, `behavior`, `boundaries`, and `ignored` flag. The `behavior` field is a string that describes how the bot should behave toward the user (e.g., "treat them like a close friend"). These entries are included in prompts so the LLM can tailor replies.
 
 - **Contextual memory**: Recent channel messages (authorId, author name, content) are stored in PostgreSQL (bounded by `memory.maxMessages` and `maxMessageAgeDays`).
 
@@ -61,9 +61,10 @@ Configuration is now normalized and stored in typed DB columns.
   - `description`
   - `globalRules[]`
 - `llm`
-  - `provider` (`gemini` | `ollama`)
+  - `provider` (`gemini` | `ollama` | `qwen`)
   - `geminiModel`
   - `ollamaModel`
+  - `qwenModel`
   - `retryAttempts`
   - `retryBackoffMs`
 - `memory`
@@ -73,6 +74,10 @@ Configuration is now normalized and stored in typed DB columns.
   - `maxLogLines`
   - `logReplyDecisions`
   - `logSql`
+- `sandbox`
+  - `enabled`
+  - `timeoutMs`
+  - `allowedCommands[]`
 
 ### Server config (`server_configs` table)
 
@@ -102,6 +107,8 @@ Key tables:
 - `server_configs` - Per-server overrides (typed columns)
 - `guilds` - Joined servers
 - `relationships` - Per-user relationship data
+- `relationship_behaviors` - Behavior definitions for relationships
+- `relationship_boundaries` - Boundary definitions for relationships
 - `messages` - Message history
 - `bot_replies` - Reply analytics
 
@@ -132,6 +139,7 @@ DISCORD_CLIENT_ID=
 # LLM
 GEMINI_API_KEY=
 OLLAMA_API_URL=
+QWEN_API_KEY=
 
 # PostgreSQL
 DATABASE_URL=

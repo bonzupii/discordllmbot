@@ -59,9 +59,10 @@ Configuration has been normalized and persisted in typed DB columns.
 Represents system-wide config and maps to:
 
 - `botPersona`: `username`, `description`, `globalRules[]`
-- `llm`: `provider`, `geminiModel`, `ollamaModel`, `retryAttempts`, `retryBackoffMs`
+- `llm`: `provider`, `geminiModel`, `ollamaModel`, `qwenModel`, `retryAttempts`, `retryBackoffMs`
 - `memory`: `maxMessages`, `maxMessageAgeDays`
 - `logger`: `maxLogLines`, `logReplyDecisions`, `logSql`
+- `sandbox`: `enabled`, `timeoutMs`, `allowedCommands[]`
 - `sandbox`: `enabled`, `timeoutMs`, `allowedCommands[]`
 
 ### Server config (`server_configs`)
@@ -192,6 +193,8 @@ Key tables:
 - `server_configs` - Per-server overrides (typed columns)
 - `guilds` - Joined servers
 - `relationships` - Per-user relationship data
+- `relationship_behaviors` - Behavior definitions for relationships
+- `relationship_boundaries` - Boundary definitions for relationships
 - `messages` - Message history
 - `bot_replies` - Reply analytics
 
@@ -207,6 +210,7 @@ DISCORD_CLIENT_ID=
 # LLM Provider
 GEMINI_API_KEY=
 OLLAMA_API_URL=
+QWEN_API_KEY=
 
 # PostgreSQL
 DATABASE_URL=
