@@ -126,7 +126,7 @@ export interface Relationship {
     displayName: string;
     avatarUrl: string;
     ignored: boolean;
-    behavior: string[];
+    behavior: string;
     boundaries: string[];
 }
 

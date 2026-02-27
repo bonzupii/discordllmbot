@@ -14,7 +14,7 @@ import { Message } from 'discord.js';
 interface Relationship {
     ignored?: boolean;
     attitude?: string;
-    behavior?: string[];
+    behavior?: string;
     boundaries?: string[];
 }
 

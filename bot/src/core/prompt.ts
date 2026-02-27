@@ -14,7 +14,7 @@ import { getBotPersona } from '../personality/botPersona.js';
  */
 interface Relationship {
     attitude: string;
-    behavior: string[];
+    behavior: string;
     boundaries: string[];
     username?: string;
     displayName?: string;
@@ -73,11 +73,12 @@ export async function buildPrompt({
 
     const uniqueUserIds = Array.from(new Set(context.map(m => m.authorId).filter(Boolean)));
     const relationshipLines = uniqueUserIds.map(id => {
-        const rel = guildRelationships[id] ?? { attitude: 'unknown', behavior: [], boundaries: [], username: id };
+        const rel = guildRelationships[id] ?? { attitude: 'unknown', behavior: '', boundaries: [], username: id };
         const nameFromContext = (context.find(m => m.authorId === id)?.author);
         const display = rel.displayName ?? rel.username ?? nameFromContext ?? id;
         const usernameNote = rel.username && rel.username !== display ? ` (${rel.username})` : '';
-        return `${display}${usernameNote}: Attitude=${rel.attitude}; Behavior=${rel.behavior.join('; ') || 'none'}`;
+        const behaviorNote = rel.behavior ? `, ${rel.behavior}` : '';
+        return `${display}${usernameNote}: ${rel.attitude} attitude${behaviorNote}`;
     });
 
     return `
@@ -95,9 +96,7 @@ ${botPersona.globalRules.map(r => `- ${r}`).join('\n')}
 Server: ${guildName ?? ''}
 
 Your relationship with ${username}:
-Attitude: ${relationship.attitude}
-Behavior rules:
-${relationship.behavior.map(b => `- ${b}`).join('\n')}
+${relationship.attitude} attitude, ${relationship.behavior || 'treat them normally'}
 Boundaries:
 ${relationship.boundaries.map(b => `- ${b}`).join('\n')}
 
