@@ -2,11 +2,14 @@ FROM node:25-alpine
 
 WORKDIR /usr/src/app
 
-# Copy package.json
+# Copy dashboard package.json
 COPY dashboard/package*.json ./
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
+
+# Copy dashboard source
+COPY dashboard/ ./
 
 # Expose port
 EXPOSE 5173

@@ -6,7 +6,20 @@
  * @module dashboard/src/constants
  */
 
-import { LOGGING, TIME } from '@shared/constants';
+/** Time constants in milliseconds */
+const TIME = {
+    SECOND: 1000,
+    MINUTE: 60 * 1000,
+    HOUR: 60 * 60 * 1000,
+    DAY: 24 * 60 * 60 * 1000,
+} as const;
+
+/** Logging defaults */
+const LOGGING = {
+    MAX_LOG_LINES: 1000,
+    MAX_LOG_LINES_API: 500,
+    MAX_LOG_LINES_DB: 200,
+} as const;
 
 /**
  * Dashboard Configuration
