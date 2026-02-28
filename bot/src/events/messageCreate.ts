@@ -1,23 +1,24 @@
 /**
  * Message Create Event Handler
- * 
+ *
  * Handles incoming Discord messages and decides whether to reply.
  * Manages context, relationships, and LLM interaction.
- * 
+ *
  * @module bot/src/events/messageCreate
  */
 
-import { Message, Client } from 'discord.js';
+import { Client, Message } from 'discord.js';
+
+import { getApiConfig, getBotConfig, getMemoryConfig, getReplyBehavior } from '@shared/config/configLoader.js';
+import { loadContexts, logAnalyticsEvent, logBotReply } from '@shared/storage/persistence';
 import { logger } from '@shared/utils/logger.js';
-import { generateReply } from '@/llm/index.js';
-import { getRelationship, type Relationship, type GuildRelationships } from '@/personality/relationships.js';
-import { addMessage } from '@/memory/context.js';
-import { loadContexts, logBotReply, logAnalyticsEvent } from '@shared/storage/persistence.js';
+
 import { buildPrompt } from '@/core/prompt.js';
-import { shouldReply, type ReplyBehaviorConfig, type Relationship as ReplyDeciderRelationship } from '@/core/replyDecider.js';
-import { getBotConfig, getApiConfig, getReplyBehavior, getMemoryConfig } from '@shared/config/configLoader.js';
-import { getAllRelationships } from '@/personality/relationships.js';
-import { extractDockerCommand, executeInSandbox, isSandboxEnabled } from '@/sandbox/index.js';
+import { ReplyBehaviorConfig, Relationship as ReplyDeciderRelationship, shouldReply } from '@/core/replyDecider.js';
+import { addMessage } from '@/memory/context.js';
+import { generateReply } from '@/llm/index.js';
+import { getAllRelationships, getRelationship, GuildRelationships, Relationship } from '@/personality/relationships.js';
+import { executeInSandbox, extractDockerCommand, isSandboxEnabled } from '@/sandbox/index.js';
 
 const SANDBOX_KEYWORDS = ['docker', 'sandbox', 'container', 'docker command'];
 

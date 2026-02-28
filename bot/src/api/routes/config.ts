@@ -6,17 +6,13 @@
  * @module bot/src/api/routes/config
  */
 
-import { Router, Request, Response } from 'express';
 import { Client } from 'discord.js';
-import { logger } from '@shared/utils/logger.js';
-import {
-    loadConfig,
-    reloadConfig,
-    getServerConfig,
-    updateServerConfig,
-    clearServerConfigCache,
-} from '@shared/config/configLoader.js';
+import { Router, Request, Response } from 'express';
+
+import { loadConfig, reloadConfig, getServerConfig, updateServerConfig, clearServerConfigCache } from '@shared/config/configLoader.js';
 import { deleteServerConfig, saveGlobalConfig } from '@shared/storage/persistence.js';
+import { logger } from '@shared/utils/logger.js';
+
 import { getChangedFields } from '../utils.js';
 
 export interface ConfigRoutesOptions {

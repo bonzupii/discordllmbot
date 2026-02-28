@@ -6,10 +6,11 @@
  * @module bot/src/api/routes/guilds
  */
 
-import { Router, Request, Response } from 'express';
 import { Client } from 'discord.js';
-import { logger } from '@shared/utils/logger.js';
+import { Router, Request, Response } from 'express';
+
 import { loadRelationships, saveRelationships } from '@shared/storage/persistence';
+import { logger } from '@shared/utils/logger.js';
 
 export interface GuildsRoutesOptions {
     client: Client;

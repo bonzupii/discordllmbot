@@ -7,19 +7,20 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { logger } from '@shared/utils/logger.js';
+
 import {
-    getAnalyticsData,
-    getLatestReplies,
-    getAnalyticsOverview,
-    getAnalyticsVolume,
-    getAnalyticsDecisions,
-    getAnalyticsProviders,
-    getAnalyticsPerformance,
-    getAnalyticsUsers,
     getAnalyticsChannels,
+    getAnalyticsData,
+    getAnalyticsDecisions,
     getAnalyticsErrors,
+    getAnalyticsOverview,
+    getAnalyticsPerformance,
+    getAnalyticsProviders,
+    getAnalyticsUsers,
+    getAnalyticsVolume,
+    getLatestReplies,
 } from '@shared/storage/persistence';
+import { logger } from '@shared/utils/logger.js';
 
 /**
  * Create analytics routes router.

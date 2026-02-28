@@ -7,8 +7,9 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { logger } from '@shared/utils/logger.js';
+
 import { getDb } from '@shared/storage/persistence';
+import { logger } from '@shared/utils/logger.js';
 
 /**
  * Create database routes router.
