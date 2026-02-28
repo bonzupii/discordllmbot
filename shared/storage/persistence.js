@@ -639,10 +639,10 @@ export async function getAnalyticsDecisions(days = 7) {
     logger.info(`getAnalyticsDecisions: total events in range = ${totalEvents.rows[0].total}`);
 
     const eventTypeCounts = await db.query(`
-        SELECT eventType, COUNT(*) as count FROM analytics_events 
+        SELECT eventType, COUNT(*) as count FROM analytics_events
         WHERE timestamp > NOW() - INTERVAL '1 day' * $1
         GROUP BY eventType
-    `, []);
+    `, [days]);
     logger.info(`getAnalyticsDecisions: event type counts = ${JSON.stringify(eventTypeCounts.rows)}`);
 
     const breakdown = await db.query(`
