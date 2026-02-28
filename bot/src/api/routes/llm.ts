@@ -130,6 +130,50 @@ export function createLlmRoutes(): Router {
     });
 
     /**
+     * POST /api/llm/qwen/oauth/refresh - Refresh Qwen OAuth token
+     * 
+     * Attempts to refresh the Qwen OAuth token automatically.
+     * This is called by the bot when it receives a 401 error.
+     */
+    router.post('/llm/qwen/oauth/refresh', async (req: Request, res: Response) => {
+        try {
+            logger.info('Qwen OAuth token refresh requested');
+            
+            // Check if we have a valid token in config
+            const config = await loadConfig();
+            const currentToken = config.llm?.qwenApiKey;
+            
+            if (!currentToken) {
+                return res.status(400).json({ 
+                    error: 'No Qwen token configured. Complete OAuth flow first.',
+                    action: 'oauth_required'
+                });
+            }
+            
+            // For now, just reload config to check if token was updated externally
+            // In future, implement actual token refresh logic here
+            await reloadConfig();
+            
+            const newConfig = await loadConfig();
+            const newToken = newConfig.llm?.qwenApiKey;
+            
+            if (newToken && newToken !== currentToken) {
+                logger.info('Qwen OAuth token refreshed successfully');
+                res.json({ status: 'refreshed' });
+            } else {
+                logger.warn('Qwen OAuth token refresh failed - manual re-authentication required');
+                res.status(401).json({ 
+                    error: 'Token refresh failed. Please re-authenticate in dashboard.',
+                    action: 'oauth_required'
+                });
+            }
+        } catch (err) {
+            logger.error('Failed to refresh Qwen OAuth token', err);
+            res.status(500).json({ error: 'Failed to refresh OAuth token' });
+        }
+    });
+
+    /**
      * POST /api/llm/qwen/oauth/poll - Poll Qwen OAuth token
      */
     router.post('/llm/qwen/oauth/poll', async (req: Request, res: Response) => {

@@ -2,10 +2,11 @@
  * Qwen LLM Provider
  *
  * Uses Qwen OAuth authentication via portal.qwen.ai
+ * Automatically refreshes token when 401 errors occur.
  */
 
 import { logger } from '@shared/utils/logger.js';
-import { getApiConfig } from '@shared/config/configLoader.js';
+import { getApiConfig, reloadConfig } from '@shared/config/configLoader.js';
 
 interface ApiConfig {
     qwenModel?: string;
@@ -28,22 +29,64 @@ interface QwenResponse {
 class QwenAPIError extends Error {
     statusCode: number;
     retryable: boolean;
+    isAuthError: boolean;
 
-    constructor(message: string, statusCode: number, retryable = false) {
+    constructor(message: string, statusCode: number, retryable = false, isAuthError = false) {
         super(message);
         this.name = 'QwenAPIError';
         this.statusCode = statusCode;
         this.retryable = retryable;
+        this.isAuthError = isAuthError;
     }
 }
 
 function isRetryable(error: Error): boolean {
-    if (error instanceof QwenAPIError) return error.retryable;
+    if (error instanceof QwenAPIError) {
+        // Don't retry auth errors - they need token refresh instead
+        if (error.isAuthError) return false;
+        return error.retryable;
+    }
     return error.message?.includes('timeout') || error.message?.includes('ECONNRESET');
+}
+
+/**
+ * Attempt to refresh Qwen OAuth token automatically.
+ * Returns true if refresh was successful.
+ */
+async function refreshQwenToken(): Promise<boolean> {
+    try {
+        logger.info('Attempting automatic Qwen OAuth token refresh...');
+        
+        // Try to call the refresh endpoint on the API server
+        const apiPort = process.env.API_PORT || '3000';
+        const refreshUrl = `http://localhost:${apiPort}/api/llm/qwen/oauth/refresh`;
+        
+        const res = await fetch(refreshUrl, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (res.ok) {
+            const data = await res.json() as { status?: string };
+            if (data.status === 'refreshed') {
+                // Reload config to get new token
+                await reloadConfig();
+                logger.info('Qwen OAuth token refreshed successfully');
+                return true;
+            }
+        }
+        
+        logger.warn('Qwen OAuth token refresh failed - manual re-authentication required');
+        return false;
+    } catch (err) {
+        logger.error('Qwen OAuth token refresh error', err);
+        return false;
+    }
 }
 
 async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 1000): Promise<T> {
     let lastError: Error;
+    let tokenRefreshAttempted = false;
     const safeMaxRetries = Number.isFinite(maxRetries) ? Math.max(0, Math.floor(maxRetries)) : 3;
     const totalAttempts = safeMaxRetries + 1;
 
@@ -52,6 +95,21 @@ async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseBackoffMs = 10
             return await fn();
         } catch (err) {
             lastError = err as Error;
+
+            // Special handling for auth errors - try token refresh once
+            if (lastError instanceof QwenAPIError && lastError.isAuthError && !tokenRefreshAttempted) {
+                tokenRefreshAttempted = true;
+                logger.warn('Qwen API auth error detected, attempting token refresh...');
+                
+                const refreshed = await refreshQwenToken();
+                if (refreshed) {
+                    logger.info('Token refreshed, retrying request...');
+                    continue; // Retry immediately with new token
+                }
+                
+                logger.error('Token refresh failed, cannot continue');
+                throw lastError;
+            }
 
             if (!isRetryable(lastError)) {
                 throw lastError;
@@ -111,10 +169,21 @@ export async function generateReply(prompt: string): Promise<QwenResponse> {
 
         if (!res.ok) {
             const errorText = await res.text();
+            const isAuthError = res.status === 401 || res.status === 403;
+            
+            // Log the full error for debugging
+            if (isAuthError) {
+                logger.error('Qwen API authentication failed - token may be expired', {
+                    statusCode: res.status,
+                    error: errorText,
+                });
+            }
+            
             throw new QwenAPIError(
                 `Qwen API error: ${res.status}${errorText ? `: ${errorText}` : ''}`,
                 res.status,
-                res.status >= 500 || res.status === 429 || res.status === 408
+                res.status >= 500 || res.status === 429 || res.status === 408,
+                isAuthError
             );
         }
 
