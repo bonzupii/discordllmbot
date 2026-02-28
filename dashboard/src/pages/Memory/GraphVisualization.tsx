@@ -33,8 +33,8 @@ import api from '@services/api';
 
 interface GraphNode {
   id: number;
-  nodeid: string;
-  nodetype: string;
+  nodeId: string;
+  nodeType: string;
   name: string;
   metadata: Record<string, unknown>;
   val?: number; // For node sizing
@@ -108,7 +108,7 @@ export function GraphVisualization({ guildId, channelId }: GraphVisualizationPro
 
     const nodes: GraphNode[] = rawData.nodes.map((n: any) => ({
       ...n,
-      color: NODE_COLORS[n.nodetype] || '#6b7280',
+      color: NODE_COLORS[n.nodeType] || '#6b7280',
       val: 2, // Default base size
     }));
 
@@ -120,7 +120,7 @@ export function GraphVisualization({ guildId, channelId }: GraphVisualizationPro
         .map((c: any) => c.nodeid)
         .filter((id: number) => nodeSet.has(id));
 
-      const type = edge.edgetype || 'fact';
+      const type = edge.edgeType || 'fact';
 
       for (let i = 0; i < edgeNodes.length; i++) {
         for (let j = i + 1; j < edgeNodes.length; j++) {
@@ -140,7 +140,7 @@ export function GraphVisualization({ guildId, channelId }: GraphVisualizationPro
 
     const filteredNodes = filterType === 'all' 
       ? nodes 
-      : nodes.filter(n => n.nodetype === filterType);
+      : nodes.filter(n => n.nodeType === filterType);
     
     const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
     const filteredLinks = links.filter(l => 
@@ -386,11 +386,11 @@ export function GraphVisualization({ guildId, channelId }: GraphVisualizationPro
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: hoverNode.color }}>
                     {hoverNode.name}
                   </Typography>
-                  <Chip label={hoverNode.nodetype} size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: hoverNode.color, color: 'white' }} />
+                  <Chip label={hoverNode.nodeType} size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: hoverNode.color, color: 'white' }} />
                 </Stack>
                 <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block', mb: 1 }}>
-                  ID: {hoverNode.nodeid}
+                  ID: {hoverNode.nodeId}
                 </Typography>
                 {hoverNode.metadata && Object.keys(hoverNode.metadata).length > 0 && (
                   <Box sx={{ mt: 1 }}>

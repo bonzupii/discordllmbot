@@ -30,18 +30,17 @@ import {
 import {
   Search as SearchIcon,
   InfoOutlined as InfoIcon,
-  FilterAlt as FilterIcon,
 } from '@mui/icons-material';
 import api from '@services/api';
 
 interface Node {
   id: number;
-  nodeid: string;
-  nodetype: string;
+  nodeId: string;
+  nodeType: string;
   name: string;
   metadata: Record<string, unknown>;
-  createdat: string;
-  memorycount: string | number;
+  createdAt: string;
+  memoryCount: string | number;
 }
 
 interface EntityManagerProps {
@@ -76,17 +75,17 @@ export function EntityManager({ guildId }: EntityManagerProps) {
 
   const filteredNodes = useMemo(() => {
     return nodes.filter(node => 
-      node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      node.nodeid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      node.nodetype.toLowerCase().includes(searchTerm.toLowerCase())
+      node.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      node.nodeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      node.nodeType?.toLowerCase().includes(searchTerm.toLowerCase())
     ).sort((a, b) => {
       if (orderBy === 'memories') {
-        return Number(b.memorycount) - Number(a.memorycount);
+        return Number(b.memoryCount || 0) - Number(a.memoryCount || 0);
       }
       if (orderBy === 'type') {
-        return a.nodetype.localeCompare(b.nodetype);
+        return (a.nodeType || '').localeCompare(b.nodeType || '');
       }
-      return a.name.localeCompare(b.name);
+      return (a.name || '').localeCompare(b.name || '');
     });
   }, [nodes, searchTerm, orderBy]);
 
@@ -110,6 +109,7 @@ export function EntityManager({ guildId }: EntityManagerProps) {
   if (loading) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
+        <CircularProgress size={30} sx={{ mb: 2 }} />
         <Typography color="text.secondary">Loading entities...</Typography>
       </Box>
     );
@@ -157,6 +157,7 @@ export function EntityManager({ guildId }: EntityManagerProps) {
               <TableCell sx={{ fontWeight: 'bold' }}>Entity Name</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }} align="center">Memories</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Internal ID</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Created</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }} align="right">Metadata</TableCell>
             </TableRow>
           </TableHead>
@@ -165,12 +166,12 @@ export function EntityManager({ guildId }: EntityManagerProps) {
               <TableRow key={node.id} hover>
                 <TableCell>
                   <Chip
-                    label={node.nodetype}
+                    label={node.nodeType}
                     size="small"
                     sx={{ 
-                      bgcolor: `${getNodeTypeColor(node.nodetype)}15`,
-                      color: getNodeTypeColor(node.nodetype),
-                      border: `1px solid ${getNodeTypeColor(node.nodetype)}44`,
+                      bgcolor: `${getNodeTypeColor(node.nodeType)}15`,
+                      color: getNodeTypeColor(node.nodeType),
+                      border: `1px solid ${getNodeTypeColor(node.nodeType)}44`,
                       fontWeight: 'bold',
                       textTransform: 'uppercase',
                       fontSize: '0.6rem',
@@ -183,7 +184,7 @@ export function EntityManager({ guildId }: EntityManagerProps) {
                 </TableCell>
                 <TableCell align="center">
                   <Chip 
-                    label={node.memorycount} 
+                    label={node.memoryCount} 
                     size="small" 
                     variant="outlined"
                     sx={{ fontWeight: 'bold', height: 20 }}
@@ -191,7 +192,12 @@ export function EntityManager({ guildId }: EntityManagerProps) {
                 </TableCell>
                 <TableCell>
                   <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
-                    {node.nodeid}
+                    {node.nodeId}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="caption">
+                    {new Date(node.createdAt).toLocaleDateString()}
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
@@ -209,7 +215,7 @@ export function EntityManager({ guildId }: EntityManagerProps) {
             ))}
             {filteredNodes.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                   <Typography variant="body2" color="text.secondary">No entities found matching your search</Typography>
                 </TableCell>
               </TableRow>

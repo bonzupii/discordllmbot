@@ -5,10 +5,15 @@
  */
 
 import Parser from 'rss-parser';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
+import * as pdfModule from 'pdf-parse';
 import { createHyperedge, findOrCreateNode } from '../../../shared/storage/hypergraphPersistence.js';
+
+// Handle CommonJS/ESM interop for pdf-parse
+let pdf = (pdfModule as any).default || pdfModule;
+// If the import is an object but has a PDFParse function property, use that (observed behavior)
+if (typeof pdf !== 'function' && typeof (pdf as any).PDFParse === 'function') {
+    pdf = (pdf as any).PDFParse;
+}
 import { 
     getRssFeeds, 
     updateRssLastFetched, 
@@ -146,8 +151,10 @@ export async function processDocument(guildId: string, docId: number, buffer: Bu
         const ext = filename.split('.').pop()?.toLowerCase();
 
         if (ext === 'pdf') {
-            const data = await pdf(buffer);
+            const parser = new pdf({ data: buffer });
+            const data = await parser.getText();
             text = data.text;
+            if (parser.destroy) await parser.destroy();
         } else if (ext === 'txt' || ext === 'md') {
             text = buffer.toString('utf-8');
         } else {

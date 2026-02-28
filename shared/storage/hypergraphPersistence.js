@@ -25,13 +25,13 @@ export async function findOrCreateNode(guildId, nodeId, nodeType, name, metadata
     const db = await getDb();
 
     const result = await db.query(
-        `INSERT INTO hyper_nodes (guildId, nodeId, nodeType, name, metadata)
+        `INSERT INTO hyper_nodes (guildid, nodeid, nodetype, name, metadata)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (guildId, nodeId, nodeType)
+         ON CONFLICT (guildid, nodeid, nodetype)
          DO UPDATE SET
              name = EXCLUDED.name,
              metadata = CASE WHEN EXCLUDED.metadata::text = '{}' THEN hyper_nodes.metadata ELSE EXCLUDED.metadata END,
-             updatedAt = CURRENT_TIMESTAMP
+             updatedat = CURRENT_TIMESTAMP
          RETURNING id`,
         [guildId, nodeId, nodeType, name, JSON.stringify(metadata)]
     );
@@ -48,24 +48,48 @@ export async function findOrCreateNode(guildId, nodeId, nodeType, name, metadata
 export async function getNodesByType(guildId, nodeType) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM hyper_nodes WHERE guildId = $1 AND nodeType = $2 ORDER BY createdAt DESC`,
+        `SELECT * FROM hyper_nodes WHERE guildid = $1 AND nodetype = $2 ORDER BY createdat DESC`,
         [guildId, nodeType]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        nodeId: row.nodeid,
+        nodeType: row.nodetype,
+        name: row.name,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat
+    }));
 }
 
 /**
- * Get all nodes for a guild
+ * Get all nodes for a guild with memory counts
  * @param {string} guildId - Guild ID
  * @returns {Promise<Array>} Nodes
  */
 export async function getAllNodes(guildId) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM hyper_nodes WHERE guildId = $1 ORDER BY nodeType, createdAt DESC`,
+        `SELECT n.*, COUNT(hem.hyperedgeid) as memoryCount
+         FROM hyper_nodes n
+         LEFT JOIN hyperedge_memberships hem ON n.id = hem.nodeid
+         WHERE n.guildid = $1
+         GROUP BY n.id
+         ORDER BY memoryCount DESC, n.name ASC`,
         [guildId]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        nodeId: row.nodeid,
+        nodeType: row.nodetype,
+        name: row.name,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat,
+        memoryCount: row.memorycount
+    }));
 }
 
 /**
@@ -78,10 +102,21 @@ export async function getAllNodes(guildId) {
 export async function findNode(guildId, nodeId, nodeType) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM hyper_nodes WHERE guildId = $1 AND nodeId = $2 AND nodeType = $3`,
+        `SELECT * FROM hyper_nodes WHERE guildid = $1 AND nodeid = $2 AND nodetype = $3`,
         [guildId, nodeId, nodeType]
     );
-    return result.rows[0] || null;
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+        id: row.id,
+        guildId: row.guildid,
+        nodeId: row.nodeid,
+        nodeType: row.nodetype,
+        name: row.name,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat
+    };
 }
 
 // ==================== Hyperedge Operations ====================
@@ -101,8 +136,8 @@ export async function createHyperedge(guildId, edgeData) {
 
         // Create the hyperedge
         const edgeResult = await client.query(
-            `INSERT INTO hyperedges (guildId, channelId, edgeType, summary, content, importance, urgency,
-                sourceMessageId, metadata)
+            `INSERT INTO hyperedges (guildid, channelid, edgetype, summary, content, importance, urgency,
+                sourcemessageid, metadata)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING id`,
             [guildId, edgeData.channelId, edgeData.edgeType, edgeData.summary,
@@ -123,9 +158,9 @@ export async function createHyperedge(guildId, edgeData) {
             );
 
             await client.query(
-                `INSERT INTO hyperedge_memberships (hyperedgeId, nodeId, role, weight, metadata)
+                `INSERT INTO hyperedge_memberships (hyperedgeid, nodeid, role, weight, metadata)
                  VALUES ($1, $2, $3, $4, $5)
-                 ON CONFLICT (hyperedgeId, nodeId, role) DO NOTHING`,
+                 ON CONFLICT (hyperedgeid, nodeid, role) DO NOTHING`,
                 [edgeId, nodeId, membership.role, membership.weight || 1.0,
                  JSON.stringify(membership.metadata || {})]
             );
@@ -155,37 +190,52 @@ export async function queryMemoriesByNode(guildId, nodeId, minUrgency = 0.1, lim
     const db = await getDb();
     const result = await db.query(
         `SELECT e.*,
-                json_agg(json_build_object(
-                    'nodeid', hem.id,
-                    'nodetype', hem.nodeType,
-                    'name', hem.name,
-                    'role', hem.role,
-                    'weight', hem.weight
-                ) ORDER BY hem.weight DESC) as members
+                COALESCE(
+                    (SELECT json_agg(json_build_object(
+                        'nodeId', n.nodeid,
+                        'nodeType', n.nodetype,
+                        'name', n.name,
+                        'role', hem.role,
+                        'weight', hem.weight
+                    ) ORDER BY hem.weight DESC)
+                     FROM hyperedge_memberships hem
+                     JOIN hyper_nodes n ON hem.nodeid = n.id
+                     WHERE hem.hyperedgeid = e.id),
+                    '[]'::json
+                ) as members
          FROM hyperedges e
-         JOIN LATERAL (
-             SELECT hem.hyperedgeId, hem.nodeId, hem.role, hem.weight, n.id, n.nodeType, n.name
-             FROM hyperedge_memberships hem
-             JOIN hyper_nodes n ON hem.nodeId = n.id
-             WHERE hem.hyperedgeId = e.id
-             ORDER BY hem.weight DESC
-         ) AS hem ON true
-         WHERE e.guildId = $1
-           AND n.nodeId = $2
+         JOIN hyperedge_memberships m ON e.id = m.hyperedgeid
+         JOIN hyper_nodes n_main ON m.nodeid = n_main.id
+         WHERE e.guildid = $1
+           AND n_main.nodeid = $2
            AND e.urgency >= $3
-         GROUP BY e.id, e.guildId, e.channelId, e.edgeType, e.summary, e.content, e.importance,
-                  e.urgency, e.accessCount, e.lastAccessedAt, e.sourceMessageId, e.extractedAt,
-                  e.metadata, e.createdAt, e.updatedAt
+         GROUP BY e.id
          ORDER BY e.urgency DESC
          LIMIT $4`,
         [guildId, nodeId, minUrgency, limit]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        channelId: row.channelid,
+        edgeType: row.edgetype,
+        summary: row.summary,
+        content: row.content,
+        importance: row.importance,
+        urgency: row.urgency,
+        accessCount: row.accesscount,
+        lastAccessedAt: row.lastaccessedat,
+        sourceMessageId: row.sourcemessageid,
+        extractedAt: row.extractedat,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat,
+        members: row.members
+    }));
 }
 
 /**
  * Get contextual memories for LLM prompt generation
- * Enforces channel isolation but allows all relevant channel memories
  * @param {string} guildId - Guild ID
  * @param {string} channelId - Channel ID
  * @param {string} userId - User ID to prioritize (optional)
@@ -195,39 +245,50 @@ export async function queryMemoriesByNode(guildId, nodeId, minUrgency = 0.1, lim
 export async function getContextualMemories(guildId, channelId, userId, limit = 10) {
     const db = await getDb();
     
-    // We want memories from this channel. 
-    // We prioritize memories involving the current user, but include others too.
     const result = await db.query(
         `SELECT e.*,
-                json_agg(json_build_object(
-                    'nodetype', hem.nodeType,
-                    'name', hem.name,
-                    'role', hem.role
-                ) ORDER BY hem.weight DESC) as members,
+                COALESCE(
+                    (SELECT json_agg(json_build_object(
+                        'nodeType', n.nodetype,
+                        'name', n.name,
+                        'role', hem.role
+                    ) ORDER BY hem.weight DESC)
+                     FROM hyperedge_memberships hem
+                     JOIN hyper_nodes n ON hem.nodeid = n.id
+                     WHERE hem.hyperedgeid = e.id),
+                    '[]'::json
+                ) as members,
                 EXISTS (
                     SELECT 1 FROM hyperedge_memberships hem2
-                    JOIN hyper_nodes n2 ON hem2.nodeId = n2.id
-                    WHERE hem2.hyperedgeId = e.id AND n2.nodeId = $3
+                    JOIN hyper_nodes n2 ON hem2.nodeid = n2.id
+                    WHERE hem2.hyperedgeid = e.id AND n2.nodeid = $3
                 ) as involves_user
          FROM hyperedges e
-         JOIN LATERAL (
-             SELECT hem.hyperedgeId, hem.nodeId, hem.role, hem.weight, n.nodeType, n.name
-             FROM hyperedge_memberships hem
-             JOIN hyper_nodes n ON hem.nodeId = n.id
-             WHERE hem.hyperedgeId = e.id
-             ORDER BY hem.weight DESC
-         ) AS hem ON true
-         WHERE e.guildId = $1
-           AND e.channelId = $2
+         WHERE e.guildid = $1
+           AND e.channelid = $2
            AND e.urgency > 0.1
-         GROUP BY e.id, e.guildId, e.channelId, e.edgeType, e.summary, e.content, e.importance,
-                  e.urgency, e.accessCount, e.lastAccessedAt, e.sourceMessageId, e.extractedAt,
-                  e.metadata, e.createdAt, e.updatedAt
          ORDER BY involves_user DESC, e.urgency DESC
          LIMIT $4`,
         [guildId, channelId, userId, limit]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        channelId: row.channelid,
+        edgeType: row.edgetype,
+        summary: row.summary,
+        content: row.content,
+        importance: row.importance,
+        urgency: row.urgency,
+        accessCount: row.accesscount,
+        lastAccessedAt: row.lastaccessedat,
+        sourceMessageId: row.sourcemessageid,
+        extractedAt: row.extractedat,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat,
+        members: row.members
+    }));
 }
 
 /**
@@ -242,19 +303,35 @@ export async function getUserFacts(guildId, userId, limit = 10) {
     const result = await db.query(
         `SELECT e.*
          FROM hyperedges e
-         WHERE e.guildId = $1
-           AND e.edgeType = 'fact'
+         WHERE e.guildid = $1
+           AND e.edgetype = 'fact'
            AND e.urgency > 0.1
            AND EXISTS (
                SELECT 1 FROM hyperedge_memberships hem
-               JOIN hyper_nodes n ON hem.nodeId = n.id
-               WHERE hem.hyperedgeId = e.id AND n.nodeId = $2
+               JOIN hyper_nodes n ON hem.nodeid = n.id
+               WHERE hem.hyperedgeid = e.id AND n.nodeid = $2
            )
          ORDER BY e.urgency DESC
          LIMIT $3`,
         [guildId, userId, limit]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        channelId: row.channelid,
+        edgeType: row.edgetype,
+        summary: row.summary,
+        content: row.content,
+        importance: row.importance,
+        urgency: row.urgency,
+        accessCount: row.accesscount,
+        lastAccessedAt: row.lastaccessedat,
+        sourceMessageId: row.sourcemessageid,
+        extractedAt: row.extractedat,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat
+    }));
 }
 
 /**
@@ -267,24 +344,110 @@ export async function getGlobalKnowledge(guildId, limit = 10) {
     const db = await getDb();
     const result = await db.query(
         `SELECT e.*,
-                json_agg(json_build_object(
-                    'nodetype', n.nodeType,
-                    'name', n.name,
-                    'role', hem.role
-                ) ORDER BY hem.weight DESC) as members
+                COALESCE(
+                    (SELECT json_agg(json_build_object(
+                        'nodeType', n.nodetype,
+                        'name', n.name,
+                        'role', hem.role
+                    ) ORDER BY hem.weight DESC)
+                     FROM hyperedge_memberships hem
+                     JOIN hyper_nodes n ON hem.nodeid = n.id
+                     WHERE hem.hyperedgeid = e.id),
+                    '[]'::json
+                ) as members
          FROM hyperedges e
-         LEFT JOIN hyperedge_memberships hem ON e.id = hem.hyperedgeId
-         LEFT JOIN hyper_nodes n ON hem.nodeId = n.id
-         WHERE e.guildId = $1
-           AND e.edgeType = 'fact'
+         WHERE e.guildid = $1
+           AND e.edgetype = 'fact'
            AND e.urgency > 0.1
-           AND e.channelId = 'system-ingestion'
-         GROUP BY e.id
+           AND e.channelid = 'system-ingestion'
          ORDER BY e.urgency DESC
          LIMIT $2`,
         [guildId, limit]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        channelId: row.channelid,
+        edgeType: row.edgetype,
+        summary: row.summary,
+        content: row.content,
+        importance: row.importance,
+        urgency: row.urgency,
+        accessCount: row.accesscount,
+        lastAccessedAt: row.lastaccessedat,
+        sourceMessageId: row.sourcemessageid,
+        extractedAt: row.extractedat,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat,
+        members: row.members
+    }));
+}
+
+/**
+ * Search memories by keyword with entity-awareness and boosted importance scoring
+ * @param {string} guildId - Guild ID
+ * @param {string[]} keywords - Array of keywords to search for
+ * @param {number} limit - Max results
+ * @returns {Promise<Array>} Matching memories
+ */
+export async function searchMemories(guildId, keywords, limit = 10) {
+    if (!keywords || keywords.length === 0) return [];
+    
+    const db = await getDb();
+    
+    // Construct dynamic ILIKE clauses for keywords
+    const textConditions = keywords.map((_, i) => `(e.summary ILIKE $${i + 3} OR e.content ILIKE $${i + 3})`).join(' OR ');
+    
+    const result = await db.query(
+        `SELECT e.*,
+                COALESCE(
+                    (SELECT json_agg(json_build_object(
+                        'nodeType', n.nodetype,
+                        'name', n.name,
+                        'role', hem.role
+                    ) ORDER BY hem.weight DESC)
+                     FROM hyperedge_memberships hem
+                     JOIN hyper_nodes n ON hem.nodeid = n.id
+                     WHERE hem.hyperedgeid = e.id),
+                    '[]'::json
+                ) as members
+         FROM hyperedges e
+         WHERE e.guildid = $1
+           AND e.urgency > 0.01
+           AND (
+               (${textConditions})
+               OR EXISTS (
+                   SELECT 1 FROM hyperedge_memberships hem_sub
+                   JOIN hyper_nodes n_sub ON hem_sub.nodeid = n_sub.id
+                   WHERE hem_sub.hyperedgeid = e.id 
+                   AND (${keywords.map((_, i) => `n_sub.name ILIKE $${i + 3}`).join(' OR ')})
+               )
+           )
+         -- Score by combined importance and recency/urgency
+         ORDER BY (e.importance * 2 + e.urgency) DESC
+         LIMIT $2`,
+        [guildId, limit, ...keywords.map(k => `%${k}%`)]
+    );
+    
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        channelId: row.channelid,
+        edgeType: row.edgetype,
+        summary: row.summary,
+        content: row.content,
+        importance: row.importance,
+        urgency: row.urgency,
+        accessCount: row.accesscount,
+        lastAccessedAt: row.lastaccessedat,
+        sourceMessageId: row.sourcemessageid,
+        extractedAt: row.extractedat,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat,
+        members: row.members
+    }));
 }
 
 /**
@@ -297,64 +460,81 @@ export async function getGlobalKnowledge(guildId, limit = 10) {
 export async function getGraphData(guildId, channelId = null, limit = 100) {
     const db = await getDb();
 
-    const channelFilter = channelId ? `WHERE e.guildId = $1 AND e.channelId = $2` : `WHERE e.guildId = $1`;
+    const channelFilter = channelId ? `WHERE e.guildid = $1 AND e.channelid = $2` : `WHERE e.guildid = $1`;
     const params = channelId ? [guildId, channelId, limit] : [guildId, limit];
 
     // Get edges with memberships
     const edgesResult = await db.query(
-        `SELECT e.id, e.edgeType, e.summary, e.urgency, e.channelId,
-                json_agg(json_build_object(
-                    'nodeid', hem.id,
-                    'nodetype', hem.nodeType,
-                    'name', hem.name,
-                    'role', hem.role,
-                    'weight', hem.weight
-                )) as connections
+        `SELECT e.id, e.edgetype, e.summary, e.urgency, e.channelid,
+                COALESCE(
+                    (SELECT json_agg(json_build_object(
+                        'nodeId', n.nodeid,
+                        'nodeType', n.nodetype,
+                        'name', n.name,
+                        'role', hem.role,
+                        'weight', hem.weight,
+                        'id', n.id
+                    ))
+                     FROM hyperedge_memberships hem
+                     JOIN hyper_nodes n ON hem.nodeid = n.id
+                     WHERE hem.hyperedgeid = e.id),
+                    '[]'::json
+                ) as connections
          FROM hyperedges e
-         JOIN LATERAL (
-             SELECT hem.hyperedgeId, hem.nodeId, hem.role, hem.weight, n.id, n.nodeType, n.name
-             FROM hyperedge_memberships hem
-             JOIN hyper_nodes n ON hem.nodeId = n.id
-             WHERE hem.hyperedgeId = e.id
-         ) AS hem ON true
          ${channelFilter}
-         GROUP BY e.id, e.edgeType, e.summary, e.urgency, e.channelId
          ORDER BY e.urgency DESC
          LIMIT $${params.length}`,
         params
     );
 
     // Get unique node IDs from edges
-    const nodeIds = new Set();
+    const nodeInternalIds = new Set();
     edgesResult.rows.forEach(edge => {
         if (edge.connections) {
             edge.connections.forEach(conn => {
-                if (conn.nodeid) nodeIds.add(conn.nodeid);
+                if (conn.id) nodeInternalIds.add(conn.id);
             });
         }
     });
 
     // Get node details
     let nodes = [];
-    if (nodeIds.size > 0) {
+    if (nodeInternalIds.size > 0) {
         const nodesResult = await db.query(
-            `SELECT id, nodeId, nodeType, name, metadata
+            `SELECT id, nodeid, nodetype, name, metadata
              FROM hyper_nodes
              WHERE id = ANY($1::int[])
-             ORDER BY nodeType, name`,
-            [Array.from(nodeIds)]
+             ORDER BY nodetype, name`,
+            [Array.from(nodeInternalIds)]
         );
-        nodes = nodesResult.rows;
+        nodes = nodesResult.rows.map(row => ({
+            id: row.id,
+            nodeId: row.nodeid,
+            nodeType: row.nodetype,
+            name: row.name,
+            metadata: row.metadata
+        }));
     }
 
-    return { nodes, edges: edgesResult.rows };
+    const edges = edgesResult.rows.map(row => ({
+        id: row.id,
+        edgeType: row.edgetype,
+        summary: row.summary,
+        urgency: row.urgency,
+        channelId: row.channelid,
+        connections: row.connections.map(c => ({
+            ...c,
+            nodeid: c.id // The frontend expects 'nodeid' referring to the numeric id for linking
+        }))
+    }));
+
+    return { nodes, edges };
 }
 
 // ==================== Decay Operations ====================
 
 /**
  * Update urgency scores for all memories in a guild
- * Uses exponential decay: urgency = importance * exp(-decayRate * daysSinceCreation) + (accessCount * boost)
  * @param {string} guildId - Guild ID
  * @param {number} decayRate - Daily decay rate
  * @param {number} accessBoost - Boost per access
@@ -364,9 +544,9 @@ export async function updateMemoryUrgency(guildId, decayRate = 0.1, accessBoost 
     const db = await getDb();
     const result = await db.query(
         `UPDATE hyperedges
-         SET urgency = LEAST(importance * EXP(((0.0 - $1::float) * EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - createdAt))) / 86400.0) + (accessCount * $2::float), 10.0),
-             updatedAt = CURRENT_TIMESTAMP
-         WHERE guildId = $3
+         SET urgency = LEAST(importance * EXP(((0.0 - $1::float) * EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - createdat))) / 86400.0) + (accesscount * $2::float), 10.0),
+             updatedat = CURRENT_TIMESTAMP
+         WHERE guildid = $3
          RETURNING id, urgency, importance`,
         [decayRate, accessBoost, guildId]
     );
@@ -384,9 +564,9 @@ export async function pruneLowUrgencyMemories(guildId, minUrgency = 0.1, minAgeD
     const db = await getDb();
     const result = await db.query(
         `DELETE FROM hyperedges
-         WHERE guildId = $1
+         WHERE guildid = $1
            AND urgency < $2
-           AND createdAt < NOW() - INTERVAL '1 day' * $3
+           AND createdat < NOW() - INTERVAL '1 day' * $3
          RETURNING id`,
         [guildId, minUrgency, minAgeDays]
     );
@@ -403,10 +583,10 @@ export async function recordMemoryAccess(hyperedgeId) {
     const db = await getDb();
     await db.query(
         `UPDATE hyperedges
-         SET accessCount = accessCount + 1,
-             lastAccessedAt = CURRENT_TIMESTAMP,
+         SET accesscount = accesscount + 1,
+             lastaccessedat = CURRENT_TIMESTAMP,
              urgency = LEAST(urgency * 1.1, 10.0),
-             updatedAt = CURRENT_TIMESTAMP
+             updatedat = CURRENT_TIMESTAMP
          WHERE id = $1`,
         [hyperedgeId]
     );
@@ -424,38 +604,37 @@ export async function getHypergraphStats(guildId) {
 
     const [nodeStats, edgeStats, topEntities] = await Promise.all([
         db.query(
-            `SELECT nodeType, COUNT(*) as count FROM hyper_nodes WHERE guildId = $1 GROUP BY nodeType ORDER BY count DESC`,
+            `SELECT nodetype, COUNT(*) as count FROM hyper_nodes WHERE guildid = $1 GROUP BY nodetype ORDER BY count DESC`,
             [guildId]
         ),
         db.query(
-            `SELECT edgeType, COUNT(*) as count, AVG(urgency) as avgUrgency
-             FROM hyperedges WHERE guildId = $1 GROUP BY edgeType ORDER BY count DESC`,
+            `SELECT edgetype, COUNT(*) as count, AVG(urgency) as avgUrgency
+             FROM hyperedges WHERE guildid = $1 GROUP BY edgetype ORDER BY count DESC`,
             [guildId]
         ),
         db.query(
-            `SELECT n.nodeType, n.name, COUNT(DISTINCT hem.hyperedgeId) as memoryCount
+            `SELECT n.nodetype, n.name, COUNT(DISTINCT hem.hyperedgeid) as memoryCount
              FROM hyper_nodes n
-             JOIN hyperedge_memberships hem ON n.id = hem.nodeId
-             JOIN hyperedges e ON hem.hyperedgeId = e.id
-             WHERE n.guildId = $1
-             GROUP BY n.nodeType, n.name, n.id
+             JOIN hyperedge_memberships hem ON n.id = hem.nodeid
+             JOIN hyperedges e ON hem.hyperedgeid = e.id
+             WHERE n.guildid = $1
+             GROUP BY n.nodetype, n.name, n.id
              ORDER BY memoryCount DESC
              LIMIT 20`,
             [guildId]
         )
     ]);
 
-    // Get total memory count by channel
     const channelStats = await db.query(
-        `SELECT channelId, COUNT(*) as count FROM hyperedges WHERE guildId = $1 GROUP BY channelId ORDER BY count DESC LIMIT 10`,
+        `SELECT channelid, COUNT(*) as count FROM hyperedges WHERE guildid = $1 GROUP BY channelid ORDER BY count DESC LIMIT 10`,
         [guildId]
     );
 
     return {
-        nodesByType: nodeStats.rows,
-        edgesByType: edgeStats.rows,
-        topEntities: topEntities.rows,
-        channels: channelStats.rows,
+        nodesByType: nodeStats.rows.map(r => ({ nodeType: r.nodetype, count: r.count })),
+        edgesByType: edgeStats.rows.map(r => ({ edgeType: r.edgetype, count: r.count, avgUrgency: r.avgurgency })),
+        topEntities: topEntities.rows.map(r => ({ nodeType: r.nodetype, name: r.name, memoryCount: r.memorycount })),
+        channels: channelStats.rows.map(r => ({ channelId: r.channelid, count: r.count })),
         totalNodes: nodeStats.rows.reduce((sum, r) => sum + parseInt(r.count), 0),
         totalEdges: edgeStats.rows.reduce((sum, r) => sum + parseInt(r.count), 0)
     };
@@ -473,29 +652,42 @@ export async function getChannelMemories(guildId, channelId, minUrgency = 0, lim
     const db = await getDb();
     const result = await db.query(
         `SELECT e.*,
-                json_agg(json_build_object(
-                    'nodetype', hem.nodeType,
-                    'name', hem.name,
-                    'role', hem.role
-                ) ORDER BY hem.weight DESC) as members
+                COALESCE(
+                    (SELECT json_agg(json_build_object(
+                        'nodeType', n.nodetype,
+                        'name', n.name,
+                        'role', hem.role
+                    ) ORDER BY hem.weight DESC)
+                     FROM hyperedge_memberships hem
+                     JOIN hyper_nodes n ON hem.nodeid = n.id
+                     WHERE hem.hyperedgeid = e.id),
+                    '[]'::json
+                ) as members
          FROM hyperedges e
-         JOIN LATERAL (
-             SELECT hem.hyperedgeId, hem.nodeId, hem.role, hem.weight, n.nodeType, n.name
-             FROM hyperedge_memberships hem
-             JOIN hyper_nodes n ON hem.nodeId = n.id
-             WHERE hem.hyperedgeId = e.id
-             ORDER BY hem.weight DESC
-         ) AS hem ON true
-         WHERE e.guildId = $1 AND e.channelId = $2
+         WHERE e.guildid = $1 AND e.channelid = $2
            AND e.urgency >= $3
-         GROUP BY e.id, e.guildId, e.channelId, e.edgeType, e.summary, e.content, e.importance,
-                  e.urgency, e.accessCount, e.lastAccessedAt, e.sourceMessageId, e.extractedAt,
-                  e.metadata, e.createdAt, e.updatedAt
          ORDER BY e.urgency DESC
          LIMIT $4`,
         [guildId, channelId, minUrgency, limit]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        channelId: row.channelid,
+        edgeType: row.edgetype,
+        summary: row.summary,
+        content: row.content,
+        importance: row.importance,
+        urgency: row.urgency,
+        accessCount: row.accesscount,
+        lastAccessedAt: row.lastaccessedat,
+        sourceMessageId: row.sourcemessageid,
+        extractedAt: row.extractedat,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat,
+        members: row.members
+    }));
 }
 
 // ==================== Config Operations ====================
@@ -508,12 +700,11 @@ export async function getChannelMemories(guildId, channelId, minUrgency = 0, lim
 export async function getHypergraphConfig(guildId) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM hypergraph_config WHERE guildId = $1`,
+        `SELECT * FROM hypergraph_config WHERE guildid = $1`,
         [guildId]
     );
 
     if (result.rows.length === 0) {
-        // Return default config
         return {
             guildId,
             extractionEnabled: true,
@@ -524,7 +715,15 @@ export async function getHypergraphConfig(guildId) {
         };
     }
 
-    return result.rows[0];
+    const row = result.rows[0];
+    return {
+        guildId: row.guildid,
+        extractionEnabled: row.extractionenabled,
+        decayRate: row.decayrate,
+        importanceBoostOnAccess: row.importanceboostonaccess,
+        minUrgencyThreshold: row.minurgencythreshold,
+        maxMemoriesPerNode: row.maxmemoriespernode
+    };
 }
 
 /**
@@ -536,17 +735,17 @@ export async function getHypergraphConfig(guildId) {
 export async function updateHypergraphConfig(guildId, config) {
     const db = await getDb();
     await db.query(
-        `INSERT INTO hypergraph_config (guildId, extractionEnabled, decayRate,
-            importanceBoostOnAccess, minUrgencyThreshold, maxMemoriesPerNode)
+        `INSERT INTO hypergraph_config (guildid, extractionenabled, decayrate,
+            importanceboostonaccess, minurgencythreshold, maxmemoriespernode)
          VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (guildId)
+         ON CONFLICT (guildid)
          DO UPDATE SET
-            extractionEnabled = EXCLUDED.extractionEnabled,
-            decayRate = EXCLUDED.decayRate,
-            importanceBoostOnAccess = EXCLUDED.importanceBoostOnAccess,
-            minUrgencyThreshold = EXCLUDED.minUrgencyThreshold,
-            maxMemoriesPerNode = EXCLUDED.maxMemoriesPerNode,
-            updatedAt = CURRENT_TIMESTAMP`,
+            extractionenabled = EXCLUDED.extractionenabled,
+            decayrate = EXCLUDED.decayrate,
+            importanceboostonaccess = EXCLUDED.importanceboostonaccess,
+            minurgencythreshold = EXCLUDED.minurgencythreshold,
+            maxmemoriespernode = EXCLUDED.maxmemoriespernode,
+            updatedat = CURRENT_TIMESTAMP`,
         [guildId,
          config.extractionEnabled !== undefined ? config.extractionEnabled : true,
          config.decayRate !== undefined ? config.decayRate : 0.1,

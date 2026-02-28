@@ -170,7 +170,7 @@ export function KnowledgeIngestion({ guildId }: KnowledgeIngestionProps) {
                 <ListItem key={doc.id} divider>
                   <ListItemText
                     primary={doc.filename}
-                    secondary={new Date(doc.createdat).toLocaleString()}
+                    secondary={new Date(doc.createdAt).toLocaleString()}
                     primaryTypographyProps={{ variant: 'body2', fontWeight: 'medium' }}
                   />
                   <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -211,7 +211,7 @@ export function KnowledgeIngestion({ guildId }: KnowledgeIngestionProps) {
                 <ListItem key={feed.id} divider>
                   <ListItemText
                     primary={feed.name}
-                    secondary={`${feed.url} (${feed.intervalminutes}m)`}
+                    secondary={`${feed.url} (${feed.intervalMinutes}m)`}
                     primaryTypographyProps={{ variant: 'body2', fontWeight: 'medium' }}
                   />
                   <Stack direction="row" spacing={1} alignItems="center">

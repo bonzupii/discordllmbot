@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '')
-  const apiTarget = env.VITE_API_URL || 'http://discordllmbot-bot:3000'
+  const apiTarget = env.VITE_API_URL || 'http://bot:3000'
 
   return {
     plugins: [react()],

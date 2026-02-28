@@ -32,6 +32,8 @@ services:
       - ./bot:/usr/src/app/bot
       - ./shared:/usr/src/app/shared
       - ./logs:/usr/src/app/logs
+      - /usr/src/app/node_modules
+      - /usr/src/app/bot/node_modules
     command: npm run dev:container
     ports:
       - "${API_PORT}:3000"
@@ -83,6 +85,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      bot:
+        condition: service_started
     env_file:
       - ./.env
 

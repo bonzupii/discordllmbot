@@ -17,7 +17,18 @@ export async function createRssFeed(guildId, { url, name, intervalMinutes = 60 }
          RETURNING *`,
         [guildId, url, name, intervalMinutes]
     );
-    return result.rows[0];
+    const row = result.rows[0];
+    return {
+        id: row.id,
+        guildId: row.guildid,
+        url: row.url,
+        name: row.name,
+        intervalMinutes: row.intervalminutes,
+        enabled: row.enabled,
+        lastFetchedAt: row.lastfetchedat,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat
+    };
 }
 
 export async function getRssFeeds(guildId) {
@@ -26,7 +37,17 @@ export async function getRssFeeds(guildId) {
         `SELECT * FROM rss_feeds WHERE guildId = $1 ORDER BY createdAt DESC`,
         [guildId]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        url: row.url,
+        name: row.name,
+        intervalMinutes: row.intervalminutes,
+        enabled: row.enabled,
+        lastFetchedAt: row.lastfetchedat,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat
+    }));
 }
 
 export async function updateRssFeed(id, { url, name, intervalMinutes, enabled }) {
@@ -42,7 +63,18 @@ export async function updateRssFeed(id, { url, name, intervalMinutes, enabled })
          RETURNING *`,
         [url, name, intervalMinutes, enabled, id]
     );
-    return result.rows[0];
+    const row = result.rows[0];
+    return {
+        id: row.id,
+        guildId: row.guildid,
+        url: row.url,
+        name: row.name,
+        intervalMinutes: row.intervalminutes,
+        enabled: row.enabled,
+        lastFetchedAt: row.lastfetchedat,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat
+    };
 }
 
 export async function deleteRssFeed(id) {
@@ -68,7 +100,17 @@ export async function createIngestedDocument(guildId, { filename, fileType }) {
          RETURNING *`,
         [guildId, filename, fileType]
     );
-    return result.rows[0];
+    const row = result.rows[0];
+    return {
+        id: row.id,
+        guildId: row.guildid,
+        filename: row.filename,
+        fileType: row.filetype,
+        status: row.status,
+        errorMessage: row.errormessage,
+        createdAt: row.createdat,
+        processedAt: row.processedat
+    };
 }
 
 export async function updateDocumentStatus(id, { status, errorMessage = null, processedAt = null }) {
@@ -82,7 +124,17 @@ export async function updateDocumentStatus(id, { status, errorMessage = null, pr
          RETURNING *`,
         [status, errorMessage, processedAt, id]
     );
-    return result.rows[0];
+    const row = result.rows[0];
+    return {
+        id: row.id,
+        guildId: row.guildid,
+        filename: row.filename,
+        fileType: row.filetype,
+        status: row.status,
+        errorMessage: row.errormessage,
+        createdAt: row.createdat,
+        processedAt: row.processedat
+    };
 }
 
 export async function getIngestedDocuments(guildId) {
@@ -91,7 +143,16 @@ export async function getIngestedDocuments(guildId) {
         `SELECT * FROM ingested_documents WHERE guildId = $1 ORDER BY createdAt DESC`,
         [guildId]
     );
-    return result.rows;
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        filename: row.filename,
+        fileType: row.filetype,
+        status: row.status,
+        errorMessage: row.errormessage,
+        createdAt: row.createdat,
+        processedAt: row.processedat
+    }));
 }
 
 export async function deleteIngestedDocument(id) {
@@ -101,7 +162,8 @@ export async function deleteIngestedDocument(id) {
     const docResult = await db.query('SELECT filename, guildId FROM ingested_documents WHERE id = $1', [id]);
     if (docResult.rows.length === 0) return;
     
-    const { filename, guildId } = docResult.rows[0];
+    // Database returns lowercased keys by default
+    const { filename, guildid } = docResult.rows[0];
     
     // Delete hyperedges associated with this document
     await db.query(
@@ -109,7 +171,7 @@ export async function deleteIngestedDocument(id) {
          WHERE guildId = $1 
            AND metadata->>'source' = 'upload' 
            AND metadata->>'filename' = $2`,
-        [guildId, filename]
+        [guildid, filename]
     );
     
     // Delete the document record

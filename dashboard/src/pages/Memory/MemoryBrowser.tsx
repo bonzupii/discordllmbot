@@ -40,12 +40,12 @@ import api from '@services/api';
 
 interface Memory {
   id: number;
-  edgetype: string;
+  edgeType: string;
   summary: string;
   content?: string;
   urgency: number;
-  createdat: string;
-  channelid: string;
+  createdAt: string;
+  channelId: string;
   metadata?: Record<string, any>;
   members?: Array<{
     nodetype: string;
@@ -99,12 +99,12 @@ export function MemoryBrowser({ guildId, channelId }: MemoryBrowserProps) {
     );
 
     if (filterType !== 'all') {
-      filtered = filtered.filter(m => m.edgetype === filterType);
+      filtered = filtered.filter(m => m.edgeType === filterType);
     }
 
     return filtered.sort((a, b) => {
       if (sortBy === 'newest') {
-        return new Date(b.createdat).getTime() - new Date(a.createdat).getTime();
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
       return (b.urgency || 0) - (a.urgency || 0);
     });
@@ -196,7 +196,7 @@ export function MemoryBrowser({ guildId, channelId }: MemoryBrowserProps) {
               Showing {paginatedMemories.length} of {processedMemories.length} memories
             </Typography>
           </Box>
-          <List sx={{ p: 0 }}>
+          <List>
             {paginatedMemories.map((memory) => (
               <MemoryListItem
                 key={memory.id}
@@ -231,7 +231,7 @@ interface MemoryListItemProps {
 }
 
 function MemoryListItem({ memory, expanded, onToggle, getEdgeTypeColor }: MemoryListItemProps) {
-  const isIngested = memory.channelid === 'system-ingestion';
+  const isIngested = memory.channelId === 'system-ingestion';
   const sourceInfo = memory.metadata?.source === 'rss' 
     ? `RSS: ${memory.metadata?.url?.split('/')[2] || 'Feed'}`
     : memory.metadata?.source === 'upload'
@@ -260,8 +260,8 @@ function MemoryListItem({ memory, expanded, onToggle, getEdgeTypeColor }: Memory
         <Box sx={{ flex: 1 }}>
           <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
             <Chip 
-              label={memory.edgetype} 
-              color={getEdgeTypeColor(memory.edgetype)} 
+              label={memory.edgeType} 
+              color={getEdgeTypeColor(memory.edgeType)} 
               size="small" 
               sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem', textTransform: 'uppercase' }} 
             />
@@ -282,7 +282,7 @@ function MemoryListItem({ memory, expanded, onToggle, getEdgeTypeColor }: Memory
             )}
             <Box sx={{ flexGrow: 1 }} />
             <Typography variant="caption" sx={{ color: 'text.disabled', alignSelf: 'center' }}>
-              {new Date(memory.createdat).toLocaleDateString()} {new Date(memory.createdat).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {new Date(memory.createdAt).toLocaleDateString()} {new Date(memory.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Typography>
           </Stack>
 
