@@ -20,7 +20,17 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["../shared/*"],
+      "@api/*": ["./src/api/*"],
+      "@core/*": ["./src/core/*"],
+      "@events/*": ["./src/events/*"],
+      "@llm/*": ["./src/llm/*"],
+      "@memory/*": ["./src/memory/*"],
+      "@personality/*": ["./src/personality/*"],
+      "@sandbox/*": ["./src/sandbox/*"],
+      "@strategies/*": ["./src/strategies/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@types/*": ["./src/types/*"]
     }
   },
   "include": ["src", "../shared"],

@@ -13,7 +13,7 @@ import { loadConfig, reloadConfig, getServerConfig, updateServerConfig, clearSer
 import { deleteServerConfig, saveGlobalConfig } from '@shared/storage/persistence.js';
 import { logger } from '@shared/utils/logger.js';
 
-import { getChangedFields } from '../utils.js';
+import { getChangedFields } from '@api/utils.js';
 
 export interface ConfigRoutesOptions {
     client: Client;

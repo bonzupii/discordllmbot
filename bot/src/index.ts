@@ -15,8 +15,8 @@ import { logger, initializeLogger } from '@shared/utils/logger.js';
 import { pruneOldMessages, resetPoolWrapper } from '@shared/storage/persistence.js';
 import { validateEnvironment } from '@shared/config/validation.js';
 
-import { startApi } from '@/api/server.js';
-import { handleClientReady, handleGuildCreate, handleGuildMemberAdd, handleMessageCreate } from '@/events/index.js';
+import { startApi } from '@api/server.js';
+import { handleClientReady, handleGuildCreate, handleGuildMemberAdd, handleMessageCreate } from '@events/index.js';
 
 const startTime = Date.now();
 

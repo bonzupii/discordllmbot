@@ -1,4 +1,4 @@
-import { generateReply } from '@/llm/index.js';
+import { generateReply } from '@llm/index.js';
 import { logger } from '@shared/utils/logger.js';
 
 const SANDBOX_PROMPT = `You are a command extractor for a sandboxed Docker container.

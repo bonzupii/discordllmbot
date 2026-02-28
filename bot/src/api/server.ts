@@ -29,7 +29,7 @@ import {
     createDatabaseRoutes,
     createGuildsRoutes,
     createLlmRoutes,
-} from './routes/index.js';
+} from '@api/routes/index.js';
 
 const LOG_FILE_PATH = path.join(process.cwd(), '..', 'logs', 'discordllmbot.log');
 

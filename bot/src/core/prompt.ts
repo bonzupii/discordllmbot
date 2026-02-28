@@ -7,7 +7,7 @@
  * @module bot/src/core/prompt
  */
 
-import { getBotPersona } from '@/personality/botPersona.js';
+import { getBotPersona } from '@personality/botPersona.js';
 
 /**
  * Represents the relationship data for a user.

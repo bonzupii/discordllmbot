@@ -13,12 +13,12 @@ import { getApiConfig, getBotConfig, getMemoryConfig, getReplyBehavior } from '@
 import { loadContexts, logAnalyticsEvent, logBotReply } from '@shared/storage/persistence';
 import { logger } from '@shared/utils/logger.js';
 
-import { buildPrompt } from '@/core/prompt.js';
-import { ReplyBehaviorConfig, Relationship as ReplyDeciderRelationship, shouldReply } from '@/core/replyDecider.js';
-import { addMessage } from '@/memory/context.js';
-import { generateReply } from '@/llm/index.js';
-import { getAllRelationships, getRelationship, GuildRelationships, Relationship } from '@/personality/relationships.js';
-import { executeInSandbox, extractDockerCommand, isSandboxEnabled } from '@/sandbox/index.js';
+import { buildPrompt } from '@core/prompt.js';
+import { ReplyBehaviorConfig, Relationship as ReplyDeciderRelationship, shouldReply } from '@core/replyDecider.js';
+import { addMessage } from '@memory/context.js';
+import { generateReply } from '@llm/index.js';
+import { getAllRelationships, getRelationship, GuildRelationships, Relationship } from '@personality/relationships.js';
+import { executeInSandbox, extractDockerCommand, isSandboxEnabled } from '@sandbox/index.js';
 
 const SANDBOX_KEYWORDS = ['docker', 'sandbox', 'container', 'docker command'];
 

@@ -12,9 +12,9 @@ import { loadConfig, reloadConfig } from '@shared/config/configLoader.js';
 import { saveGlobalConfig } from '@shared/storage/persistence.js';
 import { logger } from '@shared/utils/logger.js';
 
-import { generateReply, getAvailableModels } from '@/llm/index.js';
+import { generateReply, getAvailableModels } from '@llm/index.js';
 
-import { createPkceChallenge, pruneExpiredQwenOauthStates, readNonEmptyEnv } from '../utils.js';
+import { createPkceChallenge, pruneExpiredQwenOauthStates, readNonEmptyEnv } from '@api/utils.js';
 
 interface QwenDeviceFlowState {
     deviceCode: string;
