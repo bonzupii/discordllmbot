@@ -2,11 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": [
-      "ES2020",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
@@ -19,64 +15,28 @@
     "allowJs": true,
     "baseUrl": ".",
     "paths": {
-      "@": [
-        "./src"
-      ],
-      "@components": [
-        "./src/components"
-      ],
-      "@pages": [
-        "./src/pages"
-      ],
-      "@hooks": [
-        "./src/hooks"
-      ],
-      "@services": [
-        "./src/services"
-      ],
-      "@utils": [
-        "./src/utils"
-      ],
-      "@context": [
-        "./src/context"
-      ],
-      "@theme": [
-        "./src/theme"
-      ],
-      "@types": [
-        "./src/types"
-      ],
-      "@/*": [
-        "./src/*"
-      ],
-      "@components/*": [
-        "./src/components/*"
-      ],
-      "@pages/*": [
-        "./src/pages/*"
-      ],
-      "@hooks/*": [
-        "./src/hooks/*"
-      ],
-      "@services/*": [
-        "./src/services/*"
-      ],
-      "@utils/*": [
-        "./src/utils/*"
-      ],
-      "@context/*": [
-        "./src/context/*"
-      ],
-      "@theme/*": [
-        "./src/theme/*"
-      ],
-      "@types/*": [
-        "./src/types/*"
-      ]
+      "@": ["./src"],
+      "@constants": ["./src/constants"],
+      "@components": ["./src/components"],
+      "@pages": ["./src/pages"],
+      "@hooks": ["./src/hooks"],
+      "@services": ["./src/services"],
+      "@utils": ["./src/utils"],
+      "@context": ["./src/context"],
+      "@theme": ["./src/theme"],
+      "@types": ["./src/types"],
+      "@shared/*": ["../shared/*"],
+      "@/*": ["./src/*"],
+      "@components/*": ["./src/components/*"],
+      "@pages/*": ["./src/pages/*"],
+      "@hooks/*": ["./src/hooks/*"],
+      "@services/*": ["./src/services/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@context/*": ["./src/context/*"],
+      "@theme/*": ["./src/theme/*"],
+      "@types/*": ["./src/types/*"]
     },
     "noImplicitAny": false
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

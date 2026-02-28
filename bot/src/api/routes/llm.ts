@@ -8,6 +8,7 @@
 
 import { Router, Request, Response } from 'express';
 
+import { OAUTH } from '@shared/constants';
 import { loadConfig, reloadConfig } from '@shared/config/configLoader.js';
 import { saveGlobalConfig } from '@shared/storage/persistence.js';
 import { logger } from '@shared/utils/logger.js';
@@ -15,6 +16,8 @@ import { logger } from '@shared/utils/logger.js';
 import { generateReply, getAvailableModels } from '@llm/index.js';
 
 import { createPkceChallenge, pruneExpiredQwenOauthStates, readNonEmptyEnv } from '@api/utils.js';
+
+const { QWEN } = OAUTH;
 
 interface QwenDeviceFlowState {
     deviceCode: string;
@@ -28,12 +31,6 @@ interface QwenDeviceFlowState {
 }
 
 const qwenDeviceFlowStore = new Map<string, QwenDeviceFlowState>();
-const QWEN_OAUTH_DEFAULT_CLIENT_ID = 'f0304373b74a44d2b584a3fb70ca9e56';
-const QWEN_OAUTH_BASE_URL = 'https://chat.qwen.ai';
-const QWEN_OAUTH_DEVICE_CODE_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/device/code`;
-const QWEN_OAUTH_TOKEN_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/token`;
-const QWEN_OAUTH_SCOPE = 'openid profile email model.completion';
-const QWEN_OAUTH_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
 
 /**
  * Create LLM routes router.
@@ -65,16 +62,16 @@ export function createLlmRoutes(): Router {
      */
     router.post('/llm/qwen/oauth/start', async (req: Request, res: Response) => {
         try {
-            pruneExpiredQwenOauthStates();
+            pruneExpiredQwenOauthStates(OAUTH.QWEN.STATE_TTL_MS);
 
             const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
-            const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
-            const scope = QWEN_OAUTH_SCOPE;
+            const clientId = configuredClientId ?? QWEN.DEFAULT_CLIENT_ID;
+            const scope = QWEN.SCOPE;
 
             const codeVerifier = crypto.randomBytes(32).toString('base64url');
             const codeChallenge = createPkceChallenge(codeVerifier);
 
-            const deviceCodeResponse = await fetch(QWEN_OAUTH_DEVICE_CODE_ENDPOINT, {
+            const deviceCodeResponse = await fetch(`${QWEN.BASE_URL}${QWEN.DEVICE_CODE_ENDPOINT}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
@@ -148,14 +145,14 @@ export function createLlmRoutes(): Router {
         }
 
         const configuredClientId = readNonEmptyEnv('QWEN_OAUTH_CLIENT_ID');
-        const clientId = configuredClientId ?? QWEN_OAUTH_DEFAULT_CLIENT_ID;
+        const clientId = configuredClientId ?? QWEN.DEFAULT_CLIENT_ID;
 
         try {
-            const tokenResponse = await fetch(QWEN_OAUTH_TOKEN_ENDPOINT, {
+            const tokenResponse = await fetch(`${QWEN.BASE_URL}${QWEN.TOKEN_ENDPOINT}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    grant_type: QWEN_OAUTH_GRANT_TYPE,
+                    grant_type: QWEN.GRANT_TYPE,
                     client_id: clientId,
                     device_code: deviceCode,
                     code_verifier: deviceFlowState.codeVerifier,

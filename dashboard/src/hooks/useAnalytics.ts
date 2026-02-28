@@ -4,11 +4,12 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { ANALYTICS } from '@constants';
 import { analyticsApi } from '@services';
 import type { AnalyticsResponse, Reply, AnalyticsOverview, AnalyticsVolume } from '@types';
 
-/** Default polling interval (30 seconds) */
-const DEFAULT_POLLING_INTERVAL = 30000;
+/** Default polling interval */
+const DEFAULT_POLLING_INTERVAL = ANALYTICS.POLLING_INTERVAL_MS;
 
 /**
  * Hook to get analytics data and recent bot replies

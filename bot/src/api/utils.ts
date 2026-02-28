@@ -8,6 +8,8 @@
 
 import crypto from 'crypto';
 
+import { OAUTH } from '@shared/constants';
+
 /**
  * Get changed fields between two values for logging.
  */
@@ -67,10 +69,10 @@ export function createPkceChallenge(verifier: string): string {
 /**
  * Prune expired OAuth state entries.
  */
-export function pruneExpiredQwenOauthStates(): void {
+export function pruneExpiredQwenOauthStates(stateTtlMs: number = OAUTH.QWEN.STATE_TTL_MS): void {
     const now = Date.now();
     for (const [state, value] of qwenOauthStateStore.entries()) {
-        if (now - value.createdAt > QWEN_OAUTH_STATE_TTL_MS) {
+        if (now - value.createdAt > stateTtlMs) {
             qwenOauthStateStore.delete(state);
         }
     }
@@ -83,4 +85,3 @@ export function pruneExpiredQwenOauthStates(): void {
 
 const qwenOauthStateStore = new Map<string, { createdAt: number }>();
 const qwenDeviceFlowStore = new Map<string, { createdAt: number; expiresIn: number }>();
-const QWEN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;

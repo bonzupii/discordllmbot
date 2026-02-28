@@ -7,6 +7,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+import { API_CONFIG, SOCKET } from '@constants';
+
 /**
  * Socket event types
  */
@@ -72,8 +74,13 @@ export function SocketProvider({ children }: SocketProviderProps) {
   }, [dbLogs]);
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_API_URL || window.location.origin;
-    const socketInstance = io(socketUrl);
+    const socketUrl = API_CONFIG.BASE_URL;
+    const socketInstance = io(socketUrl, {
+        reconnection: SOCKET.RECONNECTION,
+        reconnectionAttempts: SOCKET.RECONNECTION_ATTEMPTS,
+        reconnectionDelay: SOCKET.RECONNECTION_DELAY_MS,
+        timeout: SOCKET.TIMEOUT_MS,
+    });
     socketRef.current = socketInstance;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSocket(socketInstance);

@@ -28,8 +28,9 @@ import {
 } from '@mui/icons-material';
 import type { SvgIconProps } from '@mui/material';
 
+import { LOG_VIEWER } from '@constants';
 import { useSocketContext } from '@context/SocketContext';
-import { parseLogLine, getLogType, getLevelColor } from '@utils';
+import { getLevelColor, getLogType, parseLogLine } from '@utils';
 import type { LogType, ParsedLog } from '@types';
 
 /**
@@ -62,16 +63,8 @@ const iconMap: Record<LogType, React.ComponentType<SvgIconProps>> = {
  */
 function Logs() {
   const { logs, clearLogs } = useSocketContext();
-  const [filters, setFilters] = useState<Filters>({
-    ERROR: true,
-    WARN: true,
-    INFO: true,
-    SQL: true,
-    API: true,
-    MESSAGE: true,
-    OTHER: true,
-  });
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [filters, setFilters] = useState<Filters>(LOG_VIEWER.DEFAULT_FILTERS);
+  const [autoScroll, setAutoScroll] = useState<boolean>(LOG_VIEWER.AUTO_SCROLL);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToBottom = useCallback(() => {
