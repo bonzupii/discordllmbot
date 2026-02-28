@@ -14,6 +14,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - discordllmbot-network
+
   db-mcp:
     container_name: discordllmbot-db-mcp
     image: crystaldba/postgres-mcp:latest
@@ -22,6 +25,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URI: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}"
+    networks:
+      - discordllmbot-network
 
   bot:
     container_name: discordllmbot-bot
@@ -41,11 +46,8 @@ services:
         condition: service_healthy
     env_file:
       - ./.env
-    # healthcheck:
-    #   test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
-    #   interval: 5s
-    #   timeout: 5s
-    #   retries: 5
+    networks:
+      - discordllmbot-network
 
   pgadmin:
     container_name: discordllmbot-pgadmin
@@ -63,6 +65,8 @@ services:
     volumes:
       - ./data/pgadmin:/var/lib/pgadmin
       - ./shared/config/pgadmin/servers.json:/tmp/servers.json
+    networks:
+      - discordllmbot-network
 
   docs:
     container_name: discordllmbot-docs
@@ -73,6 +77,8 @@ services:
       - ./docs/src:/usr/src/docs/src
     ports:
       - "${DOCS_PORT}:5173"
+    networks:
+      - discordllmbot-network
 
   dashboard:
     container_name: discordllmbot-dashboard
@@ -93,6 +99,8 @@ services:
       - ./.env
     environment:
       - VITE_API_URL=http://bot:3000
+    networks:
+      - discordllmbot-network
 
   sandbox:
     container_name: discordllmbot-sandbox
@@ -112,6 +120,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - discordllmbot-network
+
+networks:
+  discordllmbot-network:
+    driver: bridge
 
 volumes:
   sandbox-data:
