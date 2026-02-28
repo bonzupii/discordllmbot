@@ -9,19 +9,23 @@
  */
 
 import 'dotenv/config';
-import express, { Express, Request, Response } from 'express';
-import cors from 'cors';
+
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+
+import { Client } from 'discord.js';
+import cors from 'cors';
+import express, { Express, Request, Response } from 'express';
 import { createServer, Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { Client } from 'discord.js';
-import { logger } from '@shared/utils/logger.js';
+
 import { getSqlLogEmitter } from '@shared/storage/persistence';
-import os from 'os';
+import { logger } from '@shared/utils/logger.js';
+
 import {
-    createConfigRoutes,
     createAnalyticsRoutes,
+    createConfigRoutes,
     createDatabaseRoutes,
     createGuildsRoutes,
     createLlmRoutes,

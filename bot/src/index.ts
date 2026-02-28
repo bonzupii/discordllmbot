@@ -1,28 +1,24 @@
 /**
  * DiscordLLMBot - Main Entry Point
- * 
+ *
  * A lightweight, persona-driven Discord bot using Google's Gemini API or Ollama.
  * This module initializes the Discord client, database, and API server.
- * 
+ *
  * @module bot/src/index
- * @requires dotenv
- * @requires discord.js
- * @requires shared/config
- * @requires shared/storage
- * @requires ./events
- * @requires ./api/server
  */
 
 import 'dotenv/config';
+
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 
-const startTime = Date.now();
-
-import { validateEnvironment } from '@shared/config/validation.js';
 import { logger, initializeLogger } from '@shared/utils/logger.js';
 import { pruneOldMessages, resetPoolWrapper } from '@shared/storage/persistence.js';
-import { handleClientReady, handleMessageCreate, handleGuildCreate, handleGuildMemberAdd } from '@/events/index.js';
+import { validateEnvironment } from '@shared/config/validation.js';
+
 import { startApi } from '@/api/server.js';
+import { handleClientReady, handleGuildCreate, handleGuildMemberAdd, handleMessageCreate } from '@/events/index.js';
+
+const startTime = Date.now();
 
 /**
  * Initializes the logger with default settings before full config is loaded.

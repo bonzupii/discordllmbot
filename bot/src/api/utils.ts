@@ -6,6 +6,8 @@
  * @module bot/src/api/utils
  */
 
+import crypto from 'crypto';
+
 /**
  * Get changed fields between two values for logging.
  */
@@ -82,5 +84,3 @@ export function pruneExpiredQwenOauthStates(): void {
 const qwenOauthStateStore = new Map<string, { createdAt: number }>();
 const qwenDeviceFlowStore = new Map<string, { createdAt: number; expiresIn: number }>();
 const QWEN_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
-
-import crypto from 'crypto';
