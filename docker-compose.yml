@@ -87,8 +87,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      bot:
+        condition: service_started
     env_file:
       - ./.env
+    environment:
+      - VITE_API_URL=http://bot:3000
 
   sandbox:
     container_name: discordllmbot-sandbox

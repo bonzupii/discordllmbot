@@ -45,12 +45,19 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiTarget,
           changeOrigin: true,
+          secure: false,
+          ws: true,
+          timeout: 5000,
+          proxyTimeout: 10000,
         },
         '/socket.io': {
           target: apiTarget,
           ws: true,
+          secure: false,
         },
       },
+      // Allow connections from outside the container
+      allowedHosts: true,
     },
     build: {
       rollupOptions: {
