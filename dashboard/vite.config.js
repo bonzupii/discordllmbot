@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "@constants": path.resolve(__dirname, "./src/constants"),
         "@components": path.resolve(__dirname, "./src/components"),
         "@pages": path.resolve(__dirname, "./src/pages"),
         "@hooks": path.resolve(__dirname, "./src/hooks"),
@@ -24,6 +25,7 @@ export default defineConfig(({ mode }) => {
         "@context": path.resolve(__dirname, "./src/context"),
         "@theme": path.resolve(__dirname, "./src/theme"),
         "@types": path.resolve(__dirname, "./src/types"),
+        "@shared": path.resolve(__dirname, "../shared"),
       },
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       dedupe: ['react', 'react-dom'],
