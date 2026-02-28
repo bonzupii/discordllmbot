@@ -64,7 +64,7 @@ export interface ServerConfig {
 
 export interface Relationship {
   attitude: string;
-  behavior: string;
+  behavior: string[];
   ignored: boolean;
 }
 

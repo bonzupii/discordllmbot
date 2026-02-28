@@ -38,7 +38,7 @@ interface EditRelationshipDialogProps {
  * @returns Rendered dialog component
  */
 function EditRelationshipDialog({ userId, data, open, onClose, onSave }: EditRelationshipDialogProps) {
-  const [editData, setEditData] = useState<Relationship>(data || { attitude: '', behavior: '', ignored: false });
+  const [editData, setEditData] = useState<Relationship>(data || { attitude: '', behavior: [], ignored: false });
 
   const handleSave = () => {
     onSave(userId, editData);
@@ -64,18 +64,18 @@ function EditRelationshipDialog({ userId, data, open, onClose, onSave }: EditRel
           />
           <TextField
             label="Behavior"
-            value={editData?.behavior || ''}
+            value={Array.isArray(editData?.behavior) ? editData.behavior.join(' ') : ''}
             onChange={(e) =>
               setEditData({
                 ...editData,
-                behavior: e.target.value,
+                behavior: e.target.value.split(' ').filter(s => s.trim()),
               })
             }
             multiline
             rows={3}
             fullWidth
             variant="outlined"
-            helperText="How the bot should behave toward this user"
+            helperText="How the bot should behave toward this user (space-separated phrases)"
           />
           <FormControlLabel
             control={

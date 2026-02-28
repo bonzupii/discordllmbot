@@ -144,9 +144,9 @@ function Relationships({
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    <Tooltip title={data.behavior}>
+                    <Tooltip title={Array.isArray(data.behavior) ? data.behavior.join(' ') : data.behavior}>
                       <Typography variant="body2" noWrap>
-                        {data.behavior || 'None'}
+                        {Array.isArray(data.behavior) ? (data.behavior.join(' ') || 'None') : (data.behavior || 'None')}
                       </Typography>
                     </Tooltip>
                   </TableCell>
