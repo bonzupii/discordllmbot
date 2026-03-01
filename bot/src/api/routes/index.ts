@@ -12,3 +12,5 @@ export { createDatabaseRoutes } from './database.js';
 export { createGuildsRoutes } from './guilds.js';
 export { createLlmRoutes } from './llm.js';
 export { createBotInfoRoutes } from './botInfo.js';
+export { createHypergraphRoutes } from './hypergraph.js';
+export { createKnowledgeRoutes } from './knowledge.js';
