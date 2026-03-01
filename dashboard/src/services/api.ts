@@ -29,8 +29,15 @@ import type {
  * Axios instance with default configuration
  * Uses VITE_API_URL environment variable or defaults to /api
  */
+const getBaseUrl = () => {
+  const url = import.meta.env.VITE_API_URL;
+  if (!url) return '/api';
+  // If URL doesn't end with /api, append it
+  return url.endsWith('/api') ? url : `${url}/api`;
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

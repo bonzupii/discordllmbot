@@ -11,10 +11,6 @@ RUN npm install --legacy-peer-deps
 # Copy dashboard source
 COPY dashboard/ ./
 
-# Create .env file with Docker-specific API URL
-# Use 'bot' service name from docker-compose for internal networking
-RUN echo "VITE_API_URL=http://bot:3000" > .env
-
 # Increase Vite heap size and disable polling to reduce memory
 ENV NODE_OPTIONS="--max-old-space-size=512"
 ENV VITE_WATCH_USE_POLLING=false

@@ -80,6 +80,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
         reconnectionAttempts: SOCKET.RECONNECTION_ATTEMPTS,
         reconnectionDelay: SOCKET.RECONNECTION_DELAY_MS,
         timeout: SOCKET.TIMEOUT_MS,
+        transports: ['websocket', 'polling'],
+        upgrade: true,
     });
     socketRef.current = socketInstance;
     // eslint-disable-next-line react-hooks/set-state-in-effect

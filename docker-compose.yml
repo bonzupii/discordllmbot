@@ -97,8 +97,6 @@ services:
         condition: service_started
     env_file:
       - ./.env
-    environment:
-      - VITE_API_URL=http://bot:3000
     networks:
       - discordllmbot-network
 

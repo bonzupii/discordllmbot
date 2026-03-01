@@ -25,6 +25,7 @@ import { logger } from '@shared/utils/logger.js';
 
 import {
     createAnalyticsRoutes,
+    createBotInfoRoutes,
     createConfigRoutes,
     createDatabaseRoutes,
     createGuildsRoutes,
@@ -58,9 +59,15 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     const httpServer: HttpServer = createServer(app);
     io = new SocketIOServer(httpServer, {
         cors: {
-            origin: '*',
+            origin: (origin, callback) => {
+                // Allow all origins for development
+                callback(null, true);
+            },
             methods: ['GET', 'POST'],
+            credentials: true,
         },
+        transports: ['websocket', 'polling'],
+        allowEIO3: true,
     });
 
     const PORT = process.env.API_PORT || 3000;
@@ -69,6 +76,7 @@ export function startApi(client: Client): { app: Express; io: SocketIOServer } {
     app.use(express.json());
 
     // Register route modules
+    app.use('/api', createBotInfoRoutes(client));
     app.use('/api', createConfigRoutes({ client, io, isRestarting, setIsRestarting: (v) => { isRestarting = v; } }));
     app.use('/api', createAnalyticsRoutes());
     app.use('/api', createDatabaseRoutes());

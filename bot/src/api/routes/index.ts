@@ -11,3 +11,4 @@ export { createAnalyticsRoutes } from './analytics.js';
 export { createDatabaseRoutes } from './database.js';
 export { createGuildsRoutes } from './guilds.js';
 export { createLlmRoutes } from './llm.js';
+export { createBotInfoRoutes } from './botInfo.js';
