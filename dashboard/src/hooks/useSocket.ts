@@ -4,7 +4,7 @@
  * @deprecated Use useSocketContext() from @contexts instead
  */
 
-import { useSocketContext } from '@context/SocketContext';
+import { useSocketContext } from './useSocketContext';
 
 /**
  * Hook to access socket connection and bot restart status
@@ -12,6 +12,6 @@ import { useSocketContext } from '@context/SocketContext';
  * @returns Socket instance, restarting state, and clear function
  */
 export function useSocket() {
-  const { socket, isRestarting, clearRestarting } = useSocketContext();
-  return { socket, isRestarting, clearRestarting };
+  const { getSocket, isRestarting, clearRestarting } = useSocketContext();
+  return { socket: getSocket(), isRestarting, clearRestarting };
 }

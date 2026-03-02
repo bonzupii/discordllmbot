@@ -10,8 +10,23 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default tseslint.config(
-  { ignores: ["dist"] },
+export default [
+  { ignores: ["dist", "eslint.config.js", "eslint.config.*"] },
+  {
+    files: ["eslint.config.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: {
+        ...globals.node,
+      },
+      sourceType: "module",
+      parserOptions: {
+        ecmaVersion: "latest",
+        tsconfigRootDir: __dirname,
+      },
+    },
+    rules: {},
+  },
   ...tseslint.configs.recommended,
   ...tseslint.configs.stylistic,
   {
@@ -68,10 +83,8 @@ export default tseslint.config(
         ecmaVersion: "latest",
         ecmaFeatures: { jsx: true },
         sourceType: "module",
-        project: "./tsconfig.eslint.json",
         tsconfigRootDir: __dirname,
       },
-      parser: tseslint.parser,
     },
     settings: { react: { version: "detect" } },
     plugins: {
@@ -95,5 +108,5 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-deprecated": "off",
     },
-  }
-);
+  },
+];

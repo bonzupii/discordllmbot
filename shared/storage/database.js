@@ -42,7 +42,7 @@ export async function connect() {
             logger.info('✓ Connected to PostgreSQL database.');
             isConnected = true;
             return pool;
-        } catch (err) {
+        } catch {
             logger.error(`Failed to connect to PostgreSQL database. Retrying in 2 seconds... (${retries} retries left)`);
             retries--;
             await sleep(2000);
@@ -124,10 +124,10 @@ export async function setupSchema() {
                 attitude TEXT,
                 PRIMARY KEY (guildId, userId)
             );`,
-            `ALTER TABLE relationships ADD COLUMN IF NOT EXISTS username TEXT;`,
-            `ALTER TABLE relationships ADD COLUMN IF NOT EXISTS displayName TEXT;`,
-            `ALTER TABLE relationships ADD COLUMN IF NOT EXISTS avatarUrl TEXT;`,
-            `ALTER TABLE relationships ADD COLUMN IF NOT EXISTS ignored BOOLEAN DEFAULT FALSE;`,
+            'ALTER TABLE relationships ADD COLUMN IF NOT EXISTS username TEXT;',
+            'ALTER TABLE relationships ADD COLUMN IF NOT EXISTS displayName TEXT;',
+            'ALTER TABLE relationships ADD COLUMN IF NOT EXISTS avatarUrl TEXT;',
+            'ALTER TABLE relationships ADD COLUMN IF NOT EXISTS ignored BOOLEAN DEFAULT FALSE;',
             `CREATE TABLE IF NOT EXISTS relationship_behaviors (
                 id SERIAL PRIMARY KEY,
                 guildId TEXT NOT NULL REFERENCES guilds(guildId) ON DELETE CASCADE,
@@ -181,8 +181,8 @@ export async function setupSchema() {
                 createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );`,
-            `CREATE INDEX IF NOT EXISTS idx_server_configs_guildId ON server_configs(guildId);`,
-            `CREATE INDEX IF NOT EXISTS idx_server_configs_updated_at ON server_configs(updatedAt);`,
+            'CREATE INDEX IF NOT EXISTS idx_server_configs_guildId ON server_configs(guildId);',
+            'CREATE INDEX IF NOT EXISTS idx_server_configs_updated_at ON server_configs(updatedAt);',
             `CREATE TABLE IF NOT EXISTS global_config (
                 id TEXT PRIMARY KEY DEFAULT 'global',
                 botUsername TEXT NOT NULL,
@@ -206,36 +206,36 @@ export async function setupSchema() {
                 updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );`,
 
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botUsername TEXT DEFAULT 'BotUsername';`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botDescription TEXT DEFAULT 'A helpful and friendly Discord bot.';`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botGlobalRules JSONB DEFAULT '[]'::jsonb;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmProvider TEXT DEFAULT 'gemini';`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmGeminiModel TEXT DEFAULT 'gemini-2.0-flash';`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmOllamaModel TEXT DEFAULT 'llama3.2';`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmQwenModel TEXT DEFAULT 'qwen-plus';`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmGeminiApiKey TEXT;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmOllamaApiKey TEXT;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmQwenApiKey TEXT;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmRetryAttempts INTEGER DEFAULT 3;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmRetryBackoffMs INTEGER DEFAULT 1000;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS memoryMaxMessages INTEGER DEFAULT 25;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS memoryMaxMessageAgeDays INTEGER DEFAULT 30;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerMaxLogLines INTEGER DEFAULT 1000;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerLogReplyDecisions BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerLogSql BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS sandboxEnabled BOOLEAN DEFAULT FALSE;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS sandboxTimeoutMs INTEGER DEFAULT 30000;`,
-            `ALTER TABLE global_config ADD COLUMN IF NOT EXISTS sandboxAllowedCommands JSONB DEFAULT '["ps", "stats", "images", "top", "logs", "inspect", "version", "info", "df", "free", "uname"]'::jsonb;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS nickname TEXT;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS speakingStyle JSONB DEFAULT '[]'::jsonb;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS replyProbability DOUBLE PRECISION DEFAULT 1.0;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS minDelayMs INTEGER DEFAULT 500;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS maxDelayMs INTEGER DEFAULT 3000;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS mentionOnly BOOLEAN DEFAULT TRUE;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreUsers JSONB DEFAULT '[]'::jsonb;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreChannels JSONB DEFAULT '[]'::jsonb;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreKeywords JSONB DEFAULT '[]'::jsonb;`,
-            `ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS guildSpecificChannels JSONB DEFAULT '{}'::jsonb;`,
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botUsername TEXT DEFAULT \'BotUsername\';',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botDescription TEXT DEFAULT \'A helpful and friendly Discord bot.\';',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS botGlobalRules JSONB DEFAULT \'[]\'::jsonb;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmProvider TEXT DEFAULT \'gemini\';',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmGeminiModel TEXT DEFAULT \'gemini-2.0-flash\';',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmOllamaModel TEXT DEFAULT \'llama3.2\';',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmQwenModel TEXT DEFAULT \'qwen-plus\';',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmGeminiApiKey TEXT;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmOllamaApiKey TEXT;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmQwenApiKey TEXT;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmRetryAttempts INTEGER DEFAULT 3;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS llmRetryBackoffMs INTEGER DEFAULT 1000;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS memoryMaxMessages INTEGER DEFAULT 25;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS memoryMaxMessageAgeDays INTEGER DEFAULT 30;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerMaxLogLines INTEGER DEFAULT 1000;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerLogReplyDecisions BOOLEAN DEFAULT FALSE;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS loggerLogSql BOOLEAN DEFAULT FALSE;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS sandboxEnabled BOOLEAN DEFAULT FALSE;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS sandboxTimeoutMs INTEGER DEFAULT 30000;',
+            'ALTER TABLE global_config ADD COLUMN IF NOT EXISTS sandboxAllowedCommands JSONB DEFAULT \'["ps", "stats", "images", "top", "logs", "inspect", "version", "info", "df", "free", "uname"]\'::jsonb;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS nickname TEXT;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS speakingStyle JSONB DEFAULT \'[]\'::jsonb;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS replyProbability DOUBLE PRECISION DEFAULT 1.0;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS minDelayMs INTEGER DEFAULT 500;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS maxDelayMs INTEGER DEFAULT 3000;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS mentionOnly BOOLEAN DEFAULT TRUE;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreUsers JSONB DEFAULT \'[]\'::jsonb;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreChannels JSONB DEFAULT \'[]\'::jsonb;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS ignoreKeywords JSONB DEFAULT \'[]\'::jsonb;',
+            'ALTER TABLE server_configs ADD COLUMN IF NOT EXISTS guildSpecificChannels JSONB DEFAULT \'{}\'::jsonb;',
 
             // Analytics System
             `CREATE TABLE IF NOT EXISTS analytics_events (
@@ -247,9 +247,9 @@ export async function setupSchema() {
                 timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 metadata JSONB DEFAULT '{}'::jsonb
             );`,
-            `CREATE INDEX IF NOT EXISTS idx_analytics_events_type ON analytics_events(eventType);`,
-            `CREATE INDEX IF NOT EXISTS idx_analytics_events_guild ON analytics_events(guildId);`,
-            `CREATE INDEX IF NOT EXISTS idx_analytics_events_timestamp ON analytics_events(timestamp);`,
+            'CREATE INDEX IF NOT EXISTS idx_analytics_events_type ON analytics_events(eventType);',
+            'CREATE INDEX IF NOT EXISTS idx_analytics_events_guild ON analytics_events(guildId);',
+            'CREATE INDEX IF NOT EXISTS idx_analytics_events_timestamp ON analytics_events(timestamp);',
 
             // Hypergraph memory system
             `CREATE TABLE IF NOT EXISTS hyper_nodes (
@@ -263,8 +263,8 @@ export async function setupSchema() {
                 updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(guildId, nodeId, nodeType)
             );`,
-            `CREATE INDEX IF NOT EXISTS idx_hyper_nodes_guild ON hyper_nodes(guildId);`,
-            `CREATE INDEX IF NOT EXISTS idx_hyper_nodes_type ON hyper_nodes(nodeType);`,
+            'CREATE INDEX IF NOT EXISTS idx_hyper_nodes_guild ON hyper_nodes(guildId);',
+            'CREATE INDEX IF NOT EXISTS idx_hyper_nodes_type ON hyper_nodes(nodeType);',
 
             `CREATE TABLE IF NOT EXISTS hyperedges (
                 id SERIAL PRIMARY KEY,
@@ -283,9 +283,9 @@ export async function setupSchema() {
                 createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );`,
-            `CREATE INDEX IF NOT EXISTS idx_hyperedges_guild ON hyperedges(guildId);`,
-            `CREATE INDEX IF NOT EXISTS idx_hyperedges_channel ON hyperedges(channelId);`,
-            `CREATE INDEX IF NOT EXISTS idx_hyperedges_urgency ON hyperedges(urgency DESC);`,
+            'CREATE INDEX IF NOT EXISTS idx_hyperedges_guild ON hyperedges(guildId);',
+            'CREATE INDEX IF NOT EXISTS idx_hyperedges_channel ON hyperedges(channelId);',
+            'CREATE INDEX IF NOT EXISTS idx_hyperedges_urgency ON hyperedges(urgency DESC);',
 
             `CREATE TABLE IF NOT EXISTS hyperedge_memberships (
                 id SERIAL PRIMARY KEY,
@@ -297,8 +297,8 @@ export async function setupSchema() {
                 createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(hyperedgeId, nodeId, role)
             );`,
-            `CREATE INDEX IF NOT EXISTS idx_hyperedge_memberships_edge ON hyperedge_memberships(hyperedgeId);`,
-            `CREATE INDEX IF NOT EXISTS idx_hyperedge_memberships_node ON hyperedge_memberships(nodeId);`,
+            'CREATE INDEX IF NOT EXISTS idx_hyperedge_memberships_edge ON hyperedge_memberships(hyperedgeId);',
+            'CREATE INDEX IF NOT EXISTS idx_hyperedge_memberships_node ON hyperedge_memberships(nodeId);',
 
             `CREATE TABLE IF NOT EXISTS hypergraph_config (
                 guildId TEXT PRIMARY KEY,

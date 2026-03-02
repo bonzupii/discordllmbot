@@ -42,7 +42,7 @@ import {
 } from '@mui/icons-material';
 import type { Theme } from '@mui/material/styles';
 
-import { useSocketContext } from '@context/SocketContext';
+import { useSocketContext } from '@hooks';
 import { databaseApi } from '@services';
 import type { TableInfo, TableSchema, TableData, TableRelationship } from '@services';
 import { EmptyState } from '@components/common';

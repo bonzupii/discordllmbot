@@ -3,7 +3,7 @@
  * @module contexts/SocketContext
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { createContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 import { SOCKET } from '@constants';
@@ -16,7 +16,7 @@ import { SOCKET } from '@constants';
  * Context value type
  */
 interface SocketContextValue {
-  socket: Socket | null;
+  getSocket: () => Socket | null;
   isConnected: boolean;
   isRestarting: boolean;
   clearRestarting: () => void;
@@ -34,9 +34,6 @@ const SocketContext = createContext<SocketContextValue | null>(null);
 interface SocketProviderProps {
   children: React.ReactNode;
 }
-
-// Store socket instance in a ref outside component scope to survive HMR
-let globalSocketInstance: Socket | null = null;
 
 /**
  * Socket Provider Component
@@ -95,8 +92,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         transports: ['websocket', 'polling'],
         upgrade: true,
     });
-    
-    globalSocketInstance = socketInstance;
+
     socketRef.current = socketInstance;
 
     // Connection status
@@ -148,7 +144,6 @@ export function SocketProvider({ children }: SocketProviderProps) {
   }, []);
 
   const value = useMemo(() => ({
-    socket: socketRef.current,
     isConnected,
     isRestarting,
     clearRestarting,
@@ -156,6 +151,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     dbLogs,
     clearLogs,
     clearDbLogs,
+    getSocket: () => socketRef.current,
   }), [isConnected, isRestarting, clearRestarting, logs, dbLogs, clearLogs, clearDbLogs]);
 
   return (
@@ -165,16 +161,5 @@ export function SocketProvider({ children }: SocketProviderProps) {
   );
 }
 
-/**
- * Hook to access the shared socket context
- *
- * @throws Error if used outside SocketProvider
- * @returns Socket context value
- */
-export function useSocketContext(): SocketContextValue {
-  const context = useContext(SocketContext);
-  if (!context) {
-    throw new Error('useSocketContext must be used within a SocketProvider');
-  }
-  return context;
-}
+export { SocketContext };
+export type { SocketContextValue };

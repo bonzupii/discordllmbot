@@ -2,8 +2,19 @@
   "name": "@discordllmbot/shared",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
     "pg": "^8.11.3",
     "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.3.0",
+    "eslint": "^10.0.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.0"
   }
 }

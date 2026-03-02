@@ -29,7 +29,7 @@ import {
 import type { SvgIconProps } from '@mui/material';
 
 import { LOG_VIEWER } from '@constants';
-import { useSocketContext } from '@context/SocketContext';
+import { useSocketContext } from '@hooks';
 import { getLevelColor, getLogType, parseLogLine } from '@utils';
 import type { LogType, ParsedLog } from '@types';
 

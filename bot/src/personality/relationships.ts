@@ -7,7 +7,8 @@
  * @module bot/src/personality/relationships
  */
 
-import { loadRelationships, saveRelationships, saveGuild, Relationships } from '@shared/storage/persistence.js';
+import { loadRelationships, saveRelationships, saveGuild } from '@shared/storage/persistence.js';
+import type { Relationships } from '@shared/storage/persistence.d.ts';
 import { Guild } from 'discord.js';
 
 /**

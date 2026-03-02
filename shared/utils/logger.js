@@ -12,15 +12,15 @@
  * logger.error('Failed to connect', { error: err.message });
  */
 
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import { EventEmitter } from 'events'
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { EventEmitter } from 'events';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const LOG_FILE = path.join(__dirname, '../../logs/discordllmbot.log')
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const LOG_FILE = path.join(__dirname, '../../logs/discordllmbot.log');
 
-const logEmitter = new EventEmitter()
+const logEmitter = new EventEmitter();
 
 /**
  * Log levels available
@@ -39,41 +39,41 @@ const LOG_LEVELS = {
     info: 'INFO',
     warn: 'WARN',
     error: 'ERROR'
-}
+};
 
-let MAX_LOG_LINES = 1000
+let MAX_LOG_LINES = 1000;
 
 function timestamp() {
-    const now = new Date()
-    return now.toISOString()
+    const now = new Date();
+    return now.toISOString();
 }
 
-function format(level, message, data = null) {
-    const time = timestamp()
-    const prefix = `[${time}] [${level}]`
-    return `${prefix} ${message}`
+function format(level, message, _data = null) {
+    const time = timestamp();
+    const prefix = `[${time}] [${level}]`;
+    return `${prefix} ${message}`;
 }
 
 function writeToFile(message) {
     try {
-        fs.appendFileSync(LOG_FILE, message + '\n', 'utf-8')
+        fs.appendFileSync(LOG_FILE, message + '\n', 'utf-8');
     } catch (err) {
         // Silently fail if we can't write to file
-        console.warn('Failed to write to log file:', err.message)
+        console.warn('Failed to write to log file:', err.message);
     }
 }
 
 function emitLog(level, message, data = null) {
-    const formatted = format(level, message)
+    const formatted = format(level, message);
     const logEntry = {
         timestamp: timestamp(),
         level,
         message,
         data,
         formatted
-    }
-    logEmitter.emit('log', logEntry)
-    return formatted
+    };
+    logEmitter.emit('log', logEntry);
+    return formatted;
 }
 
 /**
@@ -87,7 +87,7 @@ export const logger = {
      * @param {Function} callback - Function to call on each log.
      */
     onLog(callback) {
-        logEmitter.on('log', callback)
+        logEmitter.on('log', callback);
     },
 
     /**
@@ -96,13 +96,13 @@ export const logger = {
      * @param {Object} [data=null] - Optional data to log.
      */
     api(message, data = null) {
-        const formatted = emitLog(LOG_LEVELS.api, message, data)
+        const formatted = emitLog(LOG_LEVELS.api, message, data);
         if (data) {
-            console.log(formatted, data)
-            writeToFile(formatted + ' ' + JSON.stringify(data))
+            console.log(formatted, data);
+            writeToFile(formatted + ' ' + JSON.stringify(data));
         } else {
-            console.log(formatted)
-            writeToFile(formatted)
+            console.log(formatted);
+            writeToFile(formatted);
         }
     },
 
@@ -112,14 +112,14 @@ export const logger = {
      * @param {Object} [data=null] - Optional data to log.
      */
     sql(message, data = null) {
-        const formatted = emitLog(LOG_LEVELS.sql, message, data)
+        const formatted = emitLog(LOG_LEVELS.sql, message, data);
         if (data) {
-            console.log(formatted, data)
+            console.log(formatted, data);
             const jsonStr = JSON.stringify(data).replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-            writeToFile(formatted + ' ' + jsonStr)
+            writeToFile(formatted + ' ' + jsonStr);
         } else {
-            console.log(formatted)
-            writeToFile(formatted)
+            console.log(formatted);
+            writeToFile(formatted);
         }
     },
 
@@ -129,13 +129,13 @@ export const logger = {
      * @param {Object} [data=null] - Optional data to log.
      */
     message(message, data = null) {
-        const formatted = emitLog(LOG_LEVELS.message, message, data)
+        const formatted = emitLog(LOG_LEVELS.message, message, data);
         if (data) {
-            console.log(formatted, data)
-            writeToFile(formatted + ' ' + JSON.stringify(data))
+            console.log(formatted, data);
+            writeToFile(formatted + ' ' + JSON.stringify(data));
         } else {
-            console.log(formatted)
-            writeToFile(formatted)
+            console.log(formatted);
+            writeToFile(formatted);
         }
     },
 
@@ -145,13 +145,13 @@ export const logger = {
      * @param {Object} [data=null] - Optional data to log.
      */
     info(message, data = null) {
-        const formatted = emitLog(LOG_LEVELS.info, message, data)
+        const formatted = emitLog(LOG_LEVELS.info, message, data);
         if (data) {
-            console.log(formatted, data)
-            writeToFile(formatted + ' ' + JSON.stringify(data))
+            console.log(formatted, data);
+            writeToFile(formatted + ' ' + JSON.stringify(data));
         } else {
-            console.log(formatted)
-            writeToFile(formatted)
+            console.log(formatted);
+            writeToFile(formatted);
         }
     },
 
@@ -161,13 +161,13 @@ export const logger = {
      * @param {Object} [data=null] - Optional data to log.
      */
     warn(message, data = null) {
-        const formatted = emitLog(LOG_LEVELS.warn, message, data)
+        const formatted = emitLog(LOG_LEVELS.warn, message, data);
         if (data) {
-            console.warn(formatted, data)
-            writeToFile(formatted + ' ' + JSON.stringify(data))
+            console.warn(formatted, data);
+            writeToFile(formatted + ' ' + JSON.stringify(data));
         } else {
-            console.warn(formatted)
-            writeToFile(formatted)
+            console.warn(formatted);
+            writeToFile(formatted);
         }
     },
 
@@ -177,19 +177,19 @@ export const logger = {
      * @param {Error|Object} [error=null] - The error object or data to log.
      */
     error(message, error = null) {
-        const formatted = emitLog(LOG_LEVELS.error, message, error)
+        const formatted = emitLog(LOG_LEVELS.error, message, error);
         if (error) {
-            console.error(formatted, error)
+            console.error(formatted, error);
             const errorData = error && error.stack 
                 ? { error: error.message, stack: error.stack }
                 : { error: error.message ?? error };
-            writeToFile(formatted + ' ' + JSON.stringify(errorData))
+            writeToFile(formatted + ' ' + JSON.stringify(errorData));
         } else {
-            console.error(formatted)
-            writeToFile(formatted)
+            console.error(formatted);
+            writeToFile(formatted);
         }
     }
-}
+};
 
 /**
  * Initialize logger - truncates/creates log file
@@ -198,34 +198,34 @@ export const logger = {
 export function initializeLogger(maxLines) {
     const start = Date.now();
     if (typeof maxLines === 'number' && maxLines > 0) {
-        MAX_LOG_LINES = Math.floor(maxLines)
+        MAX_LOG_LINES = Math.floor(maxLines);
     }
 
-    const logDir = path.dirname(LOG_FILE)
+    const logDir = path.dirname(LOG_FILE);
     if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir, { recursive: true })
+        fs.mkdirSync(logDir, { recursive: true });
     }
 
     try {
         // Truncate log file to the last MAX_LOG_LINES lines instead of wiping
         if (fs.existsSync(LOG_FILE)) {
             try {
-                const content = fs.readFileSync(LOG_FILE, 'utf-8')
-                const lines = content.split(/\r?\n/)
-                const _start = Math.max(0, lines.length - MAX_LOG_LINES)
-                const truncated = lines.slice(_start).join('\n')
-                fs.writeFileSync(LOG_FILE, truncated + (truncated.endsWith('\n') ? '' : '\n'), 'utf-8')
-            } catch (e) {
+                const content = fs.readFileSync(LOG_FILE, 'utf-8');
+                const lines = content.split(/\r?\n/);
+                const _start = Math.max(0, lines.length - MAX_LOG_LINES);
+                const truncated = lines.slice(_start).join('\n');
+                fs.writeFileSync(LOG_FILE, truncated + (truncated.endsWith('\n') ? '' : '\n'), 'utf-8');
+            } catch {
                 // If truncation fails, fall back to creating/overwriting the file
-                try { fs.writeFileSync(LOG_FILE, '', 'utf-8') } catch (_) {}
+                try { fs.writeFileSync(LOG_FILE, '', 'utf-8'); } catch {}
             }
         } else {
             // Create empty log file
-            fs.writeFileSync(LOG_FILE, '', 'utf-8')
+            fs.writeFileSync(LOG_FILE, '', 'utf-8');
         }
 
-        logger.info(`Logger initialized (${Date.now() - start}ms)`)
+        logger.info(`Logger initialized (${Date.now() - start}ms)`);
     } catch (err) {
-        console.error('Failed to initialize log file:', err)
+        console.error('Failed to initialize log file:', err);
     }
 }

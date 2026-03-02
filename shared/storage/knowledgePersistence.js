@@ -34,7 +34,7 @@ export async function createRssFeed(guildId, { url, name, intervalMinutes = 60 }
 export async function getRssFeeds(guildId) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM rss_feeds WHERE guildId = $1 ORDER BY createdAt DESC`,
+        'SELECT * FROM rss_feeds WHERE guildId = $1 ORDER BY createdAt DESC',
         [guildId]
     );
     return result.rows.map(row => ({
@@ -79,13 +79,13 @@ export async function updateRssFeed(id, { url, name, intervalMinutes, enabled })
 
 export async function deleteRssFeed(id) {
     const db = await getDb();
-    await db.query(`DELETE FROM rss_feeds WHERE id = $1`, [id]);
+    await db.query('DELETE FROM rss_feeds WHERE id = $1', [id]);
 }
 
 export async function updateRssLastFetched(id) {
     const db = await getDb();
     await db.query(
-        `UPDATE rss_feeds SET lastFetchedAt = CURRENT_TIMESTAMP WHERE id = $1`,
+        'UPDATE rss_feeds SET lastFetchedAt = CURRENT_TIMESTAMP WHERE id = $1',
         [id]
     );
 }
@@ -140,7 +140,7 @@ export async function updateDocumentStatus(id, { status, errorMessage = null, pr
 export async function getIngestedDocuments(guildId) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM ingested_documents WHERE guildId = $1 ORDER BY createdAt DESC`,
+        'SELECT * FROM ingested_documents WHERE guildId = $1 ORDER BY createdAt DESC',
         [guildId]
     );
     return result.rows.map(row => ({
@@ -175,7 +175,7 @@ export async function deleteIngestedDocument(id) {
     );
     
     // Delete the document record
-    await db.query(`DELETE FROM ingested_documents WHERE id = $1`, [id]);
+    await db.query('DELETE FROM ingested_documents WHERE id = $1', [id]);
     
     logger.info(`Deleted ingested document ${filename} and its hyperedges`);
 }

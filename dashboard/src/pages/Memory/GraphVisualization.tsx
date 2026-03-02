@@ -269,10 +269,10 @@ export function GraphVisualization({ guildId, channelId }: GraphVisualizationPro
             <IconButton onClick={handleReset} size="small"><ResetIcon fontSize="small" /></IconButton>
           </Tooltip>
           <Tooltip title="Zoom In">
-            <IconButton onClick={() => fgRef.current.zoom(fgRef.current.zoom() * 1.5, 400)} size="small"><ZoomInIcon fontSize="small" /></IconButton>
+            <IconButton onClick={() => fgRef.current?.zoom(1.5, 400)} size="small"><ZoomInIcon fontSize="small" /></IconButton>
           </Tooltip>
           <Tooltip title="Zoom Out">
-            <IconButton onClick={() => fgRef.current.zoom(fgRef.current.zoom() / 1.5, 400)} size="small"><ZoomOutIcon fontSize="small" /></IconButton>
+            <IconButton onClick={() => fgRef.current?.zoom(0.67, 400)} size="small"><ZoomOutIcon fontSize="small" /></IconButton>
           </Tooltip>
         </Stack>
 

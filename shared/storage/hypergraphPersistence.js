@@ -48,7 +48,7 @@ export async function findOrCreateNode(guildId, nodeId, nodeType, name, metadata
 export async function getNodesByType(guildId, nodeType) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM hyper_nodes WHERE guildid = $1 AND nodetype = $2 ORDER BY createdat DESC`,
+        'SELECT * FROM hyper_nodes WHERE guildid = $1 AND nodetype = $2 ORDER BY createdat DESC',
         [guildId, nodeType]
     );
     return result.rows.map(row => ({
@@ -102,7 +102,7 @@ export async function getAllNodes(guildId) {
 export async function findNode(guildId, nodeId, nodeType) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM hyper_nodes WHERE guildid = $1 AND nodeid = $2 AND nodetype = $3`,
+        'SELECT * FROM hyper_nodes WHERE guildid = $1 AND nodeid = $2 AND nodetype = $3',
         [guildId, nodeId, nodeType]
     );
     if (result.rows.length === 0) return null;
@@ -141,8 +141,8 @@ export async function createHyperedge(guildId, edgeData) {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING id`,
             [guildId, edgeData.channelId, edgeData.edgeType, edgeData.summary,
-             edgeData.content || null, edgeData.importance || 1.0, edgeData.importance || 1.0,
-             edgeData.sourceMessageId || null, JSON.stringify(edgeData.metadata || {})]
+                edgeData.content || null, edgeData.importance || 1.0, edgeData.importance || 1.0,
+                edgeData.sourceMessageId || null, JSON.stringify(edgeData.metadata || {})]
         );
 
         const edgeId = edgeResult.rows[0].id;
@@ -162,7 +162,7 @@ export async function createHyperedge(guildId, edgeData) {
                  VALUES ($1, $2, $3, $4, $5)
                  ON CONFLICT (hyperedgeid, nodeid, role) DO NOTHING`,
                 [edgeId, nodeId, membership.role, membership.weight || 1.0,
-                 JSON.stringify(membership.metadata || {})]
+                    JSON.stringify(membership.metadata || {})]
             );
         }
 
@@ -460,7 +460,7 @@ export async function searchMemories(guildId, keywords, limit = 10) {
 export async function getGraphData(guildId, channelId = null, limit = 100) {
     const db = await getDb();
 
-    const channelFilter = channelId ? `WHERE e.guildid = $1 AND e.channelid = $2` : `WHERE e.guildid = $1`;
+    const channelFilter = channelId ? 'WHERE e.guildid = $1 AND e.channelid = $2' : 'WHERE e.guildid = $1';
     const params = channelId ? [guildId, channelId, limit] : [guildId, limit];
 
     // Get edges with memberships
@@ -604,7 +604,7 @@ export async function getHypergraphStats(guildId) {
 
     const [nodeStats, edgeStats, topEntities] = await Promise.all([
         db.query(
-            `SELECT nodetype, COUNT(*) as count FROM hyper_nodes WHERE guildid = $1 GROUP BY nodetype ORDER BY count DESC`,
+            'SELECT nodetype, COUNT(*) as count FROM hyper_nodes WHERE guildid = $1 GROUP BY nodetype ORDER BY count DESC',
             [guildId]
         ),
         db.query(
@@ -626,7 +626,7 @@ export async function getHypergraphStats(guildId) {
     ]);
 
     const channelStats = await db.query(
-        `SELECT channelid, COUNT(*) as count FROM hyperedges WHERE guildid = $1 GROUP BY channelid ORDER BY count DESC LIMIT 10`,
+        'SELECT channelid, COUNT(*) as count FROM hyperedges WHERE guildid = $1 GROUP BY channelid ORDER BY count DESC LIMIT 10',
         [guildId]
     );
 
@@ -749,7 +749,7 @@ export async function getChannelMemories(guildId, channelId, minUrgency = 0, lim
 export async function getHypergraphConfig(guildId) {
     const db = await getDb();
     const result = await db.query(
-        `SELECT * FROM hypergraph_config WHERE guildid = $1`,
+        'SELECT * FROM hypergraph_config WHERE guildid = $1',
         [guildId]
     );
 
@@ -796,10 +796,10 @@ export async function updateHypergraphConfig(guildId, config) {
             maxmemoriespernode = EXCLUDED.maxmemoriespernode,
             updatedat = CURRENT_TIMESTAMP`,
         [guildId,
-         config.extractionEnabled !== undefined ? config.extractionEnabled : true,
-         config.decayRate !== undefined ? config.decayRate : 0.1,
-         config.importanceBoostOnAccess !== undefined ? config.importanceBoostOnAccess : 0.05,
-         config.minUrgencyThreshold !== undefined ? config.minUrgencyThreshold : 0.1,
-         config.maxMemoriesPerNode !== undefined ? config.maxMemoriesPerNode : 100]
+            config.extractionEnabled !== undefined ? config.extractionEnabled : true,
+            config.decayRate !== undefined ? config.decayRate : 0.1,
+            config.importanceBoostOnAccess !== undefined ? config.importanceBoostOnAccess : 0.05,
+            config.minUrgencyThreshold !== undefined ? config.minUrgencyThreshold : 0.1,
+            config.maxMemoriesPerNode !== undefined ? config.maxMemoriesPerNode : 100]
     );
 }

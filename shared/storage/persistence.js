@@ -477,7 +477,7 @@ export async function saveGuild(guildId, guildName) {
  */
 export async function pruneOldMessages(maxAgeDays) {
     const db = await getDb();
-    await db.query("DELETE FROM messages WHERE timestamp < NOW() - INTERVAL '1 day' * $1", [maxAgeDays]);
+    await db.query('DELETE FROM messages WHERE timestamp < NOW() - INTERVAL \'1 day\' * $1', [maxAgeDays]);
 }
 
 export async function logBotReply(guildId, channelId, userId, username, displayName, avatarUrl, userMessage, botReply, processingTimeMs, promptTokens, responseTokens) {
@@ -908,7 +908,7 @@ export async function getAnalyticsChannels(days = 7, guildId = null) {
     return { channelActivity: channelActivity.rows };
 }
 
-export async function getAnalyticsErrors(days = 7, limit = 50) {
+export async function getAnalyticsErrors(_days = 7, limit = 50) {
     const db = await getDb();
 
     const errors = await db.query(`

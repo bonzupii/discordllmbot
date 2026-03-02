@@ -92,7 +92,7 @@ export function createKnowledgeRoutes(): Router {
         }
     });
 
-    router.post('/:guildId/upload', upload.single('document'), async (req: Request, res: Response) => {
+    router.post('/:guildId/upload', upload.single('document') as any, async (req: Request, res: Response) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }

@@ -1,197 +1,230 @@
-import type { Client, Guild, Message, GuildMember, TextChannel, Channel, APIChannel } from 'discord.js';
+/**
+ * Type declarations for shared storage modules
+ */
 
-export function validateEnvironment(): void;
-
-export interface GlobalConfig {
-    botPersona: BotPersonaConfig;
-    llm: ApiConfig;
-    memory: MemoryConfig;
-    logger: LoggerConfig;
-    sandbox: SandboxConfig;
+declare module '@shared/storage/hypergraphPersistence.js' {
+  export function findOrCreateNode(guildId: string, nodeId: string, nodeType: string, name: string, metadata?: object): Promise<number>;
+  export function getNodesByType(guildId: string, nodeType: string): Promise<any[]>;
+  export function getAllNodes(guildId: string): Promise<any[]>;
+  export function findNode(guildId: string, nodeId: string, nodeType: string): Promise<any | null>;
+  export function createHyperedge(guildId: string, edgeData: any): Promise<number>;
+  export function queryMemoriesByNode(guildId: string, nodeId: string, minUrgency?: number, limit?: number): Promise<any[]>;
+  export function getContextualMemories(guildId: string, channelId: string, userId: string, limit?: number): Promise<any[]>;
+  export function getUserFacts(guildId: string, userId: string, limit?: number): Promise<any[]>;
+  export function getGlobalKnowledge(guildId: string, limit?: number): Promise<any[]>;
+  export function searchMemories(guildId: string, keywords: string[], limit?: number): Promise<any[]>;
+  export function getGraphData(guildId: string, channelId?: string | null, limit?: number): Promise<any>;
+  export function updateMemoryUrgency(guildId: string, decayRate?: number, accessBoost?: number): Promise<any[]>;
+  export function pruneLowUrgencyMemories(guildId: string, minUrgency?: number, minAgeDays?: number): Promise<number>;
+  export function recordMemoryAccess(hyperedgeId: number): Promise<void>;
+  export function getHypergraphStats(guildId: string): Promise<any>;
+  export function getAllMemories(guildId: string, minUrgency?: number, limit?: number): Promise<any[]>;
+  export function getChannelMemories(guildId: string, channelId: string, minUrgency?: number, limit?: number): Promise<any[]>;
+  export function getHypergraphConfig(guildId: string): Promise<any>;
+  export function deleteHyperedge(hyperedgeId: number): Promise<void>;
+  export function updateHypergraphConfig(guildId: string, config: any): Promise<void>;
 }
 
-export interface SandboxConfig {
-    enabled: boolean;
-    timeoutMs: number;
-    allowedCommands: string[];
+declare module '@shared/storage/knowledgePersistence.js' {
+  export function createRssFeed(guildId: string, data: { url: string; name: string; intervalMinutes?: number }): Promise<any>;
+  export function getRssFeeds(guildId: string): Promise<any[]>;
+  export function updateRssFeed(id: number, data: { url?: string; name?: string; intervalMinutes?: number; enabled?: boolean }): Promise<any>;
+  export function deleteRssFeed(id: number): Promise<void>;
+  export function updateRssLastFetched(id: number): Promise<void>;
+  export function createIngestedDocument(guildId: string, data: { filename: string; fileType: string }): Promise<any>;
+  export function updateDocumentStatus(id: number, data: { status: string; errorMessage?: string | null; processedAt?: boolean | null }): Promise<any>;
+  export function getIngestedDocuments(guildId: string): Promise<any[]>;
+  export function deleteIngestedDocument(id: number): Promise<void>;
 }
 
-export interface BotPersonaConfig {
-    username: string;
-    description: string;
-    globalRules: string[];
+declare module '@shared/storage/persistence.js' {
+  export function loadRelationships(guildId: string): Promise<any>;
+  export function saveRelationships(guildId: string, relationships: any): Promise<void>;
+  export function getServerConfig(guildId: string): Promise<any | null>;
+  export function saveServerConfig(guildId: string, config: any): Promise<void>;
+  export function deleteServerConfig(guildId: string): Promise<void>;
+  export function getGlobalConfig(): Promise<any | null>;
+  export function saveGlobalConfig(config: any): Promise<void>;
+  export function deleteGlobalConfig(): Promise<void>;
+  export function getAllServerConfigs(): Promise<any[]>;
+  export function loadContexts(guildId: string, channelId: string, maxMessages: number): Promise<any[]>;
+  export function saveMessage(guildId: string, channelId: string, authorId: string, authorName: string, content: string): Promise<void>;
+  export function saveGuild(guildId: string, guildName: string): Promise<void>;
+  export function pruneOldMessages(maxAgeDays: number): Promise<void>;
+  export function logBotReply(guildId: string, channelId: string, userId: string, username: string, displayName: string, avatarUrl: string, userMessage: string, botReply: string, processingTimeMs: number, promptTokens: number, responseTokens: number): Promise<void>;
+  export function getLatestReplies(limit?: number): Promise<any[]>;
+  export function getAnalyticsData(): Promise<any>;
+  export function logAnalyticsEvent(eventType: string, guildId: string, channelId: string, userId: string, metadata?: any): Promise<void>;
+  export function getAnalyticsOverview(days?: number): Promise<any>;
+  export function getAnalyticsVolume(days?: number): Promise<any>;
+  export function getAnalyticsDecisions(days?: number): Promise<any>;
+  export function getAnalyticsProviders(days?: number): Promise<any>;
+  export function getAnalyticsErrors(days?: number, limit?: number): Promise<any>;
+  export function getDb(): Promise<any>;
+  export function getSqlLogEmitter(): any;
+  export function resetPoolWrapper(): void;
 }
 
-export interface BotConfig {
-    name: string;
-    description: string;
-    speakingStyle: string[];
-    globalRules: string[];
+declare module '@shared/storage/database.js' {
+  export function connect(): Promise<any>;
+  export function initializeDatabase(): Promise<void>;
+  export function getPool(): Promise<any>;
+  export function setupSchema(): Promise<void>;
 }
 
-export interface MemoryConfig {
-    maxContextMessages: number;
-    maxMessageAgeDays: number;
+declare module '@shared/utils/logger.js' {
+  export const logger: {
+    onLog(callback: (entry: any) => void): void;
+    api(message: string, data?: any): void;
+    sql(message: string, data?: any): void;
+    message(message: string, data?: any): void;
+    info(message: string, data?: any): void;
+    warn(message: string, data?: any): void;
+    error(message: string, error?: any): void;
+  };
+  export function initializeLogger(maxLines?: number): void;
 }
 
-export interface LoggerConfig {
-    maxLogLines?: number;
-    logSql?: boolean;
+declare module '@shared/config/configLoader.js' {
+  export function loadConfig(): Promise<any>;
+  export function getServerConfig(guildId: string): Promise<any>;
+  export function updateServerConfig(guildId: string, newConfig: any): Promise<void>;
+  export function reloadConfig(): Promise<any>;
+  export function getBotConfig(guildId: string): Promise<any>;
+  export function getMemoryConfig(): Promise<any>;
+  export function getGlobalMemoryConfig(): Promise<any>;
+  export function getApiConfig(): Promise<any>;
+  export function getReplyBehavior(guildId: string): Promise<any>;
+  export function getLoggerConfig(): Promise<any>;
+  export function getSandboxConfig(): Promise<any>;
+  export function setSqlLoggingEnabled(enabled: boolean): void;
+  export function isSqlLoggingEnabled(): boolean;
+  export function clearServerConfigCache(guildId: string): void;
 }
 
-export interface ApiConfig {
-    provider: 'gemini' | 'ollama' | 'qwen';
-    geminiModel?: string;
-    ollamaModel?: string;
-    qwenModel?: string;
-    geminiApiKey?: string;
-    ollamaApiKey?: string;
-    qwenApiKey?: string;
-    retryAttempts?: number;
-    retryBackoffMs?: number;
-    model?: string;
-    ollamaUrl?: string;
+declare module '@shared/config/validation.js' {
+  export function validateEnvironment(): void;
 }
 
-export interface ReplyBehaviorConfig {
-    replyProbability: number;
-    minDelayMs: number;
-    maxDelayMs: number;
-    ignoreUsers: string[];
-    ignoreChannels: string[];
-    ignoreKeywords: string[];
-    mentionOnly: boolean;
+declare module '@shared/constants/index.ts' {
+  export const OAUTH: any;
+  export const TIME: any;
+  export const CACHE: any;
+  export const DATABASE: any;
+  export const LOGGING: any;
+  export const LLM: any;
+  export const MEMORY: any;
+  export const SANDBOX: any;
+  export const DISCORD: any;
+  export const API: any;
+  export const ENV: any;
 }
 
-export interface ServerConfig {
-    nickname?: string;
-    speakingStyle: string[];
-    replyBehavior: ReplyBehaviorConfig;
+// External module declarations
+declare module 'rss-parser' {
+  export class Parser<T = any> {
+    parseURL(url: string): Promise<T>;
+    parseString(content: string): Promise<T>;
+  }
+  export default Parser;
 }
 
-export async function loadConfig(): Promise<GlobalConfig>;
-export async function getServerConfig(guildId: string): Promise<ServerConfig>;
-export async function updateServerConfig(guildId: string, config: Partial<ServerConfig>): Promise<void>;
-export async function reloadConfig(): Promise<void>;
-export async function getBotConfig(guildId: string): Promise<BotConfig>;
-export async function getMemoryConfig(guildId: string): Promise<MemoryConfig>;
-export async function getGlobalMemoryConfig(): Promise<MemoryConfig>;
-export async function getApiConfig(): Promise<ApiConfig>;
-export async function getReplyBehavior(guildId: string): Promise<ReplyBehaviorConfig>;
-export async function getLoggerConfig(guildId: string): Promise<LoggerConfig>;
-export async function getSandboxConfig(): Promise<SandboxConfig>;
-export function setSqlLoggingEnabled(enabled: boolean): void;
-export function isSqlLoggingEnabled(): boolean;
-export function clearServerConfigCache(guildId: string): void;
-
-export interface Logger {
-    error(message: string, ...args: unknown[]): void;
-    warn(message: string, ...args: unknown[]): void;
-    info(message: string, ...args: unknown[]): void;
-    api(message: string, ...args: unknown[]): void;
-    message(message: string, ...args: unknown[]): void;
-    sql(message: string, ...args: unknown[]): void;
+declare module 'pdf-parse' {
+  interface PDFParseResult {
+    numpages: number;
+    numrender: number;
+    info: any;
+    metadata: any;
+    text: string;
+    version: string;
+  }
+  function pdfParse(data: Buffer, options?: any): Promise<PDFParseResult>;
+  namespace pdfParse {}
+  export default pdfParse;
 }
 
-export function initializeLogger(maxLogLines?: number): void;
-export const logger: Logger;
-
-export interface DatabasePool {
-    query: (text: string, params?: unknown[]) => Promise<{
-        rows: unknown[];
-        rowCount: number;
-    }>;
-    connect: () => Promise<DatabaseClient>;
+declare module 'multer' {
+  import { Request } from 'express';
+  
+  namespace Express {
+    namespace Multer {
+      interface File {
+        fieldname: string;
+        originalname: string;
+        encoding: string;
+        mimetype: string;
+        size: number;
+        stream: NodeJS.ReadableStream;
+        buffer: Buffer;
+      }
+      
+      interface FileInfo {
+        fieldname: string;
+        originalname: string;
+        encoding: string;
+        mimetype: string;
+        size: number;
+        destination: string;
+        filename: string;
+        path: string;
+      }
+      
+      interface Options {
+        dest?: string;
+        storage?: StorageEngine;
+        limits?: {
+          fieldNameSize?: number;
+          fieldSize?: number;
+          fields?: number;
+          fileSize?: number;
+          files?: number;
+          parts?: number;
+          headerPairs?: number;
+        };
+        preservePath?: boolean;
+        fileFilter?: (req: Request, file: File, cb: (error: Error | null, acceptFile?: boolean) => void) => void;
+      }
+      
+      interface StorageEngine {
+        _handleFile(req: Request, file: File, callback: (error?: any, info?: Partial<FileInfo>) => void): void;
+        _removeFile(req: Request, file: File, callback: (error?: Error) => void): void;
+      }
+      
+      interface DiskStorageOptions {
+        destination?: string | ((req: Request, file: File, cb: (error: Error | null, destination: string) => void) => void);
+        filename?: (req: Request, file: File, cb: (error: Error | null, filename: string) => void) => void;
+      }
+      
+      interface SingleRequestHandler {
+        (req: Request, res: Response, next: (err?: any) => void): void;
+      }
+    }
+  }
+  
+  interface Multer {
+    single(fieldname: string, maxCount?: number): Express.Multer.SingleRequestHandler;
+    array(fieldname: string, maxCount?: number): Express.Multer.SingleRequestHandler;
+    fields(fields: { name: string; maxCount?: number }[]): Express.Multer.SingleRequestHandler;
+    none(): Express.Multer.SingleRequestHandler;
+    any(): Express.Multer.SingleRequestHandler;
+  }
+  
+  interface MulterInstance {
+    (options?: Multer.Options): Multer;
+    diskStorage(options: Multer.DiskStorageOptions): Multer.StorageEngine;
+    memoryStorage(): Multer.StorageEngine;
+  }
+  
+  const multer: MulterInstance;
+  export default multer;
 }
 
-export interface DatabaseClient {
-    query: (text: string, params?: unknown[]) => Promise<{
-        rows: unknown[];
-        rowCount: number;
-    }>;
-    release: () => void;
+// Extend Express Request type for multer file uploads
+declare global {
+  namespace Express {
+    interface Request {
+      file?: Multer.File;
+      files?: Multer.File[];
+    }
+  }
 }
-
-export function getSqlLogEmitter(): {
-    on(event: 'query', listener: (logLine: string, data?: unknown) => void): void;
-    emit(event: 'query', logLine: string, data?: unknown): void;
-};
-
-export function resetPoolWrapper(): Promise<void>;
-export function getDb(): Promise<DatabasePool>;
-
-export interface Relationship {
-    attitude: string;
-    username: string;
-    displayName: string;
-    avatarUrl: string;
-    ignored: boolean;
-    behavior: string;
-    boundaries: string[];
-}
-
-export type Relationships = Record<string, Relationship>;
-
-export async function loadRelationships(guildId: string): Promise<Relationships>;
-export async function saveRelationships(guildId: string, relationships: Relationships): Promise<void>;
-export async function getServerConfig(guildId: string): Promise<ServerConfig | null>;
-export async function saveServerConfig(guildId: string, config: ServerConfig): Promise<void>;
-export async function deleteServerConfig(guildId: string): Promise<void>;
-export async function getGlobalConfig(): Promise<GlobalConfig | null>;
-export async function saveGlobalConfig(config: GlobalConfig): Promise<void>;
-export async function deleteGlobalConfig(): Promise<void>;
-export async function getAllServerConfigs(): Promise<Array<{ guildId: string; config: ServerConfig; guildName: string; updatedAt: Date }>>;
-
-export interface MessageContext {
-    authorId: string;
-    author: string;
-    content: string;
-}
-
-export async function loadContexts(guildId: string, channelId: string, maxMessages: number): Promise<MessageContext[]>;
-export async function saveMessage(guildId: string, channelId: string, authorId: string, authorName: string, content: string): Promise<void>;
-export async function saveGuild(guildId: string, guildName: string): Promise<void>;
-export async function pruneOldMessages(maxAgeDays: number): Promise<void>;
-export async function logBotReply(
-    guildId: string,
-    channelId: string,
-    userId: string,
-    username: string,
-    displayName: string,
-    avatarUrl: string,
-    userMessage: string,
-    botReply: string,
-    processingTimeMs: number,
-    promptTokens: number,
-    responseTokens: number
-): Promise<void>;
-export async function getLatestReplies(limit?: number): Promise<unknown[]>;
-export async function getAnalyticsData(): Promise<{
-    stats24h: unknown;
-    volume: unknown[];
-    topServers: unknown[];
-}>;
-export async function getAnalyticsOverview(days?: number): Promise<unknown>;
-export async function getAnalyticsVolume(days?: number): Promise<unknown>;
-export async function getAnalyticsDecisions(days?: number): Promise<unknown>;
-export async function getAnalyticsProviders(days?: number): Promise<unknown>;
-export async function getAnalyticsPerformance(days?: number): Promise<unknown>;
-export async function getAnalyticsUsers(days?: number): Promise<unknown>;
-export async function getAnalyticsChannels(days?: number): Promise<unknown>;
-export async function getAnalyticsErrors(days?: number): Promise<unknown>;
-
-export function initializeDatabase(): Promise<void>;
-export function connect(): Promise<unknown>;
-export function getPool(): Promise<unknown>;
-
-export interface LLMResponse {
-    text: string | null;
-    usageMetadata: {
-        promptTokenCount?: number | null;
-        candidatesTokenCount?: number | null;
-        totalTokenCount?: number;
-    } | null;
-}
-
-export function generateReply(prompt: string): Promise<LLMResponse>;
-export function getAvailableModels(overrideProvider?: string): Promise<string[]>;

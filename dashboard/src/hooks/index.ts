@@ -12,5 +12,5 @@ export { useServerConfig } from './useServerConfig';
 export { useServerRelationships } from './useServerRelationships';
 export { useServers } from './useServers';
 export { useSocket } from './useSocket';
-export { useSocketContext } from '@context/SocketContext';
+export { useSocketContext } from './useSocketContext';
 export type { ChatMessage } from '@types';
