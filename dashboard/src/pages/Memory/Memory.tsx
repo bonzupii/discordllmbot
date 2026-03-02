@@ -3,6 +3,7 @@
  * @module pages/Memory/Memory
  */
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -44,7 +45,12 @@ function TabPanel({ children, value, index }: TabPanelProps) {
 }
 
 export default function Memory() {
-  const [tabValue, setTabValue] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tabNames = ['graph', 'browser', 'entities', 'ingestion'];
+  const initialTab = tabParam ? tabNames.indexOf(tabParam) : 0;
+  
+  const [tabValue, setTabValue] = useState(initialTab >= 0 && initialTab < tabNames.length ? initialTab : 0);
   const [servers, setServers] = useState<Server[]>([]);
   const [selectedServer, setSelectedServer] = useState<string>('');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
@@ -79,13 +85,13 @@ export default function Memory() {
     try {
       const response = await serversApi.getChannels(guildId);
       const serverChannels = response.data.map((ch: any) => ({ id: ch.id, name: ch.name }));
-      
+
       // Always include the system ingestion channel for global knowledge
       setChannels([
         { id: 'system-ingestion', name: 'SYSTEM INGESTION (Global)' },
         ...serverChannels
       ]);
-      
+
       if (serverChannels.length > 0) {
         setSelectedChannel(serverChannels[0].id);
       } else {
@@ -98,6 +104,9 @@ export default function Memory() {
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', tabNames[newValue]);
+    setSearchParams(newParams, { replace: true });
   };
 
   if (loading) {

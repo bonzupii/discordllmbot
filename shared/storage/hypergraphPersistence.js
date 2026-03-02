@@ -641,6 +641,55 @@ export async function getHypergraphStats(guildId) {
 }
 
 /**
+ * Get all memories for a guild (for dashboard memory browser)
+ * @param {string} guildId - Guild ID
+ * @param {number} minUrgency - Minimum urgency
+ * @param {number} limit - Max results
+ * @returns {Promise<Array>} Memories
+ */
+export async function getAllMemories(guildId, minUrgency = 0, limit = 100) {
+    const db = await getDb();
+    const result = await db.query(
+        `SELECT e.*,
+                COALESCE(
+                    (SELECT json_agg(json_build_object(
+                        'nodeType', n.nodetype,
+                        'name', n.name,
+                        'role', hem.role
+                    ) ORDER BY hem.weight DESC)
+                     FROM hyperedge_memberships hem
+                     JOIN hyper_nodes n ON hem.nodeid = n.id
+                     WHERE hem.hyperedgeid = e.id),
+                    '[]'::json
+                ) as members
+         FROM hyperedges e
+         WHERE e.guildid = $1
+           AND e.urgency >= $2
+         ORDER BY e.urgency DESC
+         LIMIT $3`,
+        [guildId, minUrgency, limit]
+    );
+    return result.rows.map(row => ({
+        id: row.id,
+        guildId: row.guildid,
+        channelId: row.channelid,
+        edgeType: row.edgetype,
+        summary: row.summary,
+        content: row.content,
+        importance: row.importance,
+        urgency: row.urgency,
+        accessCount: row.accesscount,
+        lastAccessedAt: row.lastaccessedat,
+        sourceMessageId: row.sourcemessageid,
+        extractedAt: row.extractedat,
+        metadata: row.metadata,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat,
+        members: row.members
+    }));
+}
+
+/**
  * Get memories for a specific channel (for dashboard)
  * @param {string} guildId - Guild ID
  * @param {string} channelId - Channel ID

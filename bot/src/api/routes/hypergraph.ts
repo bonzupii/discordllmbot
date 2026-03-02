@@ -19,6 +19,7 @@ import {
     updateHypergraphConfig,
     updateMemoryUrgency,
     pruneLowUrgencyMemories,
+    getAllMemories,
 } from '@shared/storage/hypergraphPersistence.js';
 
 /**
@@ -56,7 +57,7 @@ export function createHypergraphRoutes(): Router {
         try {
             const nodeId = req.query.node as string;
             const channelId = req.query.channelId as string;
-            const minUrgency = parseFloat(req.query.minUrgency as string) || 0.1;
+            const minUrgency = parseFloat(req.query.minUrgency as string) || 0;
             const limit = parseInt(req.query.limit as string) || 20;
 
             let memories;
@@ -65,7 +66,8 @@ export function createHypergraphRoutes(): Router {
             } else if (channelId) {
                 memories = await getChannelMemories(req.params.guildId as string, channelId, minUrgency, limit);
             } else {
-                return res.status(400).json({ error: 'Either nodeId or channelId parameter required' });
+                // Fetch all memories for the guild (for memory browser)
+                memories = await getAllMemories(req.params.guildId as string, minUrgency, limit);
             }
             res.json(memories);
         } catch (err) {

@@ -50,7 +50,7 @@ interface Memory {
     [key: string]: unknown;
   };
   members?: {
-    nodetype: string;
+    nodeType: string;
     name: string;
     role: string;
   }[];
@@ -77,9 +77,15 @@ export function MemoryBrowser({ guildId, channelId }: MemoryBrowserProps) {
     setLoading(true);
     try {
       // Fetch more memories to allow better local filtering/sorting
-      const response = await api.get(`/hypergraph/${guildId}/memories`, {
-        params: { channelId, minUrgency: 0, limit: 200 }
-      });
+      const params: Record<string, string | number> = {
+        minUrgency: 0,
+        limit: 200
+      };
+      // Only include channelId if it has a value
+      if (channelId) {
+        params.channelId = channelId;
+      }
+      const response = await api.get(`/hypergraph/${guildId}/memories`, { params });
       setMemories(response.data);
     } catch (error) {
       console.error('Failed to load memories', error);
@@ -313,20 +319,25 @@ function MemoryListItem({ memory, expanded, onToggle, getEdgeTypeColor }: Memory
             Associated Entities
           </Typography>
           <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
-            {memory.members?.map((member, idx) => (
-              <Chip
-                key={idx}
-                label={`${member.nodetype}: ${member.name}`}
-                size="small"
-                variant="outlined"
-                sx={{ 
-                  fontSize: '0.7rem', 
-                  bgcolor: 'background.default',
-                  borderColor: NODE_COLORS[member.nodetype] || 'divider',
-                  '& .MuiChip-label': { px: 1 }
-                }}
-              />
-            ))}
+            {memory.members?.map((member, idx) => {
+              // Try both camelCase and lowercase - PostgreSQL may lowercase JSON keys
+              const nodeType = member.nodeType || member.nodetype || 'unknown';
+              const name = member.name || 'unnamed';
+              return (
+                <Chip
+                  key={idx}
+                  label={`${nodeType}: ${name}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    fontSize: '0.7rem',
+                    bgcolor: 'background.default',
+                    borderColor: NODE_COLORS[nodeType] || 'divider',
+                    '& .MuiChip-label': { px: 1 }
+                  }}
+                />
+              );
+            })}
             {(!memory.members || memory.members.length === 0) && (
               <Typography variant="caption" color="text.disabled">No entities linked</Typography>
             )}
