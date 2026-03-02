@@ -76,11 +76,11 @@ features:
     };
 
     const sections = readmeContent.split(/^## /m);
-    
+
     for (let i = 0; i < sections.length; i++) {
         const section = sections[i];
         if (!section.trim()) continue;
-        
+
         let title, fileName, content;
 
         if (i === 0) {
@@ -96,7 +96,10 @@ features:
                 title = rawTitle.replace(/\s*\(.*?\)\s*/g, '').trim();
                 const sanitizedTitle = title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s/g, '-');
                 fileName = sanitizedTitle + '.md';
-                content = `## ${section}`;
+                // Promote headings: ## -> #, ### -> ##
+                content = section
+                    .replace(/^### /gm, '## ')
+                    .replace(/^## /gm, '# ');
             }
         }
 
