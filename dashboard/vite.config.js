@@ -49,12 +49,6 @@ export default defineConfig(({ mode }) => {
           timeout: 5000,
           proxyTimeout: 10000,
         },
-        '/socket.io': {
-          target: apiTarget,
-          changeOrigin: true,
-          ws: true,
-          secure: false,
-        },
       },
       // Allow connections from outside the container
       allowedHosts: true,

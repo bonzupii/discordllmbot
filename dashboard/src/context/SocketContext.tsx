@@ -2,12 +2,11 @@
  * Socket Context - Provides a single shared socket.io connection to all components
  * @module contexts/SocketContext
  */
-/* eslint-disable react-refresh/only-export-components */
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-import { API_CONFIG, SOCKET } from '@constants';
+import { SOCKET } from '@constants';
 
 /**
  * Socket event types
@@ -36,25 +35,27 @@ interface SocketProviderProps {
   children: React.ReactNode;
 }
 
+// Store socket instance in a ref outside component scope to survive HMR
+let globalSocketInstance: Socket | null = null;
+
 /**
  * Socket Provider Component
- * 
+ *
  * Creates a single socket.io connection and shares it across the entire app.
  * All components should use the useSocket() hook to access socket functionality.
- * 
+ *
  * @example
  * ```tsx
  * // In App.tsx
  * <SocketProvider>
  *   <AppContent />
  * </SocketProvider>
- * 
+ *
  * // In any component
  * const { socket, isConnected } = useSocket();
  * ```
  */
 export function SocketProvider({ children }: SocketProviderProps) {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
@@ -64,6 +65,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const logsRef = useRef(logs);
   const dbLogsRef = useRef(dbLogs);
   const socketRef = useRef<Socket | null>(null);
+  const isSocketInitialized = useRef(false);
 
   useEffect(() => {
     logsRef.current = logs;
@@ -73,10 +75,18 @@ export function SocketProvider({ children }: SocketProviderProps) {
     dbLogsRef.current = dbLogs;
   }, [dbLogs]);
 
+  // Initialize socket once, survive HMR
   useEffect(() => {
-    // Use window.location.origin to go through Vite proxy in dev mode
-    // This ensures WebSocket connections work correctly in Docker
-    const socketUrl = window.location.origin;
+    if (isSocketInitialized.current) return;
+    isSocketInitialized.current = true;
+
+    // In Docker, connect directly to bot service using ws:// instead of http://
+    // VITE_API_URL is set to http://bot:3000 in Docker, convert to ws://bot:3000
+    const viteApiUrl = import.meta.env.VITE_API_URL;
+    const socketUrl = viteApiUrl 
+      ? viteApiUrl.replace('http://', 'ws://').replace('https://', 'wss://').replace('/api', '')
+      : window.location.origin;
+    
     const socketInstance = io(socketUrl, {
         reconnection: SOCKET.RECONNECTION,
         reconnectionAttempts: SOCKET.RECONNECTION_ATTEMPTS,
@@ -85,9 +95,9 @@ export function SocketProvider({ children }: SocketProviderProps) {
         transports: ['websocket', 'polling'],
         upgrade: true,
     });
+    
+    globalSocketInstance = socketInstance;
     socketRef.current = socketInstance;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSocket(socketInstance);
 
     // Connection status
     socketInstance.on('connect', () => setIsConnected(true));
@@ -113,7 +123,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       setLogs(prev => [...prev.slice(-199), line]);
     });
 
-    // Cleanup on unmount
+    // Cleanup on unmount - but don't destroy socket, just remove listeners
     return () => {
       socketInstance.off('connect');
       socketInstance.off('disconnect');
@@ -121,9 +131,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       socketInstance.off('logs:init');
       socketInstance.off('log');
       socketInstance.off('db:log');
-      socketInstance.disconnect();
-      socketRef.current = null;
-      setSocket(null);
+      // Don't disconnect - keep socket alive for HMR
     };
   }, []);
 
@@ -140,7 +148,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   }, []);
 
   const value = useMemo(() => ({
-    socket,
+    socket: socketRef.current,
     isConnected,
     isRestarting,
     clearRestarting,
@@ -148,7 +156,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     dbLogs,
     clearLogs,
     clearDbLogs,
-  }), [socket, isConnected, isRestarting, clearRestarting, logs, dbLogs, clearLogs, clearDbLogs]);
+  }), [isConnected, isRestarting, clearRestarting, logs, dbLogs, clearLogs, clearDbLogs]);
 
   return (
     <SocketContext.Provider value={value}>
@@ -159,7 +167,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
 /**
  * Hook to access the shared socket context
- * 
+ *
  * @throws Error if used outside SocketProvider
  * @returns Socket context value
  */
