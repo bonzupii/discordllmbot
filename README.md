@@ -177,23 +177,58 @@ QWEN_API_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 
 ## Running the bot
 
-### Start all services with Docker
+### Prerequisites
 
-```bash
-npm run dev
-```
+- [Docker](https://www.docker.com/) and Docker Compose installed
+- `.env` file configured (copy from `.env.example`)
 
-### Rebuild and start
+### Quick start with Docker
 
-```bash
-npm run dev:build
-```
+1. **Clone and setup**:
+   ```bash
+   git clone https://github.com/lnorton89/discordllmbot.git
+   cd discordllmbot
+   cp .env.example .env
+   ```
 
-### Stop services
+2. **Configure environment**:
+   Edit `.env` and set at minimum:
+   ```bash
+   # Discord (required)
+   DISCORD_TOKEN=your_bot_token
+   DISCORD_CLIENT_ID=your_client_id
 
-```bash
-npm run dev:down
-```
+   # PostgreSQL (required)
+   POSTGRES_DB=discordllmbot
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your_secure_password
+   POSTGRES_PORT=5432
+
+   # LLM (choose one)
+   GEMINI_API_KEY=your_gemini_key
+   # OR
+   OLLAMA_API_URL=http://host.docker.internal:11434
+   # OR
+   QWEN_API_KEY=your_qwen_key
+   ```
+
+3. **Start all services**:
+   ```bash
+   npm run dev
+   ```
+
+### Docker commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start bot, db, dashboard, docs, pgadmin, sandbox |
+| `npm run dev:build` | Rebuild images and start all services |
+| `npm run dev:down` | Stop and remove all containers |
+| `docker-compose ps` | List running containers |
+| `docker-compose logs -f bot` | Follow bot logs |
+| `docker-compose logs -f dashboard` | Follow dashboard logs |
+| `docker-compose restart bot` | Restart bot container |
+| `docker-compose down -v` | Stop and remove volumes (resets database) |
 
 ### Access the services
 
@@ -205,6 +240,25 @@ npm run dev:down
 | **pgAdmin** | http://localhost:5050 | PostgreSQL admin |
 
 **Log file**: `discordllmbot.log` — truncated on startup to keep last `maxLogLines`.
+
+### Docker development workflow
+
+**Hot reload**: The bot and dashboard containers have volume mounts for live code reloading:
+- `./bot:/usr/src/app/bot` — Bot source code
+- `./dashboard:/usr/src/app` — Dashboard source code
+- `./shared:/usr/src/app/shared` — Shared utilities
+
+Changes to source files automatically restart the bot via nodemon.
+
+**Debugging**: Bot container exposes debug port `9229` for attaching a debugger.
+
+**Database persistence**: PostgreSQL data is stored in the `postgres-data` volume. To reset:
+```bash
+docker-compose down -v
+npm run dev
+```
+
+**Sandbox**: The Docker-in-Docker sandbox runs in privileged mode. Commands from bot messages containing "docker command" are executed in isolated ephemeral containers.
 
 ---
 
@@ -295,15 +349,83 @@ The project uses a Docker Compose setup with the following services:
 
 | Service | Image | Ports | Description |
 |---------|-------|-------|-------------|
-| `db` | postgres:15-alpine | 5432 | PostgreSQL database |
-| `db-mcp` | crystaldba/postgres-mcp | — | Database MCP server |
-| `bot` | Custom (Node.js) | 3000, 9229 | Discord bot + API |
-| `pgadmin` | dpage/pgadmin4 | 5050 | PostgreSQL admin UI |
-| `docs` | Custom (Node.js) | 5174 | VitePress documentation |
-| `dashboard` | Custom (Node.js) | 5173 | React dashboard |
-| `sandbox` | docker:24-dind | 2376 | Docker-in-Docker for sandbox |
+| `db` | postgres:15-alpine | 5432 | PostgreSQL database with healthcheck |
+| `db-mcp` | crystaldba/postgres-mcp | — | Database MCP server for AI tools |
+| `bot` | Custom (Node.js) | 3000, 9229 | Discord bot + Express API + Socket.io |
+| `pgadmin` | dpage/pgadmin4 | 5050 | PostgreSQL admin UI (pre-configured server) |
+| `docs` | Custom (Node.js) | 5174 | VitePress documentation site |
+| `dashboard` | Custom (Node.js) | 5173 | React admin dashboard with MUI |
+| `sandbox` | docker:24-dind | 2376 | Docker-in-Docker for isolated command execution |
 
-All services communicate over a shared `discordllmbot-network` bridge network.
+### Network topology
+
+All services communicate over a shared `discordllmbot-network` bridge network:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  discordllmbot-network                       │
+│                                                              │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐               │
+│  │   bot    │◄──►│    db    │    │dashboard │               │
+│  │ :3000    │    │  :5432   │    │  :5173   │               │
+│  └────┬─────┘    └──────────┘    └────┬─────┘               │
+│       │                               │                      │
+│       │    ┌──────────┐    ┌──────────┴─────┐               │
+│       └───►│ pgadmin  │    │     docs       │               │
+│            │  :5050   │    │    :5173       │               │
+│            └──────────┘    └────────────────┘               │
+│                                                              │
+│  ┌──────────────────────────────────────────┐               │
+│  │            sandbox (dind)                │               │
+│  │  Runs ephemeral containers for commands  │               │
+│  └──────────────────────────────────────────┘               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Volume mounts
+
+| Volume | Purpose |
+|--------|---------|
+| `postgres-data` | Persistent PostgreSQL database storage |
+| `pgadmin-data` | pgAdmin configuration and saved connections |
+| `sandbox-data` | Docker-in-Docker layer storage |
+| `sandbox-containerd` | Containerd state for sandbox |
+
+### Service dependencies
+
+```
+db (healthcheck) ─┬─► bot ──────► dashboard
+                  │              ▲
+                  └─► db-mcp     │
+                                 │
+                  ┌──────────────┘
+                  │
+                  └─► docs
+                  │
+                  └─► pgadmin
+```
+
+- `bot` waits for `db` to be healthy before starting
+- `dashboard` waits for `bot` to be started
+- `db-mcp` connects to `db` after healthcheck passes
+
+### Container configuration
+
+**Bot container** (`bot/Dockerfile.bot`):
+- Node.js 20+ with tsx for TypeScript execution
+- Nodemon for hot reload in development
+- Volume mounts for bot, shared, and logs directories
+- Exposes API port (3000) and debug port (9229)
+
+**Dashboard container** (`dashboard/Dockerfile.dashboard`):
+- Node.js with Vite dev server
+- Proxy configuration to forward `/api` requests to bot service
+- Volume mount for dashboard source code
+
+**Sandbox container** (`docker:24-dind`):
+- Privileged mode for Docker-in-Docker
+- Isolated Docker daemon for security
+- Ephemeral containers for command execution
 
 ---
 
