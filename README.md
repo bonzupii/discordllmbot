@@ -363,18 +363,18 @@ All services communicate over a shared `discordllmbot-network` bridge network:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                  discordllmbot-network                       │
-│                                                              │
+│                  discordllmbot-network                      │
+│                                                             │
 │  ┌──────────┐    ┌──────────┐    ┌──────────┐               │
 │  │   bot    │◄──►│    db    │    │dashboard │               │
 │  │ :3000    │    │  :5432   │    │  :5173   │               │
 │  └────┬─────┘    └──────────┘    └────┬─────┘               │
-│       │                               │                      │
+│       │                               │                     │
 │       │    ┌──────────┐    ┌──────────┴─────┐               │
 │       └───►│ pgadmin  │    │     docs       │               │
 │            │  :5050   │    │    :5173       │               │
 │            └──────────┘    └────────────────┘               │
-│                                                              │
+│                                                             │
 │  ┌──────────────────────────────────────────┐               │
 │  │            sandbox (dind)                │               │
 │  │  Runs ephemeral containers for commands  │               │

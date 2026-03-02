@@ -21,6 +21,7 @@
     "dev": "docker-compose up -d bot db dashboard",
     "dev:build": "docker-compose up -d --build bot db dashboard",
     "dev:down": "docker-compose down",
+    "lint": "npm run lint:bot && npm run lint:dashboard",
     "lint:bot": "npm --prefix ./bot run lint",
     "lint:dashboard": "npm --prefix ./dashboard run lint",
     "type-check": "npm run type-check:bot && npm run type-check:dashboard",

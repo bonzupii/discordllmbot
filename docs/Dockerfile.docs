@@ -17,5 +17,4 @@ COPY README.md ../
 
 EXPOSE 5174
 
-# Generate docs at runtime (before dev server) since src/ is a mounted volume
-CMD ["sh", "-c", "npm run generate && npm run dev"]
+CMD ["npm", "run", "dev"]
