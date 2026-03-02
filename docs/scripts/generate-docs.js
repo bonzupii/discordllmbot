@@ -96,10 +96,7 @@ features:
                 title = rawTitle.replace(/\s*\(.*?\)\s*/g, '').trim();
                 const sanitizedTitle = title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s/g, '-');
                 fileName = sanitizedTitle + '.md';
-                // Promote headings: ## -> #, ### -> ##
-                content = section
-                    .replace(/^### /gm, '## ')
-                    .replace(/^## /gm, '# ');
+                content = `## ${section}`;
             }
         }
 
