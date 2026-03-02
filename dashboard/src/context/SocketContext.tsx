@@ -74,7 +74,9 @@ export function SocketProvider({ children }: SocketProviderProps) {
   }, [dbLogs]);
 
   useEffect(() => {
-    const socketUrl = API_CONFIG.BASE_URL || window.location.origin;
+    // Use window.location.origin to go through Vite proxy in dev mode
+    // This ensures WebSocket connections work correctly in Docker
+    const socketUrl = window.location.origin;
     const socketInstance = io(socketUrl, {
         reconnection: SOCKET.RECONNECTION,
         reconnectionAttempts: SOCKET.RECONNECTION_ATTEMPTS,
