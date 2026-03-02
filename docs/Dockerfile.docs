@@ -2,19 +2,20 @@ FROM node:25-alpine
 
 WORKDIR /usr/src/docs
 
+# Copy only package files for dependency installation
 COPY docs/package*.json ./
+COPY package*.json ../
+
+# Install dependencies
+RUN npm install
+
+# Copy scripts and source files needed for doc generation
 COPY docs/scripts ./scripts
-COPY docs/src ./src
 COPY bot/src ../bot/src
 COPY shared ../shared
 COPY README.md ../
-COPY package*.json ../
-
-RUN npm install
-RUN npm install @rollup/rollup-linux-x64-musl
-
-RUN npm run generate
 
 EXPOSE 5174
 
-CMD ["npm", "run", "dev"]
+# Generate docs at runtime (before dev server) since src/ is a mounted volume
+CMD ["sh", "-c", "npm run generate && npm run dev"]
