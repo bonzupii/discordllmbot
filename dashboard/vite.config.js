@@ -9,8 +9,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '')
-  // Use API_PROXY_TARGET if set, otherwise try VITE_API_URL or localhost:3000 for local dev
-  const apiTarget = env.API_PROXY_TARGET || env.VITE_API_URL || 'http://localhost:3000'
+  // Use API_PROXY_TARGET if set (from Docker env or .env), otherwise try VITE_API_URL or localhost:3000
+  const apiTarget = process.env.API_PROXY_TARGET || env.API_PROXY_TARGET || env.VITE_API_URL || 'http://localhost:3000'
 
   return {
     plugins: [react()],
@@ -51,6 +51,7 @@ export default defineConfig(({ mode }) => {
         },
         '/socket.io': {
           target: apiTarget,
+          changeOrigin: true,
           ws: true,
           secure: false,
         },
