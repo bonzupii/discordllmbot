@@ -9,12 +9,12 @@ This repository is a monorepo:
 - `shared/` - shared DB/config/logger utilities
 - `docs/` - VitePress docs site
 
-DiscordLLMBot generates contextual replies using LLM APIs (Google Gemini or Ollama). The bot maintains persona and can customize behavior per user and per server.
+DiscordLLMBot generates contextual replies using LLM APIs (Google Gemini, Ollama, or Qwen). The bot maintains persona and can customize behavior per user and per server.
 
 **Data Flow:**
 1. User message → stored in PostgreSQL
-2. Prompt builder combines: bot persona + user relationship + conversation context
-3. LLM API (Gemini/Ollama) generates reply → Bot responds in Discord
+2. Prompt builder combines: bot persona + user relationship + conversation context + knowledge graph memory
+3. LLM API (Gemini/Ollama/Qwen) generates reply → Bot responds in Discord
 
 ---
 
@@ -63,7 +63,6 @@ Represents system-wide config and maps to:
 - `memory`: `maxMessages`, `maxMessageAgeDays`
 - `logger`: `maxLogLines`, `logReplyDecisions`, `logSql`
 - `sandbox`: `enabled`, `timeoutMs`, `allowedCommands[]`
-- `sandbox`: `enabled`, `timeoutMs`, `allowedCommands[]`
 
 ### Server config (`server_configs`)
 
@@ -93,9 +92,14 @@ Represents per-guild settings and maps to:
 ```
 bot/src/
   index.ts              # Main entry, Discord client setup
-  api/server.ts         # Express + Socket.io API (port 3000)
+  api/
+    server.ts           # Express + Socket.io API (port 3000)
+    routes/             # Modular route handlers
+    socket.ts           # Socket.io event handlers
   llm/                  # LLM providers (gemini, ollama, qwen)
-  memory/               # Per-channel message history
+  memory/
+    context.ts          # Per-channel message history
+    knowledgeGraph.ts   # Long-term semantic memory
   personality/          # Bot persona + relationships
   core/                 # Prompt building, reply decisions
   sandbox/              # Docker sandbox executor for isolated command execution
@@ -109,7 +113,7 @@ shared/
 
 dashboard/src/
   pages/                # Route pages (Dashboard, Settings, Servers, Logs, Playground)
-  components/          # Reusable UI components
+  components/           # Reusable UI components
   hooks/                # Custom React hooks
   services/             # API calls to bot
   theme.ts              # MUI dark theme
@@ -189,14 +193,15 @@ import { useHealth } from '@hooks';
 ## Database schema
 
 Key tables:
-- `global_config` - System-wide settings (typed columns)
-- `server_configs` - Per-server overrides (typed columns)
-- `guilds` - Joined servers
-- `relationships` - Per-user relationship data
-- `relationship_behaviors` - Behavior definitions for relationships
-- `relationship_boundaries` - Boundary definitions for relationships
-- `messages` - Message history
-- `bot_replies` - Reply analytics
+- `global_config` — System-wide settings (typed columns)
+- `server_configs` — Per-server overrides (typed columns)
+- `guilds` — Joined servers
+- `relationships` — Per-user relationship data
+- `relationship_behaviors` — Behavior definitions for relationships
+- `relationship_boundaries` — Boundary definitions for relationships
+- `messages` — Message history
+- `bot_replies` — Reply analytics
+- `knowledge_graph` — Long-term memory nodes and edges
 
 ---
 
@@ -212,15 +217,30 @@ GEMINI_API_KEY=
 OLLAMA_API_URL=
 QWEN_API_KEY=
 
+# Optional Qwen OAuth (PKCE device flow)
+QWEN_OAUTH_CLIENT_ID=
+
 # PostgreSQL
-DATABASE_URL=
 POSTGRES_DB=
 POSTGRES_USER=
 POSTGRES_PASSWORD=
+POSTGRES_PORT=
+DATABASE_URL=
+
+# pgAdmin
+PGADMIN_DEFAULT_EMAIL=
+PGADMIN_DEFAULT_PASSWORD=
 
 # Ports
 API_PORT=3000
 DASHBOARD_PORT=5173
+DOCS_PORT=5174
+
+# Ollama (Docker)
+OLLAMA_API_URL=http://host.docker.internal:11434
+
+# Qwen OpenAI-compatible endpoint
+QWEN_API_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 ```
 
 ---
@@ -249,3 +269,16 @@ DASHBOARD_PORT=5173
 2. Review `bot/src/events/messageCreate.ts` for message flow
 3. Check `bot/src/core/replyDecider.ts` for reply decision logic
 4. Use dashboard Logs page for real-time logs
+5. Verify configuration in database (use pgAdmin at http://localhost:5050)
+6. Check knowledge graph memory in `bot/src/memory/knowledgeGraph.ts`
+
+---
+
+## Recent Updates
+
+- **Knowledge Graph Memory**: Integrated long-term semantic memory system (`bot/src/memory/knowledgeGraph.ts`)
+- **Qwen OAuth**: Automatic token refresh on 401 errors
+- **Modular API**: Refactored `server.ts` into modular route files in `bot/src/api/routes/`
+- **Docker Networking**: Fixed service discovery and proxy configuration
+- **Type Safety**: Added path aliases and centralized constants
+- **Socket.io**: Implemented single shared socket pattern, fixed memory leaks

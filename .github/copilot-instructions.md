@@ -8,12 +8,12 @@ This is a monorepo containing:
 - **shared/** - Common utilities (database, config, logging)
 - **docs/** - Documentation site
 
-This is a Discord bot that generates contextual replies using LLM APIs (Google Gemini or Ollama). The bot maintains a human personality and can customize behavior per user and per server. The entire environment is containerized using Docker Compose.
+This is a Discord bot that generates contextual replies using LLM APIs (Google Gemini, Ollama, or Qwen). The bot maintains a human personality and can customize behavior per user and per server. The entire environment is containerized using Docker Compose.
 
 **Data Flow:**
 1. User message → stored in PostgreSQL database
-2. Prompt builder combines: bot persona + user relationship + conversation context
-3. LLM API (Gemini/Ollama) generates reply → Bot responds in Discord
+2. Prompt builder combines: bot persona + user relationship + conversation context + knowledge graph memory
+3. LLM API (Gemini/Ollama/Qwen) generates reply → Bot responds in Discord
 
 **Container Architecture:**
 - **Single Bot Container:** The bot and API run in the same container (`bot` service)
@@ -203,47 +203,50 @@ import { useHealth } from '@hooks';
 bot/src/
   index.ts                           # Main entry point (Discord client + event registration)
   api/
-    server.ts                       # Express + Socket.io API for dashboard (port 3000)
+    server.ts                        # Express + Socket.io API for dashboard (port 3000)
+    routes/                          # Modular route handlers
+    socket.ts                        # Socket.io event handlers
   llm/
-    index.ts                        # Unified LLM provider interface
-    gemini.ts                       # Google Gemini API with retry logic
-    ollama.ts                       # Ollama local models with retry logic
-    qwen.ts                         # Qwen API with OAuth support
+    index.ts                         # Unified LLM provider interface
+    gemini.ts                        # Google Gemini API with retry logic
+    ollama.ts                        # Ollama local models with retry logic
+    qwen.ts                          # Qwen API with OAuth support
   memory/
-    context.ts                      # Channel-specific history + persistence
+    context.ts                       # Channel-specific history + persistence
+    knowledgeGraph.ts                # Long-term semantic memory with node/edge relationships
   personality/
-    botPersona.ts                   # Bot identity configuration
-    relationships.ts                # Per-user relationship management
+    botPersona.ts                    # Bot identity configuration
+    relationships.ts                 # Per-user relationship management
   core/
-    prompt.ts                       # Builds prompts for LLM
-    replyDecider.ts                 # Reply decision logic
-    responseDelay.ts                # Human-like delay calculation
+    prompt.ts                        # Builds prompts for LLM
+    replyDecider.ts                  # Reply decision logic
+    responseDelay.ts                 # Human-like delay calculation
   sandbox/
-    dockerExecutor.ts               # Docker container executor for sandbox commands
+    dockerExecutor.ts                # Docker container executor for sandbox commands
     commandExtractor.ts              # LLM-based command extraction
-    index.ts                        # Sandbox module exports
+    index.ts                         # Sandbox module exports
   events/
-    messageCreate.ts                # Message handling and reply logic
-    guildCreate.ts                  # Guild join event handler
-    index.ts                        # Event loader
+    messageCreate.ts                 # Message handling and reply logic
+    guildCreate.ts                   # Guild join event handler
+    index.ts                         # Event loader
   utils/
-    profileUpdater.ts               # Sync Discord profile with config
+    profileUpdater.ts                # Sync Discord profile with config
 
 shared/
   storage/
-    database.ts                     # PostgreSQL connection + schema setup
-    persistence.ts                  # Data access layer (CRUD operations)
+    database.ts                      # PostgreSQL connection + schema setup
+    persistence.ts                   # Data access layer (CRUD operations)
   config/
-    configLoader.ts                 # Config loading (global + per-server from DB)
+    configLoader.ts                  # Config loading (global + per-server from DB)
   utils/
-    logger.ts                       # Structured logging (file + console)
+    logger.ts                        # Structured logging (file + console)
 
 dashboard/src/
-  pages/                            # Route pages (Dashboard, Settings, Servers, Logs, Playground)
-  components/                       # Reusable UI components
-  hooks/                            # Custom React hooks
-  services/                         # API calls to bot
-  theme.ts                          # MUI dark theme
+  pages/                             # Route pages (Dashboard, Settings, Servers, Logs, Playground)
+  components/                        # Reusable UI components
+  hooks/                             # Custom React hooks
+  services/                          # API calls to bot
+  theme.ts                           # MUI dark theme
 ```
 
 ---
@@ -252,8 +255,11 @@ dashboard/src/
 
 - **`bot/src/index.ts`**: Discord client setup, event registration, graceful shutdown
 - **`bot/src/api/server.ts`**: Express + Socket.io API serving the dashboard
+- **`bot/src/api/routes/`**: Modular API route handlers
+- **`bot/src/api/socket.ts`**: Socket.io event handlers for real-time logging
 - **`bot/src/llm/index.ts`**: Unified interface for Gemini, Ollama, and Qwen providers
 - **`bot/src/memory/context.ts`**: Per-channel message history (in-memory cache + PostgreSQL persistence)
+- **`bot/src/memory/knowledgeGraph.ts`**: Long-term semantic memory with node/edge relationships
 - **`bot/src/personality/relationships.ts`**: Per-user relationship management
 - **`bot/src/core/replyDecider.ts`**: Reply decision logic with configurable checks
 - **`bot/src/sandbox/dockerExecutor.ts`**: Executes commands in isolated Docker containers
@@ -272,6 +278,7 @@ dashboard/src/
 - **In-memory Cache:** `guildRelationships` and `guildContexts` with DB persistence
 - **Debounced Auto-save:** Dashboard settings save after 1-second delay to prevent API spam
 - **Docker Sandbox:** Commands run in isolated containers via Docker-in-Docker (DinD) for security
+- **Knowledge Graph:** Long-term memory stored in `knowledge_graph` table with semantic retrieval
 
 ---
 
@@ -299,15 +306,30 @@ GEMINI_API_KEY=
 OLLAMA_API_URL=
 QWEN_API_KEY=
 
+# Optional Qwen OAuth (PKCE device flow)
+QWEN_OAUTH_CLIENT_ID=
+
 # PostgreSQL
-DATABASE_URL=
 POSTGRES_DB=
 POSTGRES_USER=
 POSTGRES_PASSWORD=
+POSTGRES_PORT=
+DATABASE_URL=
+
+# pgAdmin
+PGADMIN_DEFAULT_EMAIL=
+PGADMIN_DEFAULT_PASSWORD=
 
 # Ports
 API_PORT=3000
 DASHBOARD_PORT=5173
+DOCS_PORT=5174
+
+# Ollama (Docker)
+OLLAMA_API_URL=http://host.docker.internal:11434
+
+# Qwen OpenAI-compatible endpoint
+QWEN_API_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 ```
 
 ---
@@ -315,14 +337,15 @@ DASHBOARD_PORT=5173
 ## 11. Database Schema
 
 Key tables:
-- `global_config` - System-wide settings (typed columns)
-- `server_configs` - Per-server overrides (typed columns)
-- `guilds` - Joined servers
-- `relationships` - Per-user relationship data
-- `relationship_behaviors` - Behavior definitions for relationships
-- `relationship_boundaries` - Boundary definitions for relationships
-- `messages` - Message history
-- `bot_replies` - Reply analytics
+- `global_config` — System-wide settings (typed columns)
+- `server_configs` — Per-server overrides (typed columns)
+- `guilds` — Joined servers
+- `relationships` — Per-user relationship data
+- `relationship_behaviors` — Behavior definitions for relationships
+- `relationship_boundaries` — Boundary definitions for relationships
+- `messages` — Message history
+- `bot_replies` — Reply analytics
+- `knowledge_graph` — Long-term memory nodes and edges
 
 ---
 
@@ -342,3 +365,15 @@ Key tables:
 3. Check `bot/src/core/replyDecider.ts` for reply decision logic
 4. Use dashboard Logs page for real-time logs
 5. Verify configuration in database (use pgAdmin at http://localhost:5050)
+6. Check knowledge graph memory in `bot/src/memory/knowledgeGraph.ts`
+
+---
+
+## 13. Recent Updates
+
+- **Knowledge Graph Memory**: Integrated long-term semantic memory system with node/edge relationships
+- **Qwen OAuth**: Automatic token refresh on 401 errors for Qwen API
+- **Modular API**: Refactored `server.ts` into modular route files in `bot/src/api/routes/`
+- **Docker Networking**: Fixed service discovery and proxy configuration for container communication
+- **Type Safety**: Added path aliases and centralized constants for bot, dashboard, and shared
+- **Socket.io**: Implemented single shared socket pattern, fixed memory leaks in dashboard
